@@ -13,6 +13,7 @@ class Job(object):
         self.chunked = False
         self.plate_store = dict()
         self.loaddata_store = dict()
+        self.has_loaddata = False
 
 
     def add_experiment(self, exp_dir):
@@ -94,10 +95,13 @@ class Job(object):
                 # just a single dataframe for the whole imagelist
                 df_loaddata = pre_stage.create_loaddata(unnested)
                 self.loaddata_store[key] = df_loaddata
+        self.has_loaddata = True
 
 
     def create_commands(self, pipeline, location, commands_location):
         """bit of a beast, TODO: refactor"""
+        if self.has_loaddata is False:
+            self.create_loaddata()
         cp_commands = []
         rsync_commands = []
         rm_commands = []
