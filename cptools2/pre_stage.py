@@ -1,3 +1,4 @@
+import os
 from parserix import parse as _parse
 import pandas as _pd
 
@@ -87,7 +88,7 @@ def rm_string(directory):
     return "rm -rf {}".format(directory)
 
 
-def create_cp_command(pipeline, load_data, output_location):
+def cp_command(pipeline, load_data, output_location):
     """create cellprofiler command"""
     cmnd = "cellprofiler -r -c -p {} --data-file={} -o {}".format(
         pipeline, load_data, output_location)

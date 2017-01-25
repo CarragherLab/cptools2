@@ -1,8 +1,9 @@
 import os
-import itertools
+from itertools import chain
 from cptools2 import create_filelist
 from cptools2 import job_splitter
 from cptools2 import pre_stage
+from cptools2 import utils
 
 class Job(object):
     """job class docstring"""
@@ -66,7 +67,7 @@ class Job(object):
         for key in self.plate_store:
             chunks = job_splitter.split(self.plate_store[key][1], job_size)
             self.plate_store[key][1] = chunks
-        self.chunked=True
+        self.chunked = True
 
 
     def create_loaddata(self):
@@ -82,21 +83,74 @@ class Job(object):
                 # create a dataframe for each chunk in the imagelist
                 for chunk in img_list:
                     # unnest channel groupings
-                    unnested = list(itertools.chain.from_iterable(chunk))
+                    # only there before chunking to keep images together
+                    unnested = list(chain.from_iterable(chunk))
                     df_loaddata = pre_stage.create_loaddata(unnested)
                     self.loaddata_store[key].append(df_loaddata)
             elif self.chunked is False:
                 # still nested by channels and wells
-                unnested = list(itertools.chain.from_iterable(img_list))
+                # flatten these nested lists
+                unnested = list(chain.from_iterable(img_list))
                 # just a single dataframe for the whole imagelist
                 df_loaddata = pre_stage.create_loaddata(unnested)
                 self.loaddata_store[key] = df_loaddata
 
 
-
-
-
-
-
-
+    def create_commands(self, pipeline, location, commands_location):
+        """bit of a beast, TODO: refactor"""
+        cp_commands = []
+        rsync_commands = []
+        rm_commands = []
+        utils.make_dir(os.path.join(location, "raw_data"))
+        for plate in self.plate_store:
+            for job_num, dataframe in enumerate(self.loaddata_store[plate]):
+                name = "{}_{}".format(plate, str(job_num))
+                # write loaddata dataframe to disk
+                utils.make_dir(os.path.join(location, "loaddata"))
+                loaddata_name = os.path.join(location, "loaddata", name)
+                dataframe.to_csv(loaddata_name, index=False)
+                # create and append cp command
+                output_loc = os.path.join(location, "raw_data", name)
+                cp_cmnd = pre_stage.cp_command(pipeline=pipeline,
+                                               load_data=loaddata_name+".csv",
+                                               output_location=output_loc)
+                cp_commands.append(cp_cmnd)
+                # create filelist
+                utils.make_dir(os.path.join(location, "filelist"))
+                img_list = list(chain(*self.plate_store[plate][1][job_num]))
+                filelist_name = os.path.join(location, "filelist", name)
+                with open(filelist_name, "w") as f:
+                    for line in img_list:
+                        f.write(line + "\n")
+                # create and append rsync commands
+                # source will be the plate location
+                utils.make_dir(os.path.join(location, "img_data"))
+                img_location = os.path.join(location, "img_data", name)
+                plate_loc = self.plate_store[plate][0]
+                # trim plate name from plate_loc
+                plate_loc = os.path.join("/", *plate_loc.split(os.sep)[:-1])
+                rsync_cmd = pre_stage.rsync_string(filelist=filelist_name,
+                                                   source=plate_loc,
+                                                   destination=img_location)
+                rsync_commands.append(rsync_cmd)
+                # create and append rm commands
+                # need to rm the img_location
+                rm_cmd = pre_stage.rm_string(directory=img_location)
+                rm_commands.append(rm_cmd)
+        # write the commands to disk
+        # cellprofiler commands
+        cp_cmnd_loc = os.path.join(commands_location, "cp_commands.txt")
+        with open(cp_cmnd_loc, "w") as cp:
+            for line in cp_commands:
+                cp.write(line + "\n")
+        # staging commands
+        rsync_cmnd_loc = os.path.join(commands_location, "staging.txt")
+        with open(rsync_cmnd_loc, "w") as r:
+            for line in rsync_commands:
+                r.write(line + "\n")
+        # destaging commands
+        rm_cmnd_loc = os.path.join(commands_location, "destaging.txt")
+        with open(rm_cmnd_loc, "w") as d:
+            for line in rm_commands:
+                d.write(line + "\n")
 
