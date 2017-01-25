@@ -8,7 +8,8 @@ TEST_PATH = os.path.join(CURRENT_PATH, "example_dir")
 def test_files_from_plate():
     """see if we get image files from a plate directory"""
     plate_path = os.path.join(TEST_PATH, "test-plate-1")
-    output = create_filelist.files_from_plate(plate_path, clean=True)
+    output = create_filelist.files_from_plate(plate_path,
+        clean=True, truncate=False)
     assert len(output) > 0
     for f in output:
         assert f.endswith(".tif")
@@ -17,8 +18,18 @@ def test_files_from_plate():
 def test_files_from_plate_clean_false():
     """files_from_plate with clean as false"""
     plate_path = os.path.join(TEST_PATH, "test-plate-1")
-    output = create_filelist.files_from_plate(plate_path, clean=False)
+    output = create_filelist.files_from_plate(plate_path,
+        clean=False, truncate=False)
     assert len(output) > 0
+
+
+def test_files_from_plate_truncate():
+    """files_from_plate with truncated file-paths"""
+    plate_path = os.path.join(TEST_PATH, "test-plate-1")
+    output = create_filelist.files_from_plate(plate_path,
+        clean=True, truncate=True)
+    for f in output:
+        assert len(f.split(os.sep)) == 4
 
 
 def test_paths_to_plates():
