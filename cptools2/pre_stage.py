@@ -4,18 +4,25 @@ import pandas as _pd
 
 def create_loaddata(img_list):
     """
-    create a pandas DataFrame suitable for cellprofilers LoadData module
-    Requires parsing metadata out of the file paths
+    create a dataframe suitable for cellprofilers LoadData module
+    """
+    df_long = create_long_loaddata(img_list)
+    return cast_dataframe(df_long)
+
+
+def create_long_loaddata(img_list):
+    """
+    create a dataframe of image paths with metadata columns
     """
     just_filenames = [_parse.img_filename(i) for i in img_list]
     df_img = _pd.DataFrame({
         "URL" : just_filenames,
         "path" : [_parse.path(i) for i in img_list],
-        "Metadata_platename" : [_parse.plate_name(i) for i in just_filenames],
-        "Metdata_well" : [_parse.img_well(i) for i in just_filenames],
+        "Metadata_platename" : [_parse.plate_name(i) for i in img_list],
+        "Metadata_well" : [_parse.img_well(i) for i in just_filenames],
         "Metadata_site" : [_parse.img_site(i) for i in just_filenames],
         "Metadata_channel" : [_parse.img_channel(i) for i in just_filenames],
-        "Metadata_platenum" : [_parse.plate_num(i) for i in just_filenames]
+        "Metadata_platenum" : [_parse.plate_num(i) for i in img_list]
     })
     return df_img
 
@@ -43,7 +50,8 @@ def cast_dataframe(dataframe):
 
 def update_file_paths(dataframe, cols, original, replacement):
     """
-    change file paths
+    change file paths (could just use sed)
+
     Parameters:
     ------------
     dataframe : pandas dataframe
@@ -58,11 +66,17 @@ def update_file_paths(dataframe, cols, original, replacement):
     return df_sub.applymap(lambda x: x.replace(original, replacement))
 
 
-def rsync_string(filelist, destination):
+def rsync_string(filelist, source, destination):
     """
-    create rsync string pointing to a file-list and a destination
+    Create rsync string pointing to a file-list and a destination
+    If the file-list is truncated, then source has to be the location of the
+    file-list so it forms a complete path.
+    Destination will include the entire path located in the file-list, therefore
+    truncation is recommended,
+    Desination can also begin with a directory that has not yet been created,
+    the directory will be created by the rsync command.
     """
-    return "rsync --files-from={} / {}".format(filelist, destination)
+    return "rsync --files-from={} {} {}".format(filelist, source, destination)
 
 
 def rm_string(directory):

@@ -1,7 +1,7 @@
 from parserix import parse as _parse
 import pandas as _pd
 
-def job_splitter(img_list, job_size=96):
+def split(img_list, job_size=96):
     """split imagelist into an imagelist per job containing job_size images"""
     df_img = _well_site_table(img_list)
     grouped_list = _group_images(df_img)
