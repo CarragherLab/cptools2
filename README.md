@@ -10,6 +10,7 @@ Running CellProfiler on computing clusters. This is aimed towards the University
 from cptools2.job import Job
 
 job = Job()
+
 job.add_experiment("path/to/imageXpress/experiment")
 
 job.remove_plate(["plate_1", "plate_2"])
