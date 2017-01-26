@@ -5,7 +5,10 @@ from cptools2 import pre_stage
 from cptools2 import utils
 
 class Job(object):
-    """job class docstring"""
+    """
+    class to generate staging, analysis and
+    de-stating commands for an SGE array job.
+    """
 
     def __init__(self):
         self.exp_dir = None
@@ -18,6 +21,11 @@ class Job(object):
     def add_experiment(self, exp_dir):
         """
         add all plates in an experiment to the platestore
+
+        Parameters:
+        -----------
+        exp_dir : string
+            path to imageXpress experiment that contains plate sub-directories
         """
         self.exp_dir = exp_dir
         # get the plate names from the experiment directory
@@ -31,7 +39,19 @@ class Job(object):
     def add_plate(self, plates, exp_dir):
         """
         add plate(s) from an experiment to the plate_store
-        plates being a string or list of strings of the plate names
+        plates being a string or list of strings of the plate names.
+
+        can only add plates from a single experiment directory
+
+        if adding plates from multiple experiments, then use multiple add_plate
+        methods
+
+        Parameters:
+        -----------
+        plates : string or list of strings
+            plate names of plates to be added
+        exp_dir : string
+            path to experiment directory that contains the plates
         """
         if isinstance(plates, str):
             full_path = exp_dir + plates
@@ -48,6 +68,11 @@ class Job(object):
     def remove_plate(self, plates):
         """
         remove plate(s) from plate_store
+
+        Parameters:
+        -----------
+        plates : string or list of strings
+            plate names of plates to be removed
         """
         if isinstance(plates, str):
             # single plate
@@ -62,6 +87,11 @@ class Job(object):
     def chunk(self, job_size=96):
         """
         group image list into separate jobs, individually for each plate
+
+        Parameters:
+        -----------
+        job_size : int (default=96)
+            number of imagesets per job
         """
         # for each image_list in the platestore, split into chunks of job_size
         for key in self.plate_store:
@@ -98,7 +128,22 @@ class Job(object):
 
 
     def create_commands(self, pipeline, location, commands_location):
-        """bit of a beast, TODO: refactor"""
+        """
+        bit of a beast, TODO: refactor
+
+        create stage, analysis and destage commands and write to disk
+
+        Parameters:
+        ------------
+        pipeline : string
+            path to cellprofiler pipeline
+        location : string
+            file path to location in which the loaddata, images and results
+            will be stored
+        commands_location: string
+            file path to location in which to store the stage, analysis and
+            destage commands.
+        """
         if self.has_loaddata is False:
             self.create_loaddata()
         cp_commands = []
@@ -113,13 +158,18 @@ class Job(object):
                 filelist_name = os.path.join(location, "filelist", name)
                 img_location = os.path.join(location, "img_data", name)
                 plate_loc = self.plate_store[plate][0]
+                # make sure filepath has a leading forward-slash
+                # and remove the actual plate name or otherwise the rsync
+                # commands ends with the plate-name duplicated
                 plate_loc = os.path.join("/", *plate_loc.split(os.sep)[:-1])
                 # append cp commands
-                cp_cmnd = utils.make_cp_cmnd(plate, job_num, pipeline,
-                                             location, output_loc)
+                cp_cmnd = utils.make_cp_cmnd(name=name, pipeline=pipeline,
+                                             location=location,
+                                             output_loc=output_loc)
                 cp_commands.append(cp_cmnd)
                 # write loaddata csv to disk
-                utils.write_loaddata(name, location, dataframe)
+                utils.write_loaddata(name=name, location=location,
+                                     dataframe=dataframe)
                 # write filelist to disk
                 utils.write_filelist(img_list=img_list,
                                      filelist_name=filelist_name)
@@ -134,5 +184,3 @@ class Job(object):
         utils.write_cp_commands(commands_location, cp_commands)
         utils.write_stage_commands(commands_location, rsync_commands)
         utils.write_destage_commands(commands_location, rm_commands)
-
-

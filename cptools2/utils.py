@@ -14,8 +14,7 @@ def make_dir(directory):
             raise RuntimeError(err_msg)
 
 
-def make_cp_cmnd(plate, job_num, pipeline, location, output_loc):
-    name = "{}_{}".format(plate, str(job_num))
+def make_cp_cmnd(name, pipeline, location, output_loc):
     loaddata_name = os.path.join(location, "loaddata", name)
     cmnd =  pre_stage.cp_command(pipeline=pipeline,
                                  load_data=loaddata_name + ".csv",

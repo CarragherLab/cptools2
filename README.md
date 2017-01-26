@@ -15,13 +15,15 @@ job.add_experiment("path/to/imageXpress/experiment")
 
 job.remove_plate(["plate_1", "plate_2"])
 
-# number of images per sub-job
+# number of images per task
 job.chunk(job_size=48)
 
 job.create_commands(pipeline="/path/to/cellprofiler/pipeline.cppipe",
                     location="/path/to/scratch/space",
                     commands_location="/home/user")
 ```
+
+This produces a directory containing a loaddata file for each task, and three text files containing staging commands, cellprofiler commands, and de-staging commands that can be run as three concurrent array jobs.
 
 Previous version for the AFM filesystem is available [here](https://github.com/swarchal/CP_tools).
 
