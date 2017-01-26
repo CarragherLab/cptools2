@@ -28,7 +28,6 @@ class Job(object):
             path to imageXpress experiment that contains plate sub-directories
         """
         self.exp_dir = exp_dir
-        # get the plate names from the experiment directory
         plate_names = os.listdir(exp_dir)
         plate_paths = create_filelist.paths_to_plates(exp_dir)
         img_files = [create_filelist.files_from_plate(p) for p in plate_paths]
@@ -75,7 +74,6 @@ class Job(object):
             plate names of plates to be removed
         """
         if isinstance(plates, str):
-            # single plate
             self.plate_store.pop(plates)
         elif isinstance(plates, list):
             for plate in plates:
@@ -100,7 +98,7 @@ class Job(object):
         self.chunked = True
 
 
-    def create_loaddata(self):
+    def _create_loaddata(self):
         """
         create dictionary store of loaddata modules
         pretty much mirroring self.plate_store but dataframes instead of
@@ -145,11 +143,10 @@ class Job(object):
             destage commands.
         """
         if self.has_loaddata is False:
-            self.create_loaddata()
-        cp_commands = []
-        rsync_commands = []
-        rm_commands = []
+            self._create_loaddata()
+        cp_commands, rsync_commands, rm_commands = [], [], []
         utils.make_output_directories(location=location)
+        # for each job per plate, create loaddata and commands
         for plate in self.plate_store:
             for job_num, dataframe in enumerate(self.loaddata_store[plate]):
                 name = "{}_{}".format(plate, str(job_num))
@@ -158,9 +155,9 @@ class Job(object):
                 filelist_name = os.path.join(location, "filelist", name)
                 img_location = os.path.join(location, "img_data", name)
                 plate_loc = self.plate_store[plate][0]
-                # make sure filepath has a leading forward-slash
-                # and remove the actual plate name or otherwise the rsync
-                # commands ends with the plate-name duplicated
+                # make sure filepath has a leading forward-slash and remove
+                # the actual plate name or otherwise the rsync commands ends
+                # with the plate-name duplicated
                 plate_loc = os.path.join("/", *plate_loc.split(os.sep)[:-1])
                 # append cp commands
                 cp_cmnd = utils.make_cp_cmnd(name=name, pipeline=pipeline,
@@ -181,6 +178,7 @@ class Job(object):
                 # make and append rm command
                 rm_cmd = pre_stage.rm_string(directory=img_location)
                 rm_commands.append(rm_cmd)
+        # write commands to disk as a txt file
         utils.write_cp_commands(commands_location, cp_commands)
         utils.write_stage_commands(commands_location, rsync_commands)
         utils.write_destage_commands(commands_location, rm_commands)
