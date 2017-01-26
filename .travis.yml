@@ -14,4 +14,4 @@ install:
 script:
     - py.test --cov=cptools2 tests
 after_success:
-- codecov
+    - codecov

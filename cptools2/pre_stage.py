@@ -1,4 +1,3 @@
-import os
 from parserix import parse as _parse
 import pandas as _pd
 
