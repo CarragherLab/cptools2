@@ -42,7 +42,7 @@ location : /path/to/scratch/space
 commands location : /home/user
 ```
 
-We could run this as `python cptools2 awesome_experiment1.yml`
+We could run this as `python -m cptools2 awesome_experiment1.yml`
 
 --------------------------
 
