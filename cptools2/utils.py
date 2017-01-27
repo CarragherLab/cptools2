@@ -71,7 +71,7 @@ def make_output_directories(location):
 def flatten(l):
     """recursively flatten a nested list"""
     for el in l:
-        if isinstance(el, collections.Iterable) and not isinstance(el, basestring):
+        if isinstance(el, collections.Iterable) and not isinstance(el, str):
             for sub in flatten(el):
                 yield sub
         else:
