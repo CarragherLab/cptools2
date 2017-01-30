@@ -1,5 +1,5 @@
-from cptools2 import create_filelist
 import os
+from cptools2 import create_filelist
 
 CURRENT_PATH = os.path.dirname(__file__)
 TEST_PATH = os.path.join(CURRENT_PATH, "example_dir")
@@ -47,22 +47,3 @@ def test_paths_to_plates():
     for ans in output:
         assert ans in make_own
 
-
-def test_exclude_plates_remove_true():
-    """test exclude plates"""
-    plate_list = create_filelist.paths_to_plates(TEST_PATH)
-    exclude_these = ["test-plate-3", "test-plate-4"]
-    sub_plate_list = create_filelist.exclude_plates(plate_list, exclude_these,
-                                                    remove=True)
-    for ans in sub_plate_list:
-        assert ans.split(os.sep)[-1] not in exclude_these
-
-
-def test_exclude_plates_remove_false():
-    """test exclude plates with remove=False"""
-    plate_list = create_filelist.paths_to_plates(TEST_PATH)
-    include_these = ["test-plate-3", "test-plate-4"]
-    sub_plate_list = create_filelist.exclude_plates(plate_list, include_these,
-                                                    remove=False)
-    for ans in sub_plate_list:
-        assert ans.split(os.sep)[-1] in include_these
