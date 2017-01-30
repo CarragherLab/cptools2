@@ -21,11 +21,11 @@ def _group_images(df_img):
     return grouped_list
 
 
-def _well_site_table(imglist):
+def _well_site_table(img_list):
     """return pandas dataframe with metadata columns"""
-    final_files = [_parse.img_filename(i) for i in imglist]
+    final_files = [_parse.img_filename(i) for i in img_list]
     df_img = _pd.DataFrame({
-        "img_paths"     : imglist,
+        "img_paths"     : img_list,
         "Metadata_well" : [_parse.img_well(i) for i in final_files],
         "Metadata_site" : [_parse.img_site(i) for i in final_files]
         })
