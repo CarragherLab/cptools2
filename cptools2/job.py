@@ -179,6 +179,7 @@ class Job(object):
                 rm_cmd = pre_stage.rm_string(directory=img_location)
                 rm_commands.append(rm_cmd)
         # write commands to disk as a txt file
-        utils.write_cp_commands(commands_location, cp_commands)
-        utils.write_stage_commands(commands_location, rsync_commands)
-        utils.write_destage_commands(commands_location, rm_commands)
+        utils.write_commands(commands_location=commands_location,
+                             rsync_commands=rsync_commands,
+                             cp_commands=cp_commands,
+                             rm_commands=rm_commands)

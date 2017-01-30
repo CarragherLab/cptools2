@@ -16,14 +16,16 @@ def make_dir(directory):
 
 def make_cp_cmnd(name, pipeline, location, output_loc):
     loaddata_name = os.path.join(location, "loaddata", name)
-    cmnd =  pre_stage.cp_command(pipeline=pipeline,
-                                 load_data=loaddata_name + ".csv",
-                                 output_location=output_loc)
+    cmnd = pre_stage.cp_command(pipeline=pipeline,
+                                load_data=loaddata_name + ".csv",
+                                output_location=output_loc)
     return cmnd
 
 
-def write_loaddata(name, location, dataframe):
+def write_loaddata(name, location, dataframe, fix_paths=True):
     loaddata_name = os.path.join(location, "loaddata", name + ".csv")
+    if fix_paths is True:
+        dataframe = prefix_filepaths(dataframe, location)
     dataframe.to_csv(loaddata_name, index=False)
 
 
@@ -40,32 +42,26 @@ def make_rsync_cmnd(plate_loc, filelist_name, img_location):
     return cmnd
 
 
-def write_cp_commands(commands_location, cp_commands):
-    cp_cmnd_loc = os.path.join(commands_location, "cp_commands.txt")
-    with open(cp_cmnd_loc, "w") as f:
-        for line in cp_commands:
-            f.write(line + "\n")
+def _write_single(commands_location, commands, final_name):
+    """write commands for single command list"""
+    cmnd_loc = os.path.join(commands_location, final_name + ".txt")
+    with open(cmnd_loc, "w") as outfile:
+        for line in commands:
+            outfile.write(line + "\n")
 
 
-def write_stage_commands(commands_location, rsync_commands):
-    rsync_cmnd_loc = os.path.join(commands_location, "staging.txt")
-    with open(rsync_cmnd_loc, "w") as f:
-        for line in rsync_commands:
-            f.write(line + "\n")
-
-
-def write_destage_commands(commands_location, rm_commands):
-    rm_cmnd_loc = os.path.join(commands_location, "destaging.txt")
-    with open(rm_cmnd_loc, "w") as f:
-        for line in rm_commands:
-            f.write(line + "\n")
+def write_commands(commands_location, rsync_commands, cp_commands, rm_commands):
+    """writes all commands, for stage, cp and destage commands"""
+    commands = [rsync_commands, cp_commands, rm_commands]
+    names = ["staging", "cp_commands", "destaging"]
+    for command, name in zip(commands, names):
+        _write_single(commands_location, command, name)
 
 
 def make_output_directories(location):
-    make_dir(os.path.join(location, "loaddata"))
-    make_dir(os.path.join(location, "img_data"))
-    make_dir(os.path.join(location, "filelist"))
-    make_dir(os.path.join(location, "raw_data"))
+    """create the directories to store the output, used in job.Job()"""
+    for direc in ["loaddata", "img_data", "filelist", "raw_data"]:
+        make_dir(os.path.join(location, direc))
 
 
 def flatten(l):
@@ -76,3 +72,15 @@ def flatten(l):
                 yield sub
         else:
             yield el
+
+
+def prefix_filepaths(dataframe, location):
+    """
+    prefix the filepaths in a loaddata dataframe so that the paths point to the
+    image location after the images have been staged
+    """
+    path_cols = [col for col in dataframe.columns if col.startswith("PathName")]
+    dataframe[path_cols] = dataframe[path_cols].applymap(
+        lambda x: os.path.join(location, "img_data", x)
+        )
+    return dataframe
