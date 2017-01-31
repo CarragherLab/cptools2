@@ -1,0 +1,8 @@
+experiment : /path/to/experiment
+remove plate:
+  - plate_1
+  - plate_2
+chunk: 46
+pipeline: /path/to/example_pipeline.cppipe
+location: /example/location
+commands location: /home/user
