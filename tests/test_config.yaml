@@ -2,6 +2,11 @@ experiment : /path/to/experiment
 remove plate:
   - plate_1
   - plate_2
+add plate:
+    - experiment: /path/to/new/experiment
+    - plates:
+        - plate_3
+        - plate_4
 chunk: 46
 pipeline: /path/to/example_pipeline.cppipe
 location: /example/location
