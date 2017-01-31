@@ -1,5 +1,7 @@
 # cptools2
 
+[![Build Status](https://travis-ci.org/Swarchal/cptools2.svg?branch=master)](https://travis-ci.org/Swarchal/cptools2)
+
 Running CellProfiler on computing clusters. This is aimed towards the University of Edinburgh's Eddie3 cluster with the staging workflow.
 
 ## Installation:
