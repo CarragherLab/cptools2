@@ -53,8 +53,8 @@ remove plate:
 add plate:
     - experiment : /path/to/different/experiment
     - plates:
-	- plate_exp2_1
-	- plate_exp2_2
+        - plate_exp2_1
+        - plate_exp2_2
 
 chunk: 96
 
