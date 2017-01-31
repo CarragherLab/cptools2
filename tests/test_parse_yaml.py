@@ -25,6 +25,14 @@ def test_chunk():
     assert output == {"job_size" : 46}
 
 
+def test_add_plate():
+    """cptools2.parse_yaml.add_plate(yaml_dict)"""
+    yaml_dict = parse_yaml.open_yaml(TEST_PATH)
+    output = parse_yaml.add_plate(yaml_dict)
+    assert output == {"experiment" : "/path/to/new/experiment",
+                      "plates" : ["plate_3", "plate_4"]}
+
+
 def test_remove_plate():
     """cptools2.parse_yaml.remove_plate(yaml_dict):"""
     yaml_dict = parse_yaml.open_yaml(TEST_PATH)
