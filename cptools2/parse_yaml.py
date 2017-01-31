@@ -49,7 +49,19 @@ def add_plate(yaml_dict):
         add_plate_arg = yaml_dict["add_plate"]
         # add plate argument might be a dictionary itself, so need to extract
         # plate names and experiment directory
-        # TODO
+        if isinstance(add_plate_arg, dict):
+            plate_exp = add_plate_arg["experiment"]
+            if isinstance(add_plate_arg["plates"], str):
+                # passed a single plate as a string
+                plates_to_add = [add_plate_arg["plates"]]
+            elif isinstance(add_plate_arg["plates"], list):
+                # passed plates as a list
+                plates_to_add = add_plate_arg["plates"]
+            else:
+                plate_type = type(add_plate_arg["plates"])
+                raise ValueError("unknown plate format: {}".format(plate_type))
+            return {"exp_dir" : plate_exp,
+                    "plates" : plates_to_add}
 
 
 def remove_plate(yaml_dict):
