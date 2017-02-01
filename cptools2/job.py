@@ -1,7 +1,7 @@
 import os
-from cptools2 import create_filelist
-from cptools2 import job_splitter
-from cptools2 import pre_stage
+from cptools2 import filelist
+from cptools2 import splitter
+from cptools2 import loaddata
 from cptools2 import utils
 
 class Job(object):
@@ -29,8 +29,8 @@ class Job(object):
         """
         self.exp_dir = exp_dir
         plate_names = os.listdir(exp_dir)
-        plate_paths = create_filelist.paths_to_plates(exp_dir)
-        img_files = [create_filelist.files_from_plate(p) for p in plate_paths]
+        plate_paths = filelist.paths_to_plates(exp_dir)
+        img_files = [filelist.files_from_plate(p) for p in plate_paths]
         for idx, plate in enumerate(plate_names):
             self.plate_store[plate] = [plate_paths[idx], img_files[idx]]
 
@@ -54,7 +54,7 @@ class Job(object):
         """
         if isinstance(plates, str):
             full_path = exp_dir + plates
-            img_files = create_filelist.files_from_plate(full_path)
+            img_files = filelist.files_from_plate(full_path)
             self.plate_store[plates] = [full_path, img_files]
         elif isinstance(plates, list):
             full_path = [exp_dir + i for i in plates]
@@ -93,7 +93,7 @@ class Job(object):
         """
         # for each image_list in the platestore, split into chunks of job_size
         for key in self.plate_store:
-            chunks = job_splitter.split(self.plate_store[key][1], job_size)
+            chunks = splitter.split(self.plate_store[key][1], job_size)
             self.plate_store[key][1] = chunks
         self.chunked = True
 
@@ -113,14 +113,14 @@ class Job(object):
                     # unnest channel groupings
                     # only there before chunking to keep images together
                     unnested = list(utils.flatten(chunk))
-                    df_loaddata = pre_stage.create_loaddata(unnested)
+                    df_loaddata = loaddata.create_loaddata(unnested)
                     self.loaddata_store[key].append(df_loaddata)
             elif self.chunked is False:
                 # still nested by channels and wells
                 # flatten these nested lists
                 unnested = list(utils.flatten(img_list))
                 # just a single dataframe for the whole imagelist
-                df_loaddata = pre_stage.create_loaddata(unnested)
+                df_loaddata = loaddata.create_loaddata(unnested)
                 self.loaddata_store[key] = df_loaddata
         self.has_loaddata = True
 
@@ -145,7 +145,7 @@ class Job(object):
         if self.has_loaddata is False:
             self._create_loaddata()
         cp_commands, rsync_commands, rm_commands = [], [], []
-        utils.make_output_directories(location=location)
+        commands.make_output_directories(location=location)
         # for each job per plate, create loaddata and commands
         for plate in self.plate_store:
             for job_num, dataframe in enumerate(self.loaddata_store[plate]):
@@ -160,26 +160,27 @@ class Job(object):
                 # with the plate-name duplicated
                 plate_loc = os.path.join("/", *plate_loc.split(os.sep)[:-1])
                 # append cp commands
-                cp_cmnd = utils.make_cp_cmnd(name=name, pipeline=pipeline,
-                                             location=location,
-                                             output_loc=output_loc)
+                cp_cmnd = commands.make_cp_cmnd(name=name, pipeline=pipeline,
+                                                location=location,
+                                                output_loc=output_loc)
                 cp_commands.append(cp_cmnd)
                 # write loaddata csv to disk
-                utils.write_loaddata(name=name, location=location,
-                                     dataframe=dataframe)
+                loaddata.write_loaddata(name=name, location=location,
+                                        dataframe=dataframe)
                 # write filelist to disk
-                utils.write_filelist(img_list=img_list,
-                                     filelist_name=filelist_name)
+                loaddata.write_filelist(img_list=img_list,
+                                        filelist_name=filelist_name)
                 # append rsync commands
-                rsync_cmnd = utils.make_rsync_cmnd(plate_loc=plate_loc,
-                                                   filelist_name=filelist_name,
-                                                   img_location=img_location)
+                rsync_cmnd = commands.make_rsync_cmnd(plate_loc=plate_loc,
+                                                      filelist_name=filelist_name,
+                                                      img_location=img_location)
                 rsync_commands.append(rsync_cmnd)
                 # make and append rm command
-                rm_cmd = pre_stage.rm_string(directory=img_location)
+                rm_cmd = commands.rm_string(directory=img_location)
                 rm_commands.append(rm_cmd)
         # write commands to disk as a txt file
-        utils.write_commands(commands_location=commands_location,
-                             rsync_commands=rsync_commands,
-                             cp_commands=cp_commands,
-                             rm_commands=rm_commands)
+        commands.write_commands(commands_location=commands_location,
+                                rsync_commands=rsync_commands,
+                                cp_commands=cp_commands,
+                                rm_commands=rm_commands)
+

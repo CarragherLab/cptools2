@@ -1,5 +1,5 @@
-from parserix import parse as _parse
 import pandas as _pd
+from parserix import parse as _parse
 
 
 def create_loaddata(img_list):
@@ -47,30 +47,3 @@ def cast_dataframe(dataframe):
     wide_df.drop(["path"], axis=1, inplace=True)
     return wide_df
 
-
-def rsync_string(filelist, source, destination):
-    """
-    Create rsync string pointing to a file-list and a destination
-    If the file-list is truncated, then source has to be the location of the
-    file-list so it forms a complete path.
-    Destination will include the entire path located in the file-list, therefore
-    truncation is recommended,
-    Desination can also begin with a directory that has not yet been created,
-    the directory will be created by the rsync command.
-    """
-    return "rsync --files-from={} {} {}".format(filelist, source, destination)
-
-
-def rm_string(directory):
-    """
-    create string to remove job's data after successful run
-    NOTE DANGER ZONE!!!
-    """
-    return "rm -rf {}".format(directory)
-
-
-def cp_command(pipeline, load_data, output_location):
-    """create cellprofiler command"""
-    cmnd = "cellprofiler -r -c -p {} --data-file={} -o {}".format(
-        pipeline, load_data, output_location)
-    return cmnd

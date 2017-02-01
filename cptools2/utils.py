@@ -1,6 +1,5 @@
 import os
 import collections
-from cptools2 import pre_stage
 
 def make_dir(directory):
     """sensible way to create directory"""
@@ -12,56 +11,6 @@ def make_dir(directory):
         else:
             err_msg = "failed to create directory {}".format(directory)
             raise RuntimeError(err_msg)
-
-
-def make_cp_cmnd(name, pipeline, location, output_loc):
-    loaddata_name = os.path.join(location, "loaddata", name)
-    cmnd = pre_stage.cp_command(pipeline=pipeline,
-                                load_data=loaddata_name + ".csv",
-                                output_location=output_loc)
-    return cmnd
-
-
-def write_loaddata(name, location, dataframe, fix_paths=True):
-    loaddata_name = os.path.join(location, "loaddata", name + ".csv")
-    if fix_paths is True:
-        dataframe = prefix_filepaths(dataframe, location)
-    dataframe.to_csv(loaddata_name, index=False)
-
-
-def write_filelist(img_list, filelist_name):
-    with open(filelist_name, "w") as f:
-        for line in img_list:
-            f.write(line + "\n")
-
-
-def make_rsync_cmnd(plate_loc, filelist_name, img_location):
-    cmnd = pre_stage.rsync_string(filelist=filelist_name,
-                                  source=plate_loc,
-                                  destination=img_location)
-    return cmnd
-
-
-def _write_single(commands_location, commands, final_name):
-    """write commands for single command list"""
-    cmnd_loc = os.path.join(commands_location, final_name + ".txt")
-    with open(cmnd_loc, "w") as outfile:
-        for line in commands:
-            outfile.write(line + "\n")
-
-
-def write_commands(commands_location, rsync_commands, cp_commands, rm_commands):
-    """writes all commands, for stage, cp and destage commands"""
-    commands = [rsync_commands, cp_commands, rm_commands]
-    names = ["staging", "cp_commands", "destaging"]
-    for command, name in zip(commands, names):
-        _write_single(commands_location, command, name)
-
-
-def make_output_directories(location):
-    """create the directories to store the output, used in job.Job()"""
-    for direc in ["loaddata", "img_data", "filelist", "raw_data"]:
-        make_dir(os.path.join(location, direc))
 
 
 def flatten(l):
@@ -84,3 +33,4 @@ def prefix_filepaths(dataframe, location):
         lambda x: os.path.join(location, "img_data", x)
         )
     return dataframe
+
