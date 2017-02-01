@@ -1,5 +1,5 @@
 import os
-from cptools2 import create_filelist
+from cptools2 import filelist
 
 CURRENT_PATH = os.path.dirname(__file__)
 TEST_PATH = os.path.join(CURRENT_PATH, "example_dir")
@@ -8,7 +8,7 @@ TEST_PATH = os.path.join(CURRENT_PATH, "example_dir")
 def test_files_from_plate():
     """see if we get image files from a plate directory"""
     plate_path = os.path.join(TEST_PATH, "test-plate-1")
-    output = create_filelist.files_from_plate(plate_path,
+    output = filelist.files_from_plate(plate_path,
         clean=True, truncate=False)
     assert len(output) > 0
     for f in output:
@@ -18,7 +18,7 @@ def test_files_from_plate():
 def test_files_from_plate_clean_false():
     """files_from_plate with clean as false"""
     plate_path = os.path.join(TEST_PATH, "test-plate-1")
-    output = create_filelist.files_from_plate(plate_path,
+    output = filelist.files_from_plate(plate_path,
         clean=False, truncate=False)
     assert len(output) > 0
 
@@ -26,7 +26,7 @@ def test_files_from_plate_clean_false():
 def test_files_from_plate_truncate():
     """files_from_plate with truncated file-paths"""
     plate_path = os.path.join(TEST_PATH, "test-plate-1")
-    output = create_filelist.files_from_plate(plate_path,
+    output = filelist.files_from_plate(plate_path,
         clean=True, truncate=True)
     for f in output:
         assert len(f.split(os.sep)) == 4
@@ -38,7 +38,7 @@ def test_paths_to_plates():
     though don't actually know what the absolute path is going to be
     on other computers...
     """
-    output = create_filelist.paths_to_plates(TEST_PATH)
+    output = filelist.paths_to_plates(TEST_PATH)
     prefix = os.path.abspath(TEST_PATH)
     plate_names = ["test-plate-1", "test-plate-2",
                    "test-plate-3", "test-plate-4"]
