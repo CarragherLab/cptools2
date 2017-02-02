@@ -1,4 +1,5 @@
 import os
+from cptools2 import utils
 
 def make_cp_cmnd(name, pipeline, location, output_loc):
     """create cellprofiler command"""
