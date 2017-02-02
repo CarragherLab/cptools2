@@ -13,7 +13,7 @@ def write_loaddata(name, location, dataframe, fix_paths=True):
     """write a loaddata csv file to disk"""
     loaddata_name = os.path.join(location, "loaddata", name + ".csv")
     if fix_paths is True:
-        dataframe = prefix_filepaths(dataframe, location)
+        dataframe = utils.prefix_filepaths(dataframe, location)
     dataframe.to_csv(loaddata_name, index=False)
 
 
