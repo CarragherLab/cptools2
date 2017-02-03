@@ -2,6 +2,7 @@ import os
 from cptools2 import filelist
 from cptools2 import splitter
 from cptools2 import loaddata
+from cptools2 import commands
 from cptools2 import utils
 
 class Job(object):
@@ -165,10 +166,10 @@ class Job(object):
                                                 output_loc=output_loc)
                 cp_commands.append(cp_cmnd)
                 # write loaddata csv to disk
-                loaddata.write_loaddata(name=name, location=location,
+                commands.write_loaddata(name=name, location=location,
                                         dataframe=dataframe)
                 # write filelist to disk
-                loaddata.write_filelist(img_list=img_list,
+                commands.write_filelist(img_list=img_list,
                                         filelist_name=filelist_name)
                 # append rsync commands
                 rsync_cmnd = commands.make_rsync_cmnd(plate_loc=plate_loc,

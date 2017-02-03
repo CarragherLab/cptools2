@@ -80,5 +80,5 @@ def cp_command(pipeline, load_data, output_location):
 def make_output_directories(location):
     """create the directories to store the output, used in job.Job()"""
     for direc in ["loaddata", "img_data", "filelist", "raw_data"]:
-        make_dir(os.path.join(location, direc))
+        utils.make_dir(os.path.join(location, direc))
 
