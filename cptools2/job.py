@@ -166,7 +166,7 @@ class Job(object):
                                                 output_loc=output_loc)
                 cp_commands.append(cp_cmnd)
                 # write loaddata csv to disk
-                commands.write_loaddata(name=name, location=location,
+                commands.write_loaddata(name=name, location=img_location,
                                         dataframe=dataframe)
                 # write filelist to disk
                 commands.write_filelist(img_list=img_list,
