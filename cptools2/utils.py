@@ -23,14 +23,14 @@ def flatten(l):
             yield el
 
 
-def prefix_filepaths(dataframe, location):
+def prefix_filepaths(dataframe, name, location):
     """
     prefix the filepaths in a loaddata dataframe so that the paths point to the
     image location after the images have been staged
     """
     path_cols = [col for col in dataframe.columns if col.startswith("PathName")]
     dataframe[path_cols] = dataframe[path_cols].applymap(
-        lambda x: os.path.join(location, "img_data", x)
+        lambda x: os.path.join(location, "img_data", name, x)
         )
     return dataframe
 
