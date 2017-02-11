@@ -25,12 +25,13 @@ def test_prefix_filepaths_simulated():
         "PathName_W1" : ["one", "two", "three"],
         "PathName_W2" : ["a", "b", "c"]})
     location = "/test/location"
-    output_df = utils.prefix_filepaths(test_df, location)
+    name="test_name"
+    output_df = utils.prefix_filepaths(test_df, name, location)
     assert test_df.shape == output_df.shape
-    assert output_df["PathName_W1"].tolist() == ["/test/location/img_data/one",
-                                                 "/test/location/img_data/two",
-                                                 "/test/location/img_data/three"]
-    assert output_df["PathName_W2"].tolist() == ["/test/location/img_data/a",
-                                                 "/test/location/img_data/b",
-                                                 "/test/location/img_data/c"]
+    assert output_df["PathName_W1"].tolist() == ["/test/location/img_data/test_name/one",
+                                                 "/test/location/img_data/test_name/two",
+                                                 "/test/location/img_data/test_name/three"]
+    assert output_df["PathName_W2"].tolist() == ["/test/location/img_data/test_name/a",
+                                                 "/test/location/img_data/test_name/b",
+                                                 "/test/location/img_data/test_name/c"]
 
