@@ -59,6 +59,7 @@ class Job(object):
             self.plate_store[plates] = [full_path, img_files]
         elif isinstance(plates, list):
             full_path = [exp_dir + i for i in plates]
+            img_files = [filelist.files_from_plate(plate) for plate in full_path]
             for idx, plate in enumerate(plates):
                 self.plate_store[plate] = [full_path[idx], img_files[idx]]
         else:

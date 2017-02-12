@@ -29,7 +29,7 @@ def test_add_plate():
     """cptools2.parse_yaml.add_plate(yaml_dict)"""
     yaml_dict = parse_yaml.open_yaml(TEST_PATH)
     output = parse_yaml.add_plate(yaml_dict)
-    assert output == {"experiment" : "/path/to/new/experiment",
+    assert output == {"exp_dir" : "/path/to/new/experiment",
                       "plates" : ["plate_3", "plate_4"]}
 
 

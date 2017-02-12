@@ -14,7 +14,8 @@ def main():
     # some of the optional arguments might be none, in which case don't
     # pass them as arguments to the methods
     jobber = job.Job()
-    jobber.add_experiment(**experiment_args)
+    if experiment_args is not None:
+        jobber.add_experiment(**experiment_args)
     if remove_plate_args is not None:
         jobber.remove_plate(**remove_plate_args)
     if add_plate_args is not None:

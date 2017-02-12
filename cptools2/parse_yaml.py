@@ -17,13 +17,13 @@ def experiment(yaml_dict):
     """
     get argument for Job.add_experiment method
 
-    not an optional argument, so error if not found
+    this is optional, so if not there then return none
     """
     if "experiment" in yaml_dict:
         experiment_arg = yaml_dict["experiment"]
         if isinstance(experiment_arg, list):
             experiment_arg = experiment_arg[0]
-    return {"exp_dir" : experiment_arg}
+        return {"exp_dir" : experiment_arg}
 
 
 def chunk(yaml_dict):
@@ -60,7 +60,7 @@ def add_plate(yaml_dict):
                         plates = [d["plates"]]
                     if isinstance(plate_args, list):
                         plates = d["plates"]
-            return {"experiment" : experiment, "plates" : plates}
+            return {"exp_dir" : experiment, "plates" : plates}
 
 
 def remove_plate(yaml_dict):
