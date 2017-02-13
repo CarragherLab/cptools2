@@ -67,6 +67,23 @@ location: /path/to/scratch/space
 commands location: /path/to/scratch space
 ```
 
+
+We can also use `add plate` without the an `experiment` tag to add a few plates
+from a large experiment.
+```yaml
+add plate:
+    - experiment: /path/to/large/experiment
+    - plates:
+        - plate_1
+        - plate_2
+        - plate_3
+chunk : 46
+pipeline : /path/to/cellprofiler/pipeline.cppipe
+location : /path/to/scratch/space
+commands location : /home/user
+```
+
+
 --------------------------
 
 Previous version for the AFM filesystem is available [here](https://github.com/swarchal/CP_tools).
