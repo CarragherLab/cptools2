@@ -75,7 +75,7 @@ def cp_command(pipeline, load_data, output_location):
     cmnd = "cellprofiler -r -c -p {} --data-file={} -o {}".format(
         pipeline, load_data, output_location)
     return cmnd
-    
+
 
 def make_output_directories(location):
     """create the directories to store the output, used in job.Job()"""
