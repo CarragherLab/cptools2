@@ -35,19 +35,3 @@ def prefix_filepaths(dataframe, name, location):
     return dataframe
 
 
-def order_dictionary_by_key(dictionary):
-    """
-    Given a dictionary, this will return an OrderedDict that has been
-    sorted on the key
-
-    Parameters:
-    ------------
-    dictionary : Dict
-
-    Returns:
-    ---------
-    OrderedDict sorted by key
-    """
-    s_dict = collections.OrderedDict(sorted(dictionary.items(),
-                                            key=lambda x: x[0]))
-    return s_dict

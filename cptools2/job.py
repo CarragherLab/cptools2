@@ -148,9 +148,11 @@ class Job(object):
             self._create_loaddata()
         cp_commands, rsync_commands, rm_commands = [], [], []
         commands.make_output_directories(location=location)
-        # for each job per plate, create loaddata and commands
         # transform plate_store into an ordered dictionary and sort by plate-name
-        for plate in utils.order_dictionary_by_key(self.plate_store):
+        self.plate_store = utils.order_dictionary_by_key(self.plate_store)
+        # for each job per plate, create loaddata and commands
+        platenames = sorted(self.plate_store.keys())
+        for plate in platenames:
             for job_num, dataframe in enumerate(self.loaddata_store[plate]):
                 name = "{}_{}".format(plate, str(job_num))
                 output_loc = os.path.join(location, "raw_data", name)

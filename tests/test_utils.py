@@ -37,16 +37,3 @@ def test_prefix_filepaths_simulated():
                                                  "/test/location/img_data/test_name/c"]
 
 
-def test_order_dictionary_by_key():
-    """utils.order_dictionary_by_key(dictionary)"""
-    # create a test dictionary
-    test_dict = {"plate_z": 1, "plate_b" : 2, "plate_b2" : 3, "plate_a0" : 3}
-    sorted_dict = utils.order_dictionary_by_key(test_dict)
-    assert isinstance(sorted_dict, collections.OrderedDict)
-    keys, values = [], []
-    for key, value in sorted_dict.items():
-        keys.append(key)
-        values.append(value)
-    assert keys == ["plate_a0", "plate_b", "plate_b2", "plate_z"]
-    assert values == [3, 2, 3, 1]
-
