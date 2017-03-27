@@ -13,14 +13,14 @@ def make_dir(directory):
             raise RuntimeError(err_msg)
 
 
-def flatten(l):
+def flatten(list_like):
     """recursively flatten a nested list"""
-    for el in l:
-        if isinstance(el, collections.Iterable) and not isinstance(el, str):
-            for sub in flatten(el):
+    for i in list_like:
+        if isinstance(i, collections.Iterable) and not isinstance(i, str):
+            for sub in flatten(i):
                 yield sub
         else:
-            yield el
+            yield i
 
 
 def prefix_filepaths(dataframe, name, location):
@@ -35,7 +35,5 @@ def prefix_filepaths(dataframe, name, location):
     return dataframe
 
 def any_nan_values(dataframe):
-    """
-    Check if 'dataframe' contains any missing values
-    """
+    """Check if 'dataframe' contains any missing values"""
     return dataframe.isnull().any().any()
