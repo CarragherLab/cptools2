@@ -1,6 +1,6 @@
 import pandas as _pd
 from parserix import parse as _parse
-
+from cptools2 import utils
 
 def create_loaddata(img_list):
     """
@@ -27,7 +27,7 @@ def create_long_loaddata(img_list):
     return df_img
 
 
-def cast_dataframe(dataframe):
+def cast_dataframe(dataframe, check_nan=True):
     """reshape a create_loaddata dataframe from long to wide format"""
     n_channels = len(set(dataframe.Metadata_channel))
     wide_df = dataframe.pivot_table(
@@ -45,5 +45,8 @@ def cast_dataframe(dataframe):
     for i in range(1, n_channels+1):
         wide_df["PathName_W" + str(i)] = wide_df.path
     wide_df.drop(["path"], axis=1, inplace=True)
+    if check_nan is True:
+        if utils.any_nan_values(dataframe):
+            raise Warning("dataframe contains missing values")
     return wide_df
 

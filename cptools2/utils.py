@@ -34,4 +34,8 @@ def prefix_filepaths(dataframe, name, location):
         )
     return dataframe
 
-
+def any_nan_values(dataframe):
+    """
+    Check if 'dataframe' contains any missing values
+    """
+    return dataframe.isnull().any().any()
