@@ -1,14 +1,22 @@
 import os
+import pytest
 from cptools2 import parse_yaml
 
 CURRENT_PATH = os.path.dirname(__file__)
 TEST_PATH = os.path.join(CURRENT_PATH, "test_config.yaml")
-
+TEST_BROKEN = os.path.join(CURRENT_PATH, "test_config_broken.yaml")
 
 def test_open_yaml():
     """cptools2.parse_yaml.open_yaml(path_to_yaml)"""
     yaml_dict = parse_yaml.open_yaml(TEST_PATH)
     assert isinstance(yaml_dict, dict)
+
+
+def test_check_yaml_args():
+    """cptools2.parse_yaml.check_yaml_args(yaml_dict)"""
+    yaml_dict = parse_yaml.open_yaml(TEST_BROKEN)
+    with pytest.raises(ValueError):
+        parse_yaml.check_yaml_args(yaml_dict)
 
 
 def test_experiment():

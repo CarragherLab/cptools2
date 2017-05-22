@@ -97,3 +97,25 @@ def create_commands(yaml_dict):
     return {"pipeline" : pipeline_arg,
             "location" : location_arg,
             "commands_location" : commands_loc_arg}
+
+
+def check_yaml_args(yaml_dict):
+    """
+    check the validity of the yaml arguments
+
+    raises a ValueError if any of the arguments in the yaml setup file are
+    not recognised
+    """
+    valid_args = ["experiment",
+                  "chunk",
+                  "pipeline",
+                  "location",
+                  "commands location",
+                  "remove plate",
+                  "add plate"]
+    for argument in yaml_dict.keys():
+        if argument not in valid_args:
+            err_msg = "'{}' is not a recognised argument".format(argument)
+            raise ValueError(err_msg)
+
+
