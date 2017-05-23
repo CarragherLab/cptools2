@@ -34,6 +34,11 @@ def paths_to_plates(experiment_directory):
     an ImageXpress experiment directory
     """
     exp_abs_path = os.path.abspath(experiment_directory)
-    plates = os.listdir(experiment_directory)
-    return [os.path.join(exp_abs_path, plate) for plate in plates]
+    # check the experiment directory exists
+    if os.path.isdir(exp_abs_path):
+        plates = os.listdir(experiment_directory)
+        return [os.path.join(exp_abs_path, plate) for plate in plates]
+    else:
+        err_msg = "'{}' directory not found".format(exp_abs_path)
+        raise RuntimeError(err_msg)
 
