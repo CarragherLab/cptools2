@@ -7,7 +7,10 @@ Running CellProfiler on computing clusters. This is aimed towards the University
 ## Installation:
 `python setup.py install --user`
 
-## Example
+## Wiki:
+For more details see the [wiki](https://github.com/CarragherLab/cptools2/wiki).
+
+## Example:
 
 cptools2 can use a configuration file to list the jobs parameters.
 
