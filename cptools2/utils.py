@@ -1,5 +1,6 @@
 import os
 import collections
+import random
 
 def make_dir(directory):
     """sensible way to create directory"""
@@ -33,6 +34,7 @@ def prefix_filepaths(dataframe, name, location):
         lambda x: os.path.join(location, "img_data", name, x)
         )
     return dataframe
+
 
 def any_nan_values(dataframe):
     """Check if 'dataframe' contains any missing values"""
