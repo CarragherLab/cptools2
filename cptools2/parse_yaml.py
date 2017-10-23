@@ -118,7 +118,8 @@ def check_yaml_args(yaml_dict):
         bad_arguments = []
         if argument not in valid_args:
             bad_arguments.append(argument)
-            err_msg = "Unrecognized argument(s) : {}".format(bad_arguments)
-            raise ValueError(err_msg)
+    if len(bad_arguments) > 0:
+        err_msg = "Unrecognized argument(s) : {}".format(bad_arguments)
+        raise ValueError(err_msg)
 
 
