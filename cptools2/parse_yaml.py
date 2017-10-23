@@ -6,6 +6,7 @@ from rather rather than creating python commands
 more readable and serves as a record
 """
 
+
 def open_yaml(path_to_yaml):
     """return a dict representation of a yaml file"""
     with open(path_to_yaml, "r") as f:
@@ -114,8 +115,10 @@ def check_yaml_args(yaml_dict):
                   "remove plate",
                   "add plate"]
     for argument in yaml_dict.keys():
+        bad_arguments = []
         if argument not in valid_args:
-            err_msg = "'{}' is not a recognised argument".format(argument)
+            bad_arguments.append(argument)
+            err_msg = "Unrecognized argument(s) : {}".format(bad_arguments)
             raise ValueError(err_msg)
 
 
