@@ -114,8 +114,8 @@ def check_yaml_args(yaml_dict):
                   "commands location",
                   "remove plate",
                   "add plate"]
+    bad_arguments = []
     for argument in yaml_dict.keys():
-        bad_arguments = []
         if argument not in valid_args:
             bad_arguments.append(argument)
     if len(bad_arguments) > 0:
