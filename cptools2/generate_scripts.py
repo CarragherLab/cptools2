@@ -127,7 +127,7 @@ def make_qsub_scripts(commands_location, commands_count_dict):
     analysis_script.save(os.path.join(commands_location, "analysis_script.sh"))
 
     destaging_script = script_generator.AnalysisScript(
-        memory="1G", hold_jid="analysis",
+        name="destaging", memory="1G", hold_jid="analysis",
         tasks=commands_count_dict["destaging"]
     )
     destaging_script.loop_through_file(cmd_path["destaging"])
