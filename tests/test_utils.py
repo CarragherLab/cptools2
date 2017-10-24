@@ -60,7 +60,6 @@ def test_count_lines_in_file():
     path_to_test_file2 = os.path.join(CURRENT_PATH, "example_commands_file2.txt")
     expected = 10
     answer1 = utils.count_lines_in_file(path_to_test_file1)
-    answer2 = utils.count_lines_in_file(path_to_test_file1)
+    answer2 = utils.count_lines_in_file(path_to_test_file2)
     assert answer1 == expected
     assert answer2 == expected
-
