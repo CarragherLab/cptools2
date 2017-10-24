@@ -4,6 +4,7 @@ staging, analysis and destaging jobs
 """
 
 import os
+import textwrap
 from scissorhands import script_generator
 from cptools2 import utils
 
@@ -71,6 +72,64 @@ def lines_in_commands(commands_location):
     command_paths = make_command_paths(commands_location)
     return _lines_in_commands(**command_paths)
 
-# place to save submission scripts
-# what to call the submission scripts
-# can we automatically submit them?
+
+def load_module_text():
+    """returns load module commands"""
+    return textwrap.dedent(
+        """
+        module load igmm/apps/hdf5/1.8.16
+        module load igmm/apps/python/2.7.10
+        module load igmm/apps/jdk/1.8.0_66
+        module load igmm/libs/libpng/1.6.18
+
+        # activate the cellprofiler virtualenvironment
+        source /exports/igmm/eddie/Drug-Discovery/virtualenv-1.10/myVE/bin/activate
+        """
+    )
+
+
+def make_qsub_scripts(commands_location, commands_count_dict):
+    """
+    Create and save qsub submission scripts in the same location as the
+    commands.
+
+    Parameters:
+    -----------
+    commands_location: string
+        path to directory that contains staging, cp_commands, and destaging
+        command files.
+
+    commands_count_dict: dictionary
+        dictionary of the number of commands contain in each of the jobs
+
+
+    Returns:
+    ---------
+    Nothing, writes files to `commands_location`
+    """
+    cmd_path = make_command_paths(commands_location)
+
+    # FIXME: using AnalysisScript class for everything, due to the 
+    #        {Staging, Destaging}Script class not having loop_through_file
+    stage_script = script_generator.AnalysisScript(
+        name="staging", memory="1G", tasks=commands_count_dict["staging"]
+    )
+    stage_script.template += "#$ -q staging\n"
+    stage_script.loop_through_file(cmd_path["staging"])
+    stage_script.save(os.path.join(commands_location, "staging_script.sh"))
+
+    analysis_script = script_generator.AnalysisScript(
+        name="analysis", tasks=commands_count_dict["cp_commands"],
+        hold_jid_ad="staging", pe="sharedmem 2"
+    )
+    analysis_script.template += load_module_text()
+    analysis_script.loop_through_file(cmd_path["cp_commands"])
+    analysis_script.save(os.path.join(commands_location, "analysis_script.sh"))
+
+    destaging_script = script_generator.AnalysisScript(
+        memory="1G", hold_jid="analysis",
+        tasks=commands_count_dict["destaging"]
+    )
+    destaging_script.loop_through_file(cmd_path["destaging"])
+    destaging_script.save(os.path.join(commands_location, "destaging_script.sh"))
+

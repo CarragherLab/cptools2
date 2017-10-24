@@ -1,10 +1,10 @@
-import yaml
-
 """
-option to give a executable a yaml file and parse all the information
+option to give an executable a yaml file and parse all the information
 from rather rather than creating python commands
 more readable and serves as a record
 """
+
+import yaml
 
 
 def open_yaml(path_to_yaml):

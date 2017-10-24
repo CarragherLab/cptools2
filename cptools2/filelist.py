@@ -2,6 +2,7 @@ import glob
 import os
 import parserix
 
+
 def files_from_plate(plate_dir, ext=".tif", clean=True, truncate=True):
     """
     return all proper image files from a plate directory
