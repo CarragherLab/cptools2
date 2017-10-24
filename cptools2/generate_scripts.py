@@ -120,7 +120,7 @@ def make_qsub_scripts(commands_location, commands_count_dict):
 
     analysis_script = script_generator.AnalysisScript(
         name="analysis", tasks=commands_count_dict["cp_commands"],
-        hold_jid_ad="staging", pe="sharedmem 2"
+        hold_jid_ad="staging", pe="sharedmem 2", memory="6G"
     )
     analysis_script.template += load_module_text()
     analysis_script.loop_through_file(cmd_path["cp_commands"])
