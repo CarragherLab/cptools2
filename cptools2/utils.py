@@ -39,3 +39,25 @@ def prefix_filepaths(dataframe, name, location):
 def any_nan_values(dataframe):
     """Check if 'dataframe' contains any missing values"""
     return dataframe.isnull().any().any()
+
+
+def count_lines_in_file(input_file):
+    """
+    count how many lines are in a file, excluding blank lines
+
+    Parameters:
+    -----------
+    input_file: string
+        path to a file
+
+    Returns:
+    --------
+    integer,
+        number of non-empty lines in `input_file`
+    """
+    total = 0
+    with open(input_file) as f:
+        for l in f:
+            if l != "\n":
+                total += 1
+    return total

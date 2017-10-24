@@ -52,3 +52,15 @@ def test_any_nan_values():
     })
     assert utils.any_nan_values(test_df) == True
     assert utils.any_nan_values(test_df_2) == False
+
+
+def test_count_lines_in_file():
+    """utils.count_lines_in_file(input_file)"""
+    path_to_test_file1 = os.path.join(CURRENT_PATH, "example_commands_file.txt")
+    path_to_test_file2 = os.path.join(CURRENT_PATH, "example_commands_file2.txt")
+    expected = 10
+    answer1 = utils.count_lines_in_file(path_to_test_file1)
+    answer2 = utils.count_lines_in_file(path_to_test_file1)
+    assert answer1 == expected
+    assert answer2 == expected
+
