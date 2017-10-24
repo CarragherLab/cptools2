@@ -8,5 +8,8 @@ setup(name="cptools2",
       license="MIT",
       packages=["cptools2"],
       tests_require=["pytest"],
-      dependency_links=["https://github.com/carragherlab/parserix/tarball/master#egg=parserix-0.1"],
-      install_requires=["pyyaml", "pandas>=0.16", "parserix>=0.1"])
+      dependency_links=[
+            "https://github.com/carragherlab/parserix/tarball/master#egg=parserix-0.1",
+            "https://github.com/carragherlab/scissorhands/tarball/master#egg=scissorhands-0.1",
+      ],
+      install_requires=["pyyaml", "pandas>=0.16", "parserix>=0.1", "scissorhands>=0.1"])
