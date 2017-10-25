@@ -5,8 +5,10 @@ staging, analysis and destaging jobs
 
 import os
 import textwrap
+from datetime import datetime
 from scissorhands import script_generator
 from cptools2 import utils
+
 
 def make_command_paths(commands_location):
     """
@@ -108,7 +110,8 @@ def make_qsub_scripts(commands_location, commands_count_dict):
     Nothing, writes files to `commands_location`
     """
     cmd_path = make_command_paths(commands_location)
-
+    time_now = datetime.now().replace(microsecond=0)
+    time_now = str(time_now).replace(" ", "-")
     # FIXME: using AnalysisScript class for everything, due to the 
     #        {Staging, Destaging}Script class not having loop_through_file
     stage_script = script_generator.AnalysisScript(
@@ -116,7 +119,10 @@ def make_qsub_scripts(commands_location, commands_count_dict):
     )
     stage_script.template += "#$ -q staging\n"
     stage_script.loop_through_file(cmd_path["staging"])
-    stage_script.save(os.path.join(commands_location, "staging_script.sh"))
+    stage_script.save(
+        os.path.join(commands_location,
+                     "{}_staging_script.sh".format(time_now))
+    )
 
     analysis_script = script_generator.AnalysisScript(
         name="analysis", tasks=commands_count_dict["cp_commands"],
@@ -124,12 +130,18 @@ def make_qsub_scripts(commands_location, commands_count_dict):
     )
     analysis_script.template += load_module_text()
     analysis_script.loop_through_file(cmd_path["cp_commands"])
-    analysis_script.save(os.path.join(commands_location, "analysis_script.sh"))
+    analysis_script.save(
+        os.path.join(commands_location,
+                     "{}_analysis_script.sh".format(time_now))
+    )
 
     destaging_script = script_generator.AnalysisScript(
         name="destaging", memory="1G", hold_jid="analysis",
         tasks=commands_count_dict["destaging"]
     )
     destaging_script.loop_through_file(cmd_path["destaging"])
-    destaging_script.save(os.path.join(commands_location, "destaging_script.sh"))
+    destaging_script.save(
+        os.path.join(commands_location,
+                     "{}_destaging_script.sh".format(time_now))
+    )
 
