@@ -151,7 +151,8 @@ class Job(object):
         # for each job per plate, create loaddata and commands
         platenames = sorted(self.plate_store.keys())
         print("** detected {} plates in experiment".format(len(platenames)))
-        for plate in platenames:
+        for i, plate in enumerate(platenames, 1):
+            print("\t {}. plate".format(i, plate))
             for job_num, dataframe in enumerate(self.loaddata_store[plate]):
                 name = "{}_{}".format(plate, str(job_num))
                 output_loc = os.path.join(location, "raw_data", name)
