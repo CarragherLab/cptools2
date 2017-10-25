@@ -112,10 +112,12 @@ def make_qsub_scripts(commands_location, commands_count_dict):
     cmd_path = make_command_paths(commands_location)
     time_now = datetime.now().replace(microsecond=0)
     time_now = str(time_now).replace(" ", "-")
+    job_hex = script_generator.generate_random_hex()
     # FIXME: using AnalysisScript class for everything, due to the 
     #        {Staging, Destaging}Script class not having loop_through_file
     stage_script = script_generator.AnalysisScript(
-        name="staging", memory="1G", tasks=commands_count_dict["staging"]
+        name="staging_{}".format(job_hex), memory="1G",
+        tasks=commands_count_dict["staging"]
     )
     stage_script.template += "#$ -q staging\n"
     stage_script.loop_through_file(cmd_path["staging"])
@@ -125,8 +127,9 @@ def make_qsub_scripts(commands_location, commands_count_dict):
     stage_script.save(stage_loc)
 
     analysis_script = script_generator.AnalysisScript(
-        name="analysis", tasks=commands_count_dict["cp_commands"],
-        hold_jid_ad="staging", pe="sharedmem 2", memory="6G"
+        name="analysis_{}".format(job_hex),
+        tasks=commands_count_dict["cp_commands"], hold_jid_ad="staging",
+        pe="sharedmem 2", memory="6G"
     )
     analysis_script.template += load_module_text()
     analysis_script.loop_through_file(cmd_path["cp_commands"])
@@ -136,7 +139,7 @@ def make_qsub_scripts(commands_location, commands_count_dict):
     analysis_script.save(analysis_loc)
 
     destaging_script = script_generator.AnalysisScript(
-        name="destaging", memory="1G", hold_jid="analysis",
+        name="destaging_{}".format(job_hex), memory="1G", hold_jid="analysis",
         tasks=commands_count_dict["destaging"]
     )
     destaging_script.loop_through_file(cmd_path["destaging"])
