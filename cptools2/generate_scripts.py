@@ -69,9 +69,9 @@ def lines_in_commands(commands_location):
         {"staging":     int,
          "cp_commands": int,
          "destaging":   int}
-    
     """
     command_paths = make_command_paths(commands_location)
+    print("** saved commands = '{}'".format(commands_location))
     return _lines_in_commands(**command_paths)
 
 
@@ -119,10 +119,10 @@ def make_qsub_scripts(commands_location, commands_count_dict):
     )
     stage_script.template += "#$ -q staging\n"
     stage_script.loop_through_file(cmd_path["staging"])
-    stage_script.save(
-        os.path.join(commands_location,
-                     "{}_staging_script.sh".format(time_now))
-    )
+    stage_loc = os.path.join(commands_location,
+                             "{}_staging_script.sh".format(time_now))
+    stage_script.save(stage_loc)
+    print("** saved staging submission script = '{}'".format(stage_loc))
 
     analysis_script = script_generator.AnalysisScript(
         name="analysis", tasks=commands_count_dict["cp_commands"],
@@ -130,18 +130,18 @@ def make_qsub_scripts(commands_location, commands_count_dict):
     )
     analysis_script.template += load_module_text()
     analysis_script.loop_through_file(cmd_path["cp_commands"])
-    analysis_script.save(
-        os.path.join(commands_location,
-                     "{}_analysis_script.sh".format(time_now))
-    )
+    analysis_loc = os.path.join(commands_location,
+                                "{}_analysis_script.sh".format(time_now))
+    analysis_script.save(analysis_loc)
+    print("** saved analysis submission script = '{}'".format(analysis_loc))
 
     destaging_script = script_generator.AnalysisScript(
         name="destaging", memory="1G", hold_jid="analysis",
         tasks=commands_count_dict["destaging"]
     )
     destaging_script.loop_through_file(cmd_path["destaging"])
-    destaging_script.save(
-        os.path.join(commands_location,
-                     "{}_destaging_script.sh".format(time_now))
-    )
+    destage_loc = os.path.join(commands_location,
+                               "{}_destaging_script.sh".format(time_now))
+    destaging_script.save(destage_loc)
+    print("** saved destaging submission script = '{}'".format(destage_loc))
 

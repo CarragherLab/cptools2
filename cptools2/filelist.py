@@ -18,6 +18,7 @@ def files_from_plate(plate_dir, ext=".tif", clean=True, truncate=True):
     truncate : Boolean (default=True)
         whether to truncate the image path to just plate name onwards
     """
+    print("** plate directory = '{}'".format(plate_dir))
     files = glob.glob(plate_dir + "/*/*/*" + ext)
     if clean is True:
         files = parserix.clean.clean(files)

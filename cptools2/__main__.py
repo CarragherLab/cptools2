@@ -15,6 +15,7 @@ def main():
         msg = "'{}' is not a file".format(config_file)
         raise ValueError(msg)
     # parse yaml file into a dictionary
+    print("** parsing config file '{}'".format(config_file))
     yaml_dict = parse_yaml.open_yaml(config_file)
     # check the arguments in the yaml file are recognised
     parse_yaml.check_yaml_args(yaml_dict)

@@ -150,6 +150,7 @@ class Job(object):
         commands.make_output_directories(location=location)
         # for each job per plate, create loaddata and commands
         platenames = sorted(self.plate_store.keys())
+        print("** detected {} plates in experiment".format(len(platenames)))
         for plate in platenames:
             for job_num, dataframe in enumerate(self.loaddata_store[plate]):
                 name = "{}_{}".format(plate, str(job_num))
@@ -186,4 +187,9 @@ class Job(object):
                                 rsync_commands=rsync_commands,
                                 cp_commands=cp_commands,
                                 rm_commands=rm_commands)
+        print("** created image filelist")
+        print("** created loaddata csv files")
+        print("** created staging/rsync commands")
+        print("** created cellprofiler commands")
+        print("** created destaging commands")
 
