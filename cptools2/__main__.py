@@ -41,6 +41,7 @@ def main():
     commands_location = create_command_args["commands_location"]
     commands_line_count = generate_scripts.lines_in_commands(commands_location)
     generate_scripts.make_qsub_scripts(commands_location, commands_line_count)
+    print("DONE!")
 
 
 if __name__ == "__main__":

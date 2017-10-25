@@ -147,12 +147,13 @@ class Job(object):
         if self.has_loaddata is False:
             self._create_loaddata()
         cp_commands, rsync_commands, rm_commands = [], [], []
+        print("** creating output directories at '{}'".format(location))
         commands.make_output_directories(location=location)
         # for each job per plate, create loaddata and commands
         platenames = sorted(self.plate_store.keys())
         print("** detected {} plates in experiment".format(len(platenames)))
         for i, plate in enumerate(platenames, 1):
-            print("\t {}. plate".format(i, plate))
+            print("\t {}. {}".format(i, plate))
             for job_num, dataframe in enumerate(self.loaddata_store[plate]):
                 name = "{}_{}".format(plate, str(job_num))
                 output_loc = os.path.join(location, "raw_data", name)
@@ -184,13 +185,13 @@ class Job(object):
                 rm_cmd = commands.rm_string(directory=img_location)
                 rm_commands.append(rm_cmd)
         # write commands to disk as a txt file
+        print("** creating image filelist")
+        print("** creating csv files for LoadData")
+        print("** creating staging commands")
+        print("** creating Cellprofiler commands")
+        print("** creating destaging commands")
         commands.write_commands(commands_location=commands_location,
                                 rsync_commands=rsync_commands,
                                 cp_commands=cp_commands,
                                 rm_commands=rm_commands)
-        print("** created image filelist")
-        print("** created loaddata csv files")
-        print("** created staging/rsync commands")
-        print("** created cellprofiler commands")
-        print("** created destaging commands")
 
