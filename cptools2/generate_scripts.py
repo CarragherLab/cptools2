@@ -71,7 +71,7 @@ def lines_in_commands(commands_location):
          "destaging":   int}
     """
     command_paths = make_command_paths(commands_location)
-    print("** saved commands at '{}'".format(commands_location))
+    print("** saving commands at '{}'".format(commands_location))
     return _lines_in_commands(**command_paths)
 
 
