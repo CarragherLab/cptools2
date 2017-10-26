@@ -77,15 +77,13 @@ def lines_in_commands(commands_location):
 
 def load_module_text():
     """returns load module commands"""
-    print("** detecting user")
-    if script_generator.on_the_cluster():
-        user = os.environ["USER"]
+    user = os.environ["USER"]
+    try:
         venv_path = venv_store[user]
-        print("\t ** user found: {}".format(user))
-        print("\t ** inserting {}'s CellProfiler virtual environment path in analysis script".format(user))
-    else:
+        print("** known user, inserting {}'s CellProfiler virtual environment path in analysis script".format(user))
+    except KeyError:
         venv_path = "# unknown user, insert path to Cellprofiler virtual environment here"
-        print("\t ** unknown user")
+        print("** unknown user")
         print("\t ** unable to insert path to Cellprofiler virtual environment in the analysis script")
     return textwrap.dedent(
         """
