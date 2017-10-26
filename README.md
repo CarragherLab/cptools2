@@ -43,7 +43,7 @@ Running this command will add an alias to your `.bashrc` file, so you can call
 
 ```bash
 echo "alias cptools2=\"python
-/exports/igmm/eddie/Drug-Discovery/tools/cptools2/cptools2\""" >> ~/.bashrc
+/exports/igmm/eddie/Drug-Discovery/tools/cptools2/cptools2\"" >> ~/.bashrc
 source ~/.bashrc
 ```
 
