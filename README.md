@@ -87,7 +87,7 @@ commands location: /path/to/scratch space
 ```
 
 
-We can also use `add plate` without the an `experiment` tag to add a few plates
+We can also use `add plate` without a top-level `experiment` tag to add a few plates
 from a large experiment.
 ```yaml
 add plate:
