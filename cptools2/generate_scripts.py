@@ -94,7 +94,7 @@ def load_module_text():
 
         # activate the cellprofiler virtualenvironment
         # NOTE: might have to modify this for individual users to point to your
-        #       envirtual environment
+        #       virtual environment
         source {venv_path}
         """.format(venv_path=venv_path)
     )

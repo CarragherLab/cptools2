@@ -7,6 +7,9 @@ Running CellProfiler on computing clusters. This is aimed towards the University
 ## Installation:
 `python setup.py install --user`
 
+
+
+
 ## Wiki:
 For more details see the [wiki](https://github.com/CarragherLab/cptools2/wiki).
 
@@ -24,11 +27,25 @@ location : /path/to/scratch/space
 commands location : /home/user
 ```
 
-We could run this as `python -m cptools2 awesome_experiment-1.yml`
+We could run this as `python /path/to/cptools2/cptools2 awesome_experiment-1.yml`
 
 
 This produces a directory containing a loaddata file for each task, and three text files containing staging commands, cellprofiler commands, and de-staging commands that can be run as three concurrent array jobs.
 
+
+## Adding an alias
+
+Rather than calling python on the install location, we can make this easier to
+remember by adding an alias.
+
+Running this command will add an alias to your `.bashrc` file, so you can call
+`cptools2 example_config.yaml`.
+
+```bash
+echo "alias cptools2=\"python
+/exports/igmm/eddie/Drug-Discovery/tools/cptools2/cptools2\""" >> ~/.bashrc
+source ~/.bashrc
+```
 
 ### yaml config options
 
