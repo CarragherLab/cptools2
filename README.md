@@ -42,8 +42,7 @@ Running this command will add an alias to your `.bashrc` file, so you can call
 `cptools2 example_config.yaml`.
 
 ```bash
-echo "alias cptools2=\"python
-/exports/igmm/eddie/Drug-Discovery/tools/cptools2/cptools2\"" >> ~/.bashrc
+echo "alias cptools2=\"python /exports/igmm/eddie/Drug-Discovery/tools/cptools2/cptools2\"" >> ~/.bashrc
 source ~/.bashrc
 ```
 
