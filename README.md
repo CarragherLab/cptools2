@@ -33,7 +33,7 @@ We could run this as `python /path/to/cptools2/cptools2 awesome_experiment-1.yml
 This produces a directory containing a loaddata file for each task, and three text files containing staging commands, cellprofiler commands, and de-staging commands that can be run as three concurrent array jobs.
 
 
-## Adding an alias
+#### Adding an alias
 
 Rather than calling python on the install location, we can make this easier to
 remember by adding an alias.
