@@ -78,15 +78,15 @@ def lines_in_commands(commands_location):
 def load_module_text():
     """returns load module commands"""
     print("** detecting user")
-    if script_generator.on_cluster():
+    if script_generator.on_the_cluster():
         user = os.environ["USER"]
         venv_path = venv_store[user]
         print("\t ** user found: {}".format(user))
-        print("\t ** using {}'s CellProfiler virtual environment path'")
+        print("\t ** inserting {}'s CellProfiler virtual environment path in analysis script".format(user))
     else:
         venv_path = "# unknown user, insert path to Cellprofiler virtual environment here"
         print("\t ** unknown user")
-        print("\t ** unable to insert path to Cellprofiler virtual environment")
+        print("\t ** unable to insert path to Cellprofiler virtual environment in the analysis script")
     return textwrap.dedent(
         """
         module load igmm/apps/hdf5/1.8.16
