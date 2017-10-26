@@ -77,6 +77,16 @@ def lines_in_commands(commands_location):
 
 def load_module_text():
     """returns load module commands"""
+    print("** detecting user")
+    if script_generator.on_cluster():
+        user = os.environ["USER"]
+        venv_path = venv_store[user]
+        print("\t ** user found: {}".format(user))
+        print("\t ** using {}'s CellProfiler virtual environment path'")
+    else:
+        venv_path = "# unknown user, insert path to Cellprofiler virtual environment here"
+        print("\t ** unknown user")
+        print("\t ** unable to insert path to Cellprofiler virtual environment")
     return textwrap.dedent(
         """
         module load igmm/apps/hdf5/1.8.16
@@ -87,8 +97,8 @@ def load_module_text():
         # activate the cellprofiler virtualenvironment
         # NOTE: might have to modify this for individual users to point to your
         #       envirtual environment
-        source /exports/igmm/eddie/Drug-Discovery/virtualenv-1.10/myVE/bin/activate
-        """
+        source {venv_path}
+        """.format(venv_path=venv_path)
     )
 
 
@@ -114,6 +124,8 @@ def make_qsub_scripts(commands_location, commands_count_dict):
     cmd_path = make_command_paths(commands_location)
     time_now = datetime.now().replace(microsecond=0)
     time_now = str(time_now).replace(" ", "-")
+    # append random hex to job names - this allows you to run multiple jobs
+    # without the -hold_jid flags fron clashing
     job_hex = script_generator.generate_random_hex()
     # FIXME: using AnalysisScript class for everything, due to the 
     #        {Staging, Destaging}Script class not having loop_through_file
@@ -154,4 +166,11 @@ def make_qsub_scripts(commands_location, commands_count_dict):
                                "{}_destaging_script.sh".format(time_now))
     print("** saving destaging submission script at '{}'".format(destage_loc))
     destaging_script.save(destage_loc)
+
+
+venv_store = {
+    "s1027820": "/exports/igmm/eddie/Drug-Discovery/virtualenv-1.10/myVE/bin/activate",
+    # TODO: check this, might not be correct
+    "s1117349": "/exports/igmm/eddie/Drug-Discovery/Becka/virtualenv-1.10/myVE/bin/activate"
+}
 
