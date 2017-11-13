@@ -4,6 +4,7 @@ from rather rather than creating python commands
 more readable and serves as a record
 """
 
+import os
 import yaml
 
 
@@ -86,6 +87,9 @@ def create_commands(yaml_dict):
         pipeline_arg = yaml_dict["pipeline"]
         if isinstance(pipeline_arg, list):
             pipeline_arg = pipeline_arg[0]
+        pipeline_arg = os.path.abspath(pipeline_arg)
+        if not os.path.isfile(pipeline_arg):
+            raise IOError("'{}' pipeline not found".format(pipeline_arg))
     if "location" in yaml_dict:
         location_arg = yaml_dict["location"]
         if isinstance(location_arg, list):

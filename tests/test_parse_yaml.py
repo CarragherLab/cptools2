@@ -52,7 +52,8 @@ def test_create_commands():
     """cptools2.parse_yaml.create_commands(yaml_dict)"""
     yaml_dict = parse_yaml.open_yaml(TEST_PATH)
     output = parse_yaml.create_commands(yaml_dict)
-    assert output == {"pipeline" : "/path/to/example_pipeline.cppipe",
+    pipeline_loc = os.path.abspath("./tests/example_pipeline.cppipe")
+    assert output == {"pipeline" : pipeline_loc,
                       "location" : "/example/location",
                       "commands_location" : "/home/user"}
 

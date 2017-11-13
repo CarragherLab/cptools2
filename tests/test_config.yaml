@@ -8,6 +8,6 @@ add plate:
         - plate_3
         - plate_4
 chunk: 46
-pipeline: /path/to/example_pipeline.cppipe
+pipeline: tests/example_pipeline.cppipe
 location: /example/location
 commands location: /home/user
