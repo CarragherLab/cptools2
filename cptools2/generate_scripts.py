@@ -5,6 +5,7 @@ staging, analysis and destaging jobs
 
 import os
 import textwrap
+import yaml
 from datetime import datetime
 from scissorhands import script_generator
 from cptools2 import utils
@@ -78,6 +79,7 @@ def lines_in_commands(commands_location):
 def load_module_text():
     """returns load module commands"""
     user = os.environ["USER"]
+    venv_store = load_venv_store()
     try:
         venv_path = venv_store[user]
         print("** known user, inserting {}'s CellProfiler virtual environment path in analysis script".format(user))
@@ -166,9 +168,29 @@ def make_qsub_scripts(commands_location, commands_count_dict):
     destaging_script.save(destage_loc)
 
 
-venv_store = {
-    "s1027820": "/exports/igmm/eddie/Drug-Discovery/virtualenv-1.10/myVE/bin/activate",
-    # TODO: check this, might not be correct
-    "s1117349": "/exports/igmm/eddie/Drug-Discovery/Becka/virtualenv-1.10/myVE/bin/activate"
-}
+def load_venv_store():
+    """
+    Load the virtual environment yaml file that details each user's path to
+    their cellprofiler virtualenvironment.
+
+    If the venv_store is not found it return an empty dictionary, which
+    should result in a KeyError when looking up a user's path in
+    `load_module_text()`.
+
+    Returns:
+    --------
+
+    Dictionary
+        {user: /path/to/cellprofiler/virtualenv}
+        or empty Dictionary
+    """
+    possible_paths = ["/exports/igmm/eddie/Drug-Discovery/cp_venvs.yaml"]
+    for path in possible_paths:
+        if os.path.isfile(path):
+            with open(path, "r") as f:
+                yaml_dict = yaml.load(f)
+            return yaml_dict
+    print("** No venv_store found, not inserting path to user's cellprofiler ",
+          "virtual environment in submission script")
+    return dict()
 
