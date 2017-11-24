@@ -83,7 +83,8 @@ def create_commands(yaml_dict):
 
     not optional, so error if no matching keys are found
     """
-    pipeline_arg = os.path.abspath(get_commands("pipeline", yaml_dict))
+    pipeline_arg = get_commands("pipeline", yaml_dict)
+    pipeline_arg = os.path.abspath(pipeline_arg)
         if not os.path.isfile(pipeline_arg):
             raise IOError("'{}' pipeline not found".format(pipeline_arg))
     location_arg = get_commands("location", yaml_dict)
