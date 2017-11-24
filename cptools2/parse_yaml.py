@@ -83,25 +83,25 @@ def create_commands(yaml_dict):
 
     not optional, so error if no matching keys are found
     """
-    if "pipeline" in yaml_dict:
-        pipeline_arg = yaml_dict["pipeline"]
-        if isinstance(pipeline_arg, list):
-            pipeline_arg = pipeline_arg[0]
-        pipeline_arg = os.path.abspath(pipeline_arg)
+    pipeline_arg = os.path.abspath(get_commands("pipeline", yaml_dict))
         if not os.path.isfile(pipeline_arg):
             raise IOError("'{}' pipeline not found".format(pipeline_arg))
-    if "location" in yaml_dict:
-        location_arg = yaml_dict["location"]
-        if isinstance(location_arg, list):
-            location_arg = location_arg[0]
-    # TODO more options rather than exactly "commands location"
+    location_arg = get_commands("location", yaml_dict)
     if "commands location" in yaml_dict:
-        commands_loc_arg = yaml_dict["commands location"]
-        if isinstance(commands_loc_arg, list):
-            commands_loc_arg = commands_loc_arg[0]
+        commands_loc_arg = get_commands("commands location", yaml_dict)
+    elif "commands_location" in yaml_dict:
+        commands_loc_arg = get_commands("commands_location", yaml_dict)
     return {"pipeline" : pipeline_arg,
             "location" : location_arg,
             "commands_location" : commands_loc_arg}
+
+
+def get_commands(command_string, yaml_dict):
+    """fetch argument from the yaml dictionary"""
+    arg = yaml_dict[command_string]
+    if isinstance(arg, list):
+        arg = arg[0]
+    return arg
 
 
 def check_yaml_args(yaml_dict):
