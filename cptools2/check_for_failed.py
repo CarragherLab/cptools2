@@ -26,7 +26,14 @@ class Sweeper(scissorhands.check_output.Qacct):
         self.failure_dict = reason_for_failure
 
     def reason_for_failure(self):
-        """docstring"""
+        """
+        create dictionary of failed tasks, and their reason for failure.
+
+        Returns:
+        ---------
+        Dictionary:
+            {task_id: "reason_string"}
+        """
         failure_dictionary = {}
         for task_id, task_dict in self.qacct_dict.items():
             if task_dict.get("exit_status") != "0":
@@ -43,7 +50,7 @@ class Sweeper(scissorhands.check_output.Qacct):
         return failure_dictionary
 
     @staticmethod
-    def parse_h_rt(h_rt):
+    def parse_rt(runtime):
         """
         convert time in format hours:minutes:seconds into seconds
 
@@ -55,7 +62,7 @@ class Sweeper(scissorhands.check_output.Qacct):
         --------
         integer: time in seconds
         """
-        h, m, s = h_rt.split(":")
+        h, m, s = runtime.split(":")
         return int(h) * 3600 + int(m) * 60 + int(s)
 
     @staticmethod
@@ -75,7 +82,7 @@ class Sweeper(scissorhands.check_output.Qacct):
         if vmem[-1] != "G":
             raise RuntimeError("Unexpected suffix in vmem string, only ",
                                "accepts values ending with 'G' (blame Scott)")
-        return float("".join[i for i in vmem if not i.isalpha()])
+        return float("".join([i for i in vmem if not i.isalpha()]))
 
 
 
