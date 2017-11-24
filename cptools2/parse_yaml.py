@@ -69,7 +69,7 @@ def remove_plate(yaml_dict):
     """
     get argument for Job.remove_plate method
 
-    this is optional, so not there then return None
+    this is optional, so if not there then return None
     """
     if "remove plate" in yaml_dict:
         remove_arg = yaml_dict["remove plate"]
@@ -85,8 +85,7 @@ def create_commands(yaml_dict):
     """
     pipeline_arg = get_commands("pipeline", yaml_dict)
     pipeline_arg = os.path.abspath(pipeline_arg)
-        if not os.path.isfile(pipeline_arg):
-            raise IOError("'{}' pipeline not found".format(pipeline_arg))
+    check_pipeline_exists(pipeline_arg)
     location_arg = get_commands("location", yaml_dict)
     if "commands location" in yaml_dict:
         commands_loc_arg = get_commands("commands location", yaml_dict)
@@ -103,6 +102,11 @@ def get_commands(command_string, yaml_dict):
     if isinstance(arg, list):
         arg = arg[0]
     return arg
+
+
+def check_pipeline_exists(pipeline_arg):
+    if not os.path.isfile(pipeline_arg):
+        raise IOError("'{}' pipeline not found".format(pipeline_arg))
 
 
 def check_yaml_args(yaml_dict):
@@ -126,5 +130,3 @@ def check_yaml_args(yaml_dict):
     if len(bad_arguments) > 0:
         err_msg = "Unrecognized argument(s) : {}".format(bad_arguments)
         raise ValueError(err_msg)
-
-
