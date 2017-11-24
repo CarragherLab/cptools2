@@ -46,7 +46,7 @@ class Sweeper(scissorhands.check_output.Qacct):
                     failure_reason = "out-of-time"
                 else:
                     failure_reason = "unknown"
-                failure_dictionary.update({task_id: failture_reason})
+                failure_dictionary.update({task_id: failure_reason})
         return failure_dictionary
 
     @staticmethod
