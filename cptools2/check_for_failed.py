@@ -22,8 +22,8 @@ class Sweeper(scissorhands.check_output.Qacct):
     def __init__(self, h_vmem, h_rt, *args, **kwargs):
         scissorhands.check_output.Qacct.__init__(self, *args, **kwargs)
         self.h_vmem = self.parse_vmem(h_vmem)
-        self.h_rt = self.parse_wallclock(h_rt)
-        self.failure_dict = reason_for_failure
+        self.h_rt = self.parse_rt(h_rt)
+        self.failure_dict = self.reason_for_failure()
 
     def reason_for_failure(self):
         """
