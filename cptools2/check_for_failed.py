@@ -3,7 +3,7 @@
 - find failed tasks
 - create re-run tasks commands
 - create re-run task scripts
-- increase h_vmem (usual reason for failure) 
+- increase h_vmem (usual reason for failure)
     - can check if Qacct.max_vmem >= h_vmem
 """
 
@@ -35,35 +35,36 @@ class Sweeper(scissorhands.check_output.Qacct):
             {task_id: "reason_string"}
         """
         failure_dictionary = {}
-        for task_id, task_dict in self.qacct_dict.items():
-            if task_dict.get("exit_status") != "0":
+        for key, task_dict in self.qacct_dict.items():
+            if task_dict["exit_status"] != "0":
                 # if a task failed then parse it's runtime and memory useage
-                max_vmem = self.parse_vmem(task_dict.get("max_vmem"))
-                max_runtime = int((task_dict.get("ru_wallclock")))
+                max_vmem = self.parse_vmem(task_dict["maxvmem"])
+                max_runtime = int((task_dict["ru_wallclock"]))
                 if max_vmem >= self.h_vmem:
                     failure_reason = "out-of-memory"
                 elif max_runtime >= self.h_rt:
                     failure_reason = "out-of-time"
                 else:
                     failure_reason = "unknown"
-                failure_dictionary.update({task_id: failure_reason})
+                failure_dictionary.update({task_dict["taskid"]: failure_reason})
         return failure_dictionary
 
     @staticmethod
     def parse_rt(runtime):
         """
+        parse runtime
         convert time in format hours:minutes:seconds into seconds
 
         Parameters:
         -----------
-        h_rt: string
+        runtime: string
 
         Returns:
         --------
         integer: time in seconds
         """
-        h, m, s = runtime.split(":")
-        return int(h) * 3600 + int(m) * 60 + int(s)
+        hour, minute, second = runtime.split(":")
+        return int(hour) * 3600 + int(minute) * 60 + int(second)
 
     @staticmethod
     def parse_vmem(vmem):
@@ -77,14 +78,11 @@ class Sweeper(scissorhands.check_output.Qacct):
 
         Returns:
         ---------
-        float vmem as a floating point number with no suffix
+        float:
+            vmem as a floating point number with no suffix
         """
         if vmem[-1] != "G":
             raise RuntimeError("Unexpected suffix in vmem string, only ",
                                "accepts values ending with 'G' (blame Scott)")
         return float("".join([i for i in vmem if not i.isalpha()]))
-
-
-
-
 
