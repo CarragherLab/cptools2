@@ -4,7 +4,7 @@ import parserix
 from cptools2 import utils
 
 
-def files_from_plate(plate_dir, ext=".tif", clean=True, truncate=True
+def files_from_plate(plate_dir, ext=".tif", clean=True, truncate=True,
                      sanitise=True):
     """
     return all proper image files from a plate directory
