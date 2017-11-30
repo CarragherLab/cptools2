@@ -58,8 +58,13 @@ def rsync_string(filelist, source, destination):
     truncation is recommended,
     Desination can also begin with a directory that has not yet been created,
     the directory will be created by the rsync command.
+    Escape characters will be added to spaces in filenames.
     """
-    return "rsync --files-from={} {} {}".format(filelist, source, destination)
+    return "rsync --files-from={filelist} {source} {destination}".format(
+        filelist=utils.sanitise_filename(filelist),
+        source=utils.sanitise_filename(source),
+        destination=utils.sanitise_filename(destination)
+        )
 
 
 def rm_string(directory):
