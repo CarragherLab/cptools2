@@ -1,6 +1,7 @@
 import glob
 import os
 import parserix
+import utils
 
 
 def files_from_plate(plate_dir, ext=".tif", clean=True, truncate=True):
@@ -26,7 +27,7 @@ def files_from_plate(plate_dir, ext=".tif", clean=True, truncate=True):
         # sorry
         return [os.path.join(*i.split(os.sep)[-4:]) for i in files]
     else:
-        return [os.path.abspath(f) for f in files]
+        return [utils.santitise_filename(os.path.abspath(f)) for f in files]
 
 
 def paths_to_plates(experiment_directory):
