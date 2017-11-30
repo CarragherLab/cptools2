@@ -1,10 +1,11 @@
 import glob
 import os
 import parserix
-import utils
+from cptools2 import utils
 
 
-def files_from_plate(plate_dir, ext=".tif", clean=True, truncate=True):
+def files_from_plate(plate_dir, ext=".tif", clean=True, truncate=True
+                     sanitise=True):
     """
     return all proper image files from a plate directory
 
@@ -18,6 +19,8 @@ def files_from_plate(plate_dir, ext=".tif", clean=True, truncate=True):
         whether to remove thumbnails and non-image files
     truncate : Boolean (default=True)
         whether to truncate the image path to just plate name onwards
+    sanitise: Boolean (default=True)
+        whether to escape whitespace in the filepaths
     """
     files = glob.glob(plate_dir + "/*/*/*" + ext)
     if clean is True:
@@ -25,9 +28,11 @@ def files_from_plate(plate_dir, ext=".tif", clean=True, truncate=True):
     if truncate is True:
         # get the last 4 directories including final file
         # sorry
-        return [os.path.join(*i.split(os.sep)[-4:]) for i in files]
+        files = [os.path.join(*i.split(os.sep)[-4:]) for i in files]
     else:
-        return [utils.sanitise_filename(os.path.abspath(f)) for f in files]
+        files =  [os.path.abspath(f) for f in files]
+    if sanitise is True:
+        files = [utils.sanitise_filename(f) for f in files]
 
 
 def paths_to_plates(experiment_directory):

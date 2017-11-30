@@ -66,3 +66,5 @@ def count_lines_in_file(input_file):
 def sanitise_filename(filename):
     """add escape characters to spaces in filenames"""
     return filename.replace(" ", "\ ")
+
+
