@@ -33,6 +33,7 @@ def files_from_plate(plate_dir, ext=".tif", clean=True, truncate=True,
         files =  [os.path.abspath(f) for f in files]
     if sanitise is True:
         files = [utils.sanitise_filename(f) for f in files]
+    return files
 
 
 def paths_to_plates(experiment_directory):
