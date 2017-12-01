@@ -45,7 +45,8 @@ def paths_to_plates(experiment_directory):
     # check the experiment directory exists
     if os.path.isdir(exp_abs_path):
         plates = os.listdir(experiment_directory)
-        return [os.path.join(exp_abs_path, plate) for plate in plates]
+        full_path =  [os.path.join(exp_abs_path, plate) for plate in plates]
+        return [utils.sanitise_filename(f) for f in full_path]
     else:
         err_msg = "'{}' directory not found".format(exp_abs_path)
         raise RuntimeError(err_msg)
