@@ -54,11 +54,11 @@ class Job(object):
             path to experiment directory that contains the plates
         """
         if isinstance(plates, str):
-            full_path = exp_dir + plates
+            full_path = os.path.join(exp_dir, plates)
             img_files = filelist.files_from_plate(full_path)
             self.plate_store[plates] = [full_path, img_files]
         elif isinstance(plates, list):
-            full_path = [exp_dir + i for i in plates]
+            full_path = [os.path.join(exp_dir, i) for i in plates]
             img_files = [filelist.files_from_plate(plate) for plate in full_path]
             for idx, plate in enumerate(plates):
                 self.plate_store[plate] = [full_path[idx], img_files[idx]]
