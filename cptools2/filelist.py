@@ -30,9 +30,12 @@ def files_from_plate(plate_dir, ext=".tif", clean=True, truncate=True,
         # sorry
         files = [os.path.join(*i.split(os.sep)[-4:]) for i in files]
     else:
-        files =  [os.path.abspath(f) for f in files]
+        files = [os.path.abspath(f) for f in files]
     if sanitise is True:
         files = [utils.sanitise_filename(f) for f in files]
+    if len(files) == 0:
+        err_msg = "No files found in '{}'".format(plate_dir)
+        raise RuntimeError(err_msg)
     return files
 
 
