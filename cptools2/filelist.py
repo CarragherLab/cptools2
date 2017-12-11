@@ -5,7 +5,7 @@ from cptools2 import utils
 
 
 def files_from_plate(plate_dir, ext=".tif", clean=True, truncate=True,
-                     sanitise=True):
+                     sanitise=False):
     """
     return all proper image files from a plate directory
 
@@ -17,7 +17,7 @@ def files_from_plate(plate_dir, ext=".tif", clean=True, truncate=True,
         image extension, only used if clean is True
     clean : Boolean (default=True)
         whether to remove thumbnails and non-image files
-    truncate : Boolean (default=True)
+    truncate : Boolean (default=False)
         whether to truncate the image path to just plate name onwards
     sanitise: Boolean (default=True)
         whether to escape whitespace in the filepaths
@@ -48,8 +48,7 @@ def paths_to_plates(experiment_directory):
     # check the experiment directory exists
     if os.path.isdir(exp_abs_path):
         plates = os.listdir(experiment_directory)
-        full_path =  [os.path.join(exp_abs_path, plate) for plate in plates]
-        return [utils.sanitise_filename(f) for f in full_path]
+        return [os.path.join(exp_abs_path, plate) for plate in plates]
     else:
         err_msg = "'{}' directory not found".format(exp_abs_path)
         raise RuntimeError(err_msg)

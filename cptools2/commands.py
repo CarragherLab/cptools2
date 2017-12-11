@@ -61,9 +61,9 @@ def rsync_string(filelist, source, destination):
     Escape characters will be added to spaces in filenames.
     """
     return "rsync -s --files-from={filelist} {source} {destination}".format(
-        filelist=utils.sanitise_filename(filelist),
-        source=utils.sanitise_filename(source),
-        destination=utils.sanitise_filename(destination)
+        filelist=filelist,
+        source=source,
+        destination=destination
         )
 
 
@@ -72,7 +72,7 @@ def rm_string(directory):
     create string to remove job's data after successful run
     NOTE DANGER ZONE!!!
     """
-    return "rm -rf {}".format(directory)
+    return "rm -rf \"{}\"".format(directory)
 
 
 def cp_command(pipeline, load_data, output_location):
