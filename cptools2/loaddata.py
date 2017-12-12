@@ -16,14 +16,14 @@ def create_long_loaddata(img_list):
     """
     just_filenames = [_parse.img_filename(i) for i in img_list]
     df_img = _pd.DataFrame({
-        "URL" : just_filenames,
-        "path" : [_parse.path(i) for i in img_list],
-        "Metadata_platename" : [_parse.plate_name(i) for i in img_list],
-        "Metadata_well" : [_parse.img_well(i) for i in just_filenames],
-        "Metadata_site" : [_parse.img_site(i) for i in just_filenames],
-        "Metadata_channel" : [_parse.img_channel(i) for i in just_filenames],
-        "Metadata_platenum" : [_parse.plate_num(i) for i in img_list]
-    })
+        "URL":                just_filenames,
+        "path":               [_parse.path(i) for i in img_list],
+        "Metadata_platename": [_parse.plate_name(i) for i in img_list],
+        "Metadata_well":      [_parse.img_well(i) for i in just_filenames],
+        "Metadata_site":      [_parse.img_site(i) for i in just_filenames],
+        "Metadata_channel":   [_parse.img_channel(i) for i in just_filenames],
+        "Metadata_platenum":  [_parse.plate_num(i) for i in img_list]
+        })
     return df_img
 
 
