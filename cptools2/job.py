@@ -194,4 +194,9 @@ class Job(object):
                                 rsync_commands=rsync_commands,
                                 cp_commands=cp_commands,
                                 rm_commands=rm_commands)
+        # check commands files are not empty, raise an error if they are
+        names = ["staging", "cp_commands", "destaging"]
+        cmnds_files = [os.path.join(commands_location, name + ".txt") for name in names]
+        for cmnd_file in cmnds_files:
+            commands.check_commands(cmd_file)
 

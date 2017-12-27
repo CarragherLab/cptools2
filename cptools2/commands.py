@@ -87,3 +87,23 @@ def make_output_directories(location):
     for direc in ["loaddata", "img_data", "filelist", "raw_data"]:
         utils.make_dir(os.path.join(location, direc))
 
+
+def check_commands(location):
+    """
+    Check commands files are not empty, raise an Error if they are.
+
+    Parameters:
+    -----------
+    location: string
+        location of commands file
+
+    Returns:
+    --------
+    None if successful, otherwise raises a RuntimeError if the file
+    is empty.
+    """
+    n_lines = utils.count_lines_in_file(location)
+    err_msg = "Commands file '{}' is empty, something has gone wrong".format(location)
+    if n_lines < 1:
+        raise RuntimeError(err_msg)
+        
