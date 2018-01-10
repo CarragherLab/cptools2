@@ -198,5 +198,5 @@ class Job(object):
         names = ["staging", "cp_commands", "destaging"]
         cmnds_files = [os.path.join(commands_location, name + ".txt") for name in names]
         for cmnd_file in cmnds_files:
-            commands.check_commands(cmd_file)
+            commands.check_commands(cmnd_file)
 
