@@ -3,7 +3,19 @@ import collections
 import random
 
 def make_dir(directory):
-    """sensible way to create directory"""
+    """
+    sensible way to create directory
+
+    Parameters:
+    ------------
+    directory: string
+        path to the directory to be created
+
+    Returns:
+    --------
+    nothing, creates empty directory if successful, otherwise raises
+    a RuntimeError
+    """
     try:
         os.makedirs(directory)
     except OSError:
@@ -15,7 +27,18 @@ def make_dir(directory):
 
 
 def flatten(list_like):
-    """recursively flatten a nested list"""
+    """
+    recursively flatten a nested list
+
+    Parameters:
+    -----------
+    list_like: list
+        nested list to flatten
+
+    Returns:
+    --------
+    generator for an un-nested list
+    """
     for i in list_like:
         if isinstance(i, collections.Iterable) and not isinstance(i, str):
             for sub in flatten(i):
@@ -28,6 +51,19 @@ def prefix_filepaths(dataframe, name, location):
     """
     prefix the filepaths in a loaddata dataframe so that the paths point to the
     image location after the images have been staged
+
+    Parameters:
+    -----------
+    dataframe: pandas.DataFrame
+        a loaddata dataframe
+    name: string
+        name of individual job
+    location: string
+        path prefix to where the images will be stored after staging
+
+    Returns:
+    --------
+    pandas.DataFrame with altered `PathName_` columns
     """
     path_cols = [col for col in dataframe.columns if col.startswith("PathName")]
     dataframe[path_cols] = dataframe[path_cols].applymap(
@@ -37,7 +73,17 @@ def prefix_filepaths(dataframe, name, location):
 
 
 def any_nan_values(dataframe):
-    """Check if 'dataframe' contains any missing values"""
+    """
+    Check if 'dataframe' contains any missing values
+
+    Parameters:
+    -----------
+    dataframe: pandas.DataFrame
+
+    Returns:
+    --------
+    Boolean
+    """
     return dataframe.isnull().any().any()
 
 
@@ -64,7 +110,17 @@ def count_lines_in_file(input_file):
 
 
 def sanitise_filename(filename):
-    """add escape characters to spaces in filenames"""
+    """
+    add escape characters to spaces in filenames
+
+    Parameters:
+    ------------
+    filename: string
+
+    Returns:
+    --------
+    string
+    """
     return filename.replace(" ", "\ ")
 
 

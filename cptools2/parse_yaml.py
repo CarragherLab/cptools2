@@ -1,7 +1,11 @@
 """
-option to give an executable a yaml file and parse all the information
-from rather rather than creating python commands
-more readable and serves as a record
+Option to give an executable a yaml file and parse all the information rather
+than a load of command line arguments. More readable and serves as a record.
+
+
+General idea is to convert the configuration yaml file into a dictionary,
+then these functions parse that dictionary into separate dictionaries
+which can be used in other functions in cptools2 using **kwargs.
 """
 
 import os
@@ -9,7 +13,18 @@ import yaml
 
 
 def open_yaml(path_to_yaml):
-    """return a dict representation of a yaml file"""
+    """
+    return a dictionary representation of a yaml file
+
+    Parameters:
+    -----------
+    path_to_yaml: string
+        file path
+
+    Returns:
+    --------
+    dictionary version of the yaml file
+"""
     with open(path_to_yaml, "r") as f:
         yaml_dict = yaml.load(f)
     return yaml_dict
@@ -20,6 +35,15 @@ def experiment(yaml_dict):
     get argument for Job.add_experiment method
 
     this is optional, so if not there then return none
+
+    Parameters:
+    -----------
+    yaml_dict: dict
+        dictionary version of the config yaml file
+
+    Returns:
+    -------
+    dictionary
     """
     if "experiment" in yaml_dict:
         experiment_arg = yaml_dict["experiment"]
@@ -33,6 +57,15 @@ def chunk(yaml_dict):
     get argument for Job.chunk method
 
     this is optional, so if not there then return none
+
+    Parameters:
+    -----------
+    yaml_dict: dict
+        dictionary version of the config yaml file
+
+    Returns:
+    --------
+    dictionary
     """
     if "chunk" in yaml_dict:
         chunk_arg = yaml_dict["chunk"]
@@ -46,6 +79,15 @@ def add_plate(yaml_dict):
     get argument for Job.add_plate method
 
     this is optional, so if not there then return None
+
+    Parameters:
+    -----------
+    yaml_dict: dict
+        dictionary version of the config yaml file
+
+    Returns:
+    --------
+    dictionary
     """
     if "add plate" in yaml_dict:
         add_plate_dicts = yaml_dict["add plate"]
@@ -70,6 +112,15 @@ def remove_plate(yaml_dict):
     get argument for Job.remove_plate method
 
     this is optional, so not there then return None
+
+    Parameters:
+    -----------
+    yaml_dict: dict
+        dictionary version of the config yaml file
+
+    Returns:
+    --------
+    dictionary
     """
     if "remove plate" in yaml_dict:
         remove_arg = yaml_dict["remove plate"]
@@ -82,6 +133,15 @@ def create_commands(yaml_dict):
     get arguments for Job.create_commands
 
     not optional, so error if no matching keys are found
+
+    Parameters:
+    -----------
+    yaml_dict: dict
+        dictionary version of the config yaml file
+
+    Returns:
+    --------
+    dictionary
     """
     if "pipeline" in yaml_dict:
         pipeline_arg = yaml_dict["pipeline"]
@@ -110,6 +170,15 @@ def check_yaml_args(yaml_dict):
 
     raises a ValueError if any of the arguments in the yaml setup file are
     not recognised
+
+    Parameters:
+    -----------
+    yaml_dict: dict
+        dictionary version of the config yaml file
+
+    Returns:
+    --------
+    nothing if successful, otherwise raises a ValueError
     """
     valid_args = ["experiment",
                   "chunk",

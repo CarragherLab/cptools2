@@ -5,6 +5,14 @@ from cptools2 import utils
 def create_loaddata(img_list):
     """
     create a dataframe suitable for cellprofilers LoadData module
+
+    Parameters:
+    -----------
+    img_list: list
+
+    Returns:
+    --------
+    pandas DataFrame
     """
     df_long = create_long_loaddata(img_list)
     return cast_dataframe(df_long)
@@ -13,6 +21,15 @@ def create_loaddata(img_list):
 def create_long_loaddata(img_list):
     """
     create a dataframe of image paths with metadata columns
+
+    Parameters:
+    -----------
+    img_list: list
+        list of image paths
+
+    Returns:
+    --------
+    pandas DataFrame
     """
     just_filenames = [_parse.img_filename(i) for i in img_list]
     df_img = _pd.DataFrame({
@@ -28,7 +45,20 @@ def create_long_loaddata(img_list):
 
 
 def cast_dataframe(dataframe, check_nan=True):
-    """reshape a create_loaddata dataframe from long to wide format"""
+    """
+    reshape a create_loaddata dataframe from long to wide format
+
+    Parameters:
+    -----------
+    dataframe: pandas DataFrame
+    check_nan: Boolean (default = True)
+        whether to raise a warning if the dataframe contains
+        any missing values
+
+    Returns:
+    --------
+    pandas DataFrame
+    """
     n_channels = len(set(dataframe.Metadata_channel))
     wide_df = dataframe.pivot_table(
         index=["Metadata_site", "Metadata_well", "Metadata_platenum",
