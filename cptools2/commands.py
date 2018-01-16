@@ -149,7 +149,7 @@ def make_rsync_cmnd(plate_loc, filelist_name, img_location):
     # NOTE: setting permissions with o+ means others have read/write/execution
     #       access, not very secture but it's a temporary file which is going
     #       to be deleted afterwards anyway.
-    return "rsync -s --perms --chmod=o+rwx --files-from=\"{filelist}\" \"{source}\" \"{destination}\""\
+    return "rsync -s --perms --chmod=a+rwx --files-from=\"{filelist}\" \"{source}\" \"{destination}\""\
         .format(filelist=filelist_name,
                 source=plate_loc,
                 destination=img_location)
