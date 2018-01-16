@@ -168,7 +168,7 @@ def rsync_string(filelist, source, destination):
     Returns:
     --------
     """
-    return "rsync -s --files-from={filelist} {source} {destination}".format(
+    return "rsync -sp --files-from={filelist} {source} {destination}".format(
         filelist=filelist,
         source=source,
         destination=destination
