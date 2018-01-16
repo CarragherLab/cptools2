@@ -73,29 +73,6 @@ def write_filelist(img_list, filelist_name):
             f.write(line + "\n")
 
 
-def make_rsync_cmnd(plate_loc, filelist_name, img_location):
-    """
-    create an rsync command to copy contents of a file list
-
-    Parameters:
-    -----------
-    plate_loc: string
-        source destination of the plates in the ImageXpress directory
-    filelist_name: string
-        path to the filelist, this will be used with the --file-from flag
-    img_location: string
-        path to the directory in which to copy the file to in the rsync command
-
-    Returns:
-    --------
-    string: an rsync command
-    """
-    cmnd = rsync_string(filelist=filelist_name,
-                        source=plate_loc,
-                        destination=img_location)
-    return cmnd
-
-
 def _write_single(commands_location, commands, final_name):
     """
     write commands for single command list
@@ -145,7 +122,7 @@ def write_commands(commands_location, rsync_commands, cp_commands, rm_commands):
         _write_single(commands_location, command, name)
 
 
-def rsync_string(filelist, source, destination):
+def make_rsync_cmnd(plate_loc, filelist_name, img_location):
     """
     Create rsync string pointing to a file-list and a destination
     If the file-list is truncated, then source has to be the location of the
@@ -157,22 +134,22 @@ def rsync_string(filelist, source, destination):
     Escape characters will be added to spaces in filenames.
 
     Parameters:
-    ----------
-    filelist: string
-        file path to the filelist
-    source: string
-        path to the root directory
-    destination:
+    -----------
+    plate_loc: string
+        source destination of the plates in the ImageXpress directory
+    filelist_name: string
+        path to the filelist, this will be used with the --file-from flag
+    img_location: string
         path to the directory in which to copy the file to in the rsync command
 
     Returns:
     --------
+    string: an rsync command
     """
-    return "rsync -sp --files-from={filelist} {source} {destination}".format(
-        filelist=filelist,
-        source=source,
-        destination=destination
-        )
+    return "rsync -sp --files-from=\"{filelist}\" \"{source}\" \"{destination}\""\
+        .format(filelist=filelist_name,
+                source=plate_loc,
+                destination=img_location)
 
 
 def rm_string(directory):
@@ -209,9 +186,10 @@ def cp_command(pipeline, load_data, output_location):
     --------
     string: a cellprofiler command
     """
-    cmnd = "cellprofiler -r -c -p {} --data-file={} -o {}".format(
-        pipeline, load_data, output_location)
-    return cmnd
+    return "cellprofiler -r -c -p {pipeline} --data-file={load_data} -o {output_location}".format(
+        pipeline=pipeline,
+        load_data=load_data,
+        output_location=output_location)
 
 
 def make_output_directories(location):
