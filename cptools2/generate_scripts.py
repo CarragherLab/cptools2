@@ -239,7 +239,7 @@ class BodgeScript(script_generator.AnalysisScript):
         text = textwrap.dedent(
             """
             SEEDFILE="{input_file}"
-            SEED=$(awk "NR==$SGE_TASK_ID", "$SEEDFILE")
+            SEED=$(awk "NR==$SGE_TASK_ID" "$SEEDFILE")
             # create shell script from single command, run, then delete
             echo "$SEED" > .{phase}_"$JOB_ID"_"$SGE_TASK_ID".sh
             bash .{phase}_"$JOB_ID"_"$SGE_TASK_ID".sh
