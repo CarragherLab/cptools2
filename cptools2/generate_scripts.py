@@ -5,8 +5,8 @@ staging, analysis and destaging jobs
 
 import os
 import textwrap
-import yaml
 from datetime import datetime
+import yaml
 from scissorhands import script_generator
 from cptools2 import utils
 
@@ -102,6 +102,7 @@ def load_module_text():
     )
 
 
+
 def make_qsub_scripts(commands_location, commands_count_dict):
     """
     Create and save qsub submission scripts in the same location as the
@@ -129,13 +130,14 @@ def make_qsub_scripts(commands_location, commands_count_dict):
     job_hex = script_generator.generate_random_hex()
     # FIXME: using AnalysisScript class for everything, due to the 
     #        {Staging, Destaging}Script class not having loop_through_file
-    stage_script = script_generator.AnalysisScript(
+    stage_script = BodgeScript(
         name="staging_{}".format(job_hex),
         memory="1G",
         tasks=commands_count_dict["staging"]
     )
     stage_script.template += "#$ -q staging\n"
-    stage_script.loop_through_file(cmd_path["staging"])
+    stage_script.bodge_array_loop(phase="staging",
+                                  input_file=cmd_path["staging"])
     stage_loc = os.path.join(commands_location,
                              "{}_staging_script.sh".format(time_now))
     print("** saving staging submission script at '{}'".format(stage_loc))
@@ -155,13 +157,14 @@ def make_qsub_scripts(commands_location, commands_count_dict):
     print("** saving analysis submission script at '{}'".format(analysis_loc))
     analysis_script.save(analysis_loc)
 
-    destaging_script = script_generator.AnalysisScript(
+    destaging_script = BodgeScript(
         name="destaging_{}".format(job_hex),
         memory="1G",
         hold_jid="analysis_{}".format(job_hex),
         tasks=commands_count_dict["destaging"]
     )
-    destaging_script.loop_through_file(cmd_path["destaging"])
+    destaging_script.bodge_array_loop(phase="destaging",
+                                      input_file=cmd_path["destaging"])
     destage_loc = os.path.join(commands_location,
                                "{}_destaging_script.sh".format(time_now))
     print("** saving destaging submission script at '{}'".format(destage_loc))
@@ -173,7 +176,7 @@ def load_venv_store():
     Load the virtual environment yaml file that details each user's path to
     their cellprofiler virtualenvironment.
 
-    If the venv_store is not found it return an empty dictionary, which
+    If the venv_store is not found it returns an empty dictionary, which
     should result in a KeyError when looking up a user's path in
     `load_module_text()`.
 
@@ -194,3 +197,47 @@ def load_venv_store():
           "virtual environment in submission script")
     return dict()
 
+
+
+class BodgeScript(script_generator.AnalysisScript):
+    """
+    Whilst trying to fix rsync issues with filepaths containing spaces,
+    the rsync commands stopped working when called from `$SEED`, though
+    will work if saved as a single command in a shell script, and then calling
+    bash on that script.
+
+    So this class inherits scissorhands.script_generator.AnalsisScript, but adds
+    an extra method which should be used instead of .loop_through_file().
+    """
+
+    def __init__(self, *args, **kwargs):
+        script_generator.AnalysisScript.__init__(self, *args, **kwargs)
+
+    def bodge_array_loop(self, phase, input_file):
+        """
+        As a temporary fix (hopefully), this method can work instead of
+        scissorhands.script_generator.AnalysisScript.loop_through_file()
+        
+        Parameters:
+        -----------
+        phase: string
+            prefix of the hidden commands file, e.g "staging" or "destaging"
+        input_file: string
+            path to a file. This file should contain multiple lines of commands.
+            Each line will be run separately in an array job.
+
+        Returns:
+        ---------
+        nothing, adds text to template
+        """
+        text = textwrap.dedent(
+            """
+            SEEDFILE="{input_file}"
+            SEED=$(awk "NR==$SGE_TASK_ID", "$SEEDFILE")
+            # create shell script from single command, run, then delete
+            echo "$SEED" > .{phase}_"$JOB_ID"_"$SGE_TASK_ID".sh
+            bash .{phase}_"$JOB_ID"_"$SGE_TASK_ID".sh
+            rm .{phase}_"$JOB_ID"_"$SGE_TASK_ID".sh
+            """.format(phase=phase, input_file=input_file)
+        )
+        self.template += text
