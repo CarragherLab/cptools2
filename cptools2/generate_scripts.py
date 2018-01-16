@@ -136,7 +136,7 @@ def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
     stage_script = BodgeScript(
         name="staging_{}".format(job_hex),
         memory="1G",
-        output=os.path.join(logfile_location, "analysis"),
+        output=os.path.join(logfile_location, "staging"),
         tasks=commands_count_dict["staging"]
     )
     stage_script.template += "#$ -q staging\n"
@@ -212,8 +212,8 @@ class BodgeScript(script_generator.AnalysisScript):
     will work if saved as a single command in a shell script, and then calling
     bash on that script.
 
-    So this class inherits scissorhands.script_generator.AnalsisScript, but adds
-    an extra method which should be used instead of .loop_through_file().
+    So this class inherits scissorhands.script_generator.AnalsisScript, but
+    adds an extra method which should be used instead of .loop_through_file().
     """
 
     def __init__(self, *args, **kwargs):
