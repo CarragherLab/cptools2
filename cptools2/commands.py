@@ -229,8 +229,11 @@ def make_output_directories(location):
     --------
     nothing, creates empty directories
     """
-    for direc in ["loaddata", "img_data", "filelist", "raw_data"]:
+    for direc in ["loaddata", "img_data", "filelist", "raw_data", "logfiles"]:
         utils.make_dir(os.path.join(location, direc))
+    # then make sub-directories in the logfile directory
+    for subdirec in ["staging", "analysis", "destaging"]:
+        utils.make_dir(os.path.join(location, "logfiles", subdirec))
 
 
 def check_commands(location):

@@ -40,7 +40,9 @@ def main():
     # get the number of commands in order to create the submissions scripts
     commands_location = create_command_args["commands_location"]
     commands_line_count = generate_scripts.lines_in_commands(commands_location)
-    generate_scripts.make_qsub_scripts(commands_location, commands_line_count)
+    logfile_location = os.path.join(yaml_dict["location"], "logfiles")
+    generate_scripts.make_qsub_scripts(commands_location, commands_line_count,
+                                       logfile_location=logfile_location)
     print("DONE!")
 
 

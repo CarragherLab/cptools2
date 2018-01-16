@@ -102,8 +102,7 @@ def load_module_text():
     )
 
 
-
-def make_qsub_scripts(commands_location, commands_count_dict):
+def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
     """
     Create and save qsub submission scripts in the same location as the
     commands.
@@ -116,6 +115,10 @@ def make_qsub_scripts(commands_location, commands_count_dict):
 
     commands_count_dict: dictionary
         dictionary of the number of commands contain in each of the jobs
+
+    logfile_location: string
+        where to store the log files. By default this will store them
+        in a directory alongside the results.
 
 
     Returns:
@@ -133,6 +136,7 @@ def make_qsub_scripts(commands_location, commands_count_dict):
     stage_script = BodgeScript(
         name="staging_{}".format(job_hex),
         memory="1G",
+        output=os.path.join(logfile_location, "analysis"),
         tasks=commands_count_dict["staging"]
     )
     stage_script.template += "#$ -q staging\n"
@@ -148,7 +152,8 @@ def make_qsub_scripts(commands_location, commands_count_dict):
         tasks=commands_count_dict["cp_commands"],
         hold_jid_ad="staging_{}".format(job_hex),
         pe="sharedmem 1",
-        memory="12G"
+        memory="12G",
+        output=os.path.join(logfile_location, "analysis")
     )
     analysis_script.template += load_module_text()
     analysis_script.loop_through_file(cmd_path["cp_commands"])
@@ -161,7 +166,8 @@ def make_qsub_scripts(commands_location, commands_count_dict):
         name="destaging_{}".format(job_hex),
         memory="1G",
         hold_jid="analysis_{}".format(job_hex),
-        tasks=commands_count_dict["destaging"]
+        tasks=commands_count_dict["destaging"],
+        output=os.path.join(logfile_location, "destaging")
     )
     destaging_script.bodge_array_loop(phase="destaging",
                                       input_file=cmd_path["destaging"])
