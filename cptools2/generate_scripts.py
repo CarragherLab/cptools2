@@ -243,7 +243,7 @@ def make_submit_script(commands_location, job_date, *args):
     save_location = "{}_SUBMIT_JOBS.sh".format(job_date)
     # save this shell script and return it's path
     with open(save_location, "w") as f:
-        for line in out textwrap.dedent(output):
+        for line in textwrap.dedent(output):
             f.write(line + "\n")
     return save_location
 
