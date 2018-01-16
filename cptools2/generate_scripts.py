@@ -165,7 +165,7 @@ def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
     destaging_script = BodgeScript(
         name="destaging_{}".format(job_hex),
         memory="1G",
-        hold_jid="analysis_{}".format(job_hex),
+        hold_jid_ad="analysis_{}".format(job_hex),
         tasks=commands_count_dict["destaging"],
         output=os.path.join(logfile_location, "destaging")
     )
