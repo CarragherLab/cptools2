@@ -3,6 +3,7 @@ import os
 from cptools2 import generate_scripts
 from cptools2 import job
 from cptools2 import parse_yaml
+from cptools2 import utils
 
 def main():
     """run cptools.job.Job on a yaml file containing arguments"""
@@ -10,6 +11,8 @@ def main():
     if len(sys.argv) < 2:
         msg = "missing argument: need to pass a config file as an argument"
         raise ValueError(msg)
+    if not utils.on_staging_node():
+        raise OSError("Not on a staging node, cannot access datastore")
     config_file = sys.argv[1]
     if os.path.isfile(config_file) is False:
         msg = "'{}' is not a file".format(config_file)
