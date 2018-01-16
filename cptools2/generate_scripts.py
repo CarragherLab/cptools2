@@ -175,6 +175,9 @@ def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
                                "{}_destaging_script.sh".format(time_now))
     print("** saving destaging submission script at '{}'".format(destage_loc))
     destaging_script.save(destage_loc)
+    # create script to submit staging, analysis and destaging scripts
+    submit_script = make_submit_script(commands_location, time_now)
+    utils.make_executable(submit_script)
 
 
 def load_venv_store():
@@ -204,6 +207,46 @@ def load_venv_store():
     return dict()
 
 
+def make_submit_script(commands_location, job_date, *args):
+    """
+    Create a shell script which will submit the staging, analysis and
+    destaging scripts.
+
+    Parameters:
+    -----------
+    commands_location: string
+        path to where the commands are stored
+    job_date: string
+        date for the submission scripts
+
+    Returns:
+    --------
+    path to submit_script
+    also writes script to disk in `commands_location`.
+    """
+    # create full paths to the generated scripts
+    names = ["staging", "analysis", "destaging"]
+    script_dict = {}
+    for name in names:
+        script_name = "{}_{}_script.sh".format(job_date, name)
+        script_path = os.path.join(commands_location, script_name)
+        script_dict[name] = script_path
+    # create text for a shell script that qsub's the scripts
+    output = """
+             #!/bin/sh
+             qsub {staging_script}
+             qsub {analysis_script}
+             qsub {destaging_script}
+            """.format(staging_script=script_dict["staging"],
+                       analysis_script=script_dict["analysis"],
+                       destaging_script=script_dict["destaging"])
+    save_location = "{}_SUBMIT_JOBS.sh".format(job_date)
+    # save this shell script and return it's path
+    with open(save_location, "w") as f:
+        for line in out textwrap.dedent(output):
+            f.write(line + "\n")
+    return save_location
+
 
 class BodgeScript(script_generator.AnalysisScript):
     """
@@ -223,7 +266,7 @@ class BodgeScript(script_generator.AnalysisScript):
         """
         As a temporary fix (hopefully), this method can work instead of
         scissorhands.script_generator.AnalysisScript.loop_through_file()
-        
+
         Parameters:
         -----------
         phase: string
@@ -247,3 +290,4 @@ class BodgeScript(script_generator.AnalysisScript):
             """.format(phase=phase, input_file=input_file)
         )
         self.template += text
+

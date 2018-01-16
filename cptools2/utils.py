@@ -138,3 +138,10 @@ def on_staging_node():
         return True
     except OSError:
         return False
+
+
+def make_executable(filepath):
+    """chmod +x a file"""
+    st = os.stat(filepath)
+    os.chmod(filepath, st.st_mode | 0o111)
+
