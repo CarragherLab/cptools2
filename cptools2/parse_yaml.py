@@ -9,6 +9,7 @@ which can be used in other functions in cptools2 using **kwargs.
 """
 
 import os
+from collections import namedtuple
 import yaml
 
 
@@ -24,7 +25,7 @@ def open_yaml(path_to_yaml):
     Returns:
     --------
     dictionary version of the yaml file
-"""
+    """
     with open(path_to_yaml, "r") as f:
         yaml_dict = yaml.load(f)
     return yaml_dict
@@ -50,6 +51,8 @@ def experiment(yaml_dict):
         if isinstance(experiment_arg, list):
             experiment_arg = experiment_arg[0]
         return {"exp_dir" : experiment_arg}
+    else:
+        return None
 
 
 def chunk(yaml_dict):
@@ -72,6 +75,8 @@ def chunk(yaml_dict):
         if isinstance(chunk_arg, list):
             chunk_arg = chunk_arg[0]
         return {"job_size" : int(chunk_arg)}
+    else:
+        return None
 
 
 def add_plate(yaml_dict):
@@ -105,6 +110,8 @@ def add_plate(yaml_dict):
                     if isinstance(plate_args, list):
                         plates = d["plates"]
             return {"exp_dir" : experiment, "plates" : plates}
+    else:
+        return None
 
 
 def remove_plate(yaml_dict):
@@ -126,6 +133,8 @@ def remove_plate(yaml_dict):
         remove_arg = yaml_dict["remove plate"]
         # can either be a string or a list in Job.remove plate
         return {"plates" : remove_arg}
+    else:
+        return None
 
 
 def create_commands(yaml_dict):
@@ -196,3 +205,33 @@ def check_yaml_args(yaml_dict):
         raise ValueError(err_msg)
 
 
+def parse_config_file(config_file):
+    """
+    parse config file, store dictionaries in a named tuple
+
+    Parameters:
+    ------------
+    config_file: string
+        path to configuration/yaml file which lists the experiment, pipeline etc.
+
+    Returns:
+    ---------
+    namedtuple:
+        config.experiment_args : dict
+        config.chunk_args : dict
+        config.remove_plate_args : dict
+        config.add_plate_args : dict
+        config.create_command_args : dict
+    """
+    yaml_dict = open_yaml(config_file)
+    # check the arguments in the yaml file are recognised
+    check_yaml_args(yaml_dict)
+    # create namedtuple to store the configuration dictionaries
+    names = ["experiment_args", "chunk_args", "add_plate_args",
+             "remove_plate_args", "create_command_args"]
+    config = namedtuple("config", names)
+    return config(experiment_args=experiment(yaml_dict),
+                  chunk_args=chunk(yaml_dict),
+                  remove_plate_args=remove_plate(yaml_dict),
+                  add_plate_args=add_plate(yaml_dict),
+                  create_command_args=create_commands(yaml_dict))
