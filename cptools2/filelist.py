@@ -24,7 +24,7 @@ def files_from_plate(plate_dir, ext=".tif", clean=True, truncate=True,
     """
     files = glob.glob(plate_dir + "/*/*/*" + ext)
     if clean is True:
-        files = parserix.clean.clean(files)
+        files = parserix.clean.clean(filelist=files, ext=ext)
     if truncate is True:
         # get the last 4 directories including final file
         # sorry
