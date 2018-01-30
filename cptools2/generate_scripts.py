@@ -6,6 +6,7 @@ staging, analysis and destaging jobs
 import os
 import textwrap
 from datetime import datetime
+from __future__ import print_function
 import yaml
 from scissorhands import script_generator
 from cptools2 import utils
@@ -82,11 +83,13 @@ def load_module_text():
     venv_store = load_venv_store()
     try:
         venv_path = venv_store[user]
-        print("** known user, inserting {}'s CellProfiler virtual environment path in analysis script".format(user))
+        print("** known user, inserting {}'s CellProfiler virtual environment",
+              "path in analysis script".format(user))
     except KeyError:
         venv_path = "# unknown user, insert path to Cellprofiler virtual environment here"
         print("** unknown user")
-        print("\t ** unable to insert path to Cellprofiler virtual environment in the analysis script")
+        print("\t ** unable to insert path to Cellprofiler virtual environment"
+              "in the analysis script")
     return textwrap.dedent(
         """
         module load igmm/apps/hdf5/1.8.16
