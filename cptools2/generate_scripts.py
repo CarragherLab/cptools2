@@ -240,7 +240,7 @@ def make_submit_script(commands_location, job_date):
             """.format(staging_script=script_dict["staging"],
                        analysis_script=script_dict["analysis"],
                        destaging_script=script_dict["destaging"])
-    save_location = "{}_SUBMIT_JOBS.sh".format(job_date)
+    save_location = "{}/{}_SUBMIT_JOBS.sh".format(commands_location, job_date)
     # save this shell script and return it's path
     with open(save_location, "w") as f:
         f.write(textwrap.dedent(output))
