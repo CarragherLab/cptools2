@@ -3,10 +3,10 @@ Generate eddie submission scripts for the
 staging, analysis and destaging jobs
 """
 
+from __future__ import print_function
 import os
 import textwrap
 from datetime import datetime
-from __future__ import print_function
 import yaml
 from scissorhands import script_generator
 from cptools2 import utils
