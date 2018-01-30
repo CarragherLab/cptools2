@@ -55,7 +55,8 @@ def test_create_commands():
     pipeline_loc = os.path.abspath("./tests/example_pipeline.cppipe")
     assert output == {"pipeline" : pipeline_loc,
                       "location" : "/example/location",
-                      "commands_location" : "/home/user"}
+                      "commands_location" : "/home/user",
+                      "chunk": 46}
 
 
 
