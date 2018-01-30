@@ -100,7 +100,7 @@ class Job(object):
         self.chunked = True
 
 
-    def _create_loaddata(self):
+    def _create_loaddata(self, job_size=None):
         """
         create dictionary store of loaddata modules
         pretty much mirroring self.plate_store but dataframes instead of
@@ -116,6 +116,7 @@ class Job(object):
                     # only there before chunking to keep images together
                     unnested = list(utils.flatten(chunk))
                     df_loaddata = loaddata.create_loaddata(unnested)
+                    loaddata.check_dataframe_size(df_loaddata, job_size)
                     self.loaddata_store[key].append(df_loaddata)
             elif self.chunked is False:
                 # still nested by channels and wells
@@ -123,11 +124,12 @@ class Job(object):
                 unnested = list(utils.flatten(img_list))
                 # just a single dataframe for the whole imagelist
                 df_loaddata = loaddata.create_loaddata(unnested)
+                loaddata.check_dataframe_size(loaddata, job_size)
                 self.loaddata_store[key] = df_loaddata
         self.has_loaddata = True
 
 
-    def create_commands(self, pipeline, location, commands_location):
+    def create_commands(self, pipeline, location, commands_location, job_size):
         """
         bit of a beast, TODO: refactor
 
@@ -145,7 +147,7 @@ class Job(object):
             destage commands.
         """
         if self.has_loaddata is False:
-            self._create_loaddata()
+            self._create_loaddata(job_size)
         cp_commands, rsync_commands, rm_commands = [], [], []
         print("** creating output directories at '{}'".format(location))
         commands.make_output_directories(location=location)

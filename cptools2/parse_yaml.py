@@ -168,9 +168,17 @@ def create_commands(yaml_dict):
         commands_loc_arg = yaml_dict["commands location"]
         if isinstance(commands_loc_arg, list):
             commands_loc_arg = commands_loc_arg[0]
-    return {"pipeline" : pipeline_arg,
-            "location" : location_arg,
-            "commands_location" : commands_loc_arg}
+    # need the chunk size to check LoadData dataframes are the correct size
+    if "chunk" in yaml_dict:
+        chunk_arg = yaml_dict["chunk"]
+        if isinstance(chunk_arg, list):
+            chunk_arg = int(chunk_arg[0])
+    else:
+        chunk_arg = None
+    return {"pipeline"          : pipeline_arg,
+            "location"          : location_arg,
+            "commands_location" : commands_loc_arg,
+            "job_size"          : chunk_arg}
 
 
 def check_yaml_args(yaml_dict):
@@ -217,10 +225,10 @@ def parse_config_file(config_file):
     Returns:
     ---------
     namedtuple:
-        config.experiment_args : dict
-        config.chunk_args : dict
-        config.remove_plate_args : dict
-        config.add_plate_args : dict
+        config.experiment_args     : dict
+        config.chunk_args          : dict
+        config.remove_plate_args   : dict
+        config.add_plate_args      : dict
         config.create_command_args : dict
     """
     yaml_dict = open_yaml(config_file)

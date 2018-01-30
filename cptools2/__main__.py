@@ -14,7 +14,7 @@ def check_arguments():
 
 
 def check_config_file():
-    """docstring"""
+    """check that the config file exists, raise an error if it doesnt"""
     config_file = sys.argv[1]
     if os.path.isfile(config_file) is False:
         msg = "'{}' is not a file".format(config_file)
@@ -70,7 +70,6 @@ def make_scripts(config_file):
     logfile_location = os.path.join(yaml_dict["location"], "logfiles")
     generate_scripts.make_qsub_scripts(commands_location, commands_line_count,
                                        logfile_location=logfile_location)
-
 
 
 def main():

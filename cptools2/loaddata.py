@@ -90,7 +90,7 @@ class LoadDataError(Exception):
     pass
 
 
-def check_dataframe_size(dataframe, min_rows):
+def check_dataframe_size(dataframe, min_rows=None):
     """
     check that a dataframe contains at least `min_rows` of data, raise
     an error if this is not the case.
@@ -99,8 +99,9 @@ def check_dataframe_size(dataframe, min_rows):
     ------------
     dataframe: pandas.DataFrame
         dataframe to check
-    min_rows: int
-        minimum number of rows the dataframe should contain
+    min_rows: int (default = None)
+        minimum number of rows the dataframe should contain. If None then
+        an Error will never be raised.
 
     Returns:
     --------
