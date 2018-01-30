@@ -56,7 +56,7 @@ def test_create_commands():
     assert output == {"pipeline" : pipeline_loc,
                       "location" : "/example/location",
                       "commands_location" : "/home/user",
-                      "chunk": 46}
+                      "job_size": 46}
 
 
 
