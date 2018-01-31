@@ -117,7 +117,7 @@ class Job(object):
                     unnested = list(utils.flatten(chunk))
                     df_loaddata = loaddata.create_loaddata(unnested)
                     if index < len(img_list):
-                    loaddata.check_dataframe_size(df_loaddata, job_size)
+                        loaddata.check_dataframe_size(df_loaddata, job_size)
                     self.loaddata_store[key].append(df_loaddata)
             elif self.chunked is False:
                 # still nested by channels and wells
