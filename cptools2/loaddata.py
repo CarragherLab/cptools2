@@ -110,5 +110,5 @@ def check_dataframe_size(dataframe, min_rows=None):
     nrow = dataframe.shape[0]
     if nrow < min_rows:
         msg = """Too few rows detected in a LoadData dataframe. Expected at
-                 least {min_rows} rows, actual: {nrow}""".format(min_rows, nrow)
+                 least {} rows, actual: {}""".format(min_rows, nrow)
         raise LoadDataError(textwrap.dedent(msg))
