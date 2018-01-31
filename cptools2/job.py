@@ -111,11 +111,12 @@ class Job(object):
             img_list = self.plate_store[key][1]
             if self.chunked is True:
                 # create a dataframe for each chunk in the imagelist
-                for chunk in img_list:
+                for index, chunk in enumerate(img_list, 1):
                     # unnest channel groupings
                     # only there before chunking to keep images together
                     unnested = list(utils.flatten(chunk))
                     df_loaddata = loaddata.create_loaddata(unnested)
+                    if index < len(img_list):
                     loaddata.check_dataframe_size(df_loaddata, job_size)
                     self.loaddata_store[key].append(df_loaddata)
             elif self.chunked is False:
@@ -124,7 +125,6 @@ class Job(object):
                 unnested = list(utils.flatten(img_list))
                 # just a single dataframe for the whole imagelist
                 df_loaddata = loaddata.create_loaddata(unnested)
-                loaddata.check_dataframe_size(loaddata, job_size)
                 self.loaddata_store[key] = df_loaddata
         self.has_loaddata = True
 
