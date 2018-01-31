@@ -83,8 +83,8 @@ def load_module_text():
     venv_store = load_venv_store()
     try:
         venv_path = venv_store[user]
-        print("** known user, inserting {}'s CellProfiler virtual environment",
-              "path in analysis script".format(user))
+        print("** known user, inserting {}'s CellProfiler".format(user),
+              "virtual environment path in analysis script")
     except KeyError:
         venv_path = "# unknown user, insert path to Cellprofiler virtual environment here"
         print("** unknown user")
