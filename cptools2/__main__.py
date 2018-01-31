@@ -76,7 +76,7 @@ def main():
     """run cptools.job.Job on a yaml file containing arguments"""
     check_arguments()
     if not utils.on_staging_node():
-        raise OSError("Not on a staging node, cannot access datastore")
+        raise EddieNodeError("Not on a staging node, cannot access datastore")
     # parse yaml file into a dictionary
     config_file = check_config_file()
     print("** parsing config file '{}'".format(config_file))
@@ -84,6 +84,10 @@ def main():
     configure_job(config)
     make_scripts(config_file)
     print("DONE!")
+
+
+class EddieNodeError(Exception):
+    pass
 
 
 if __name__ == "__main__":

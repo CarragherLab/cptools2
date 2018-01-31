@@ -86,10 +86,6 @@ def cast_dataframe(dataframe, check_nan=True):
     return wide_df
 
 
-class LoadDataError(Exception):
-    pass
-
-
 def check_dataframe_size(dataframe, min_rows=None):
     """
     check that a dataframe contains at least `min_rows` of data, raise
@@ -112,3 +108,7 @@ def check_dataframe_size(dataframe, min_rows=None):
         msg = """Too few rows detected in a LoadData dataframe. Expected at
                  least {} rows, actual: {}""".format(min_rows, nrow)
         raise LoadDataError(textwrap.dedent(msg))
+
+
+class LoadDataError(Exception):
+    pass
