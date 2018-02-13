@@ -198,12 +198,12 @@ def make_logfile_text(logfile_location, job_file, n_tasks):
     fi
 
     LOG_FILE_LOC={logfile_location}/{job_file}.log
-    echo "`date +"%Y%m%d %H:%M"`  $JOB_ID  $SGE_TASK_ID  $RETURN_STATUS" >> $LOG_FILE_LOC
+    echo "`date +"%Y-%m-%d %H:%M"`  "$JOB_ID"  "$SGE_TASK_ID"  "$RETURN_STATUS"" >> "$LOG_FILE_LOC"
 
-    NUM_FINISHED_JOBS=$(cat $LOG_FILE_LOC | wc -l)
-
+    # if the final job has finished then send an email to the user
+    NUM_FINISHED_JOBS=$(cat "$LOG_FILE_LOC" | wc -l)
     if [[ $NUM_FINISHED == {n_tasks} ]]; then
-        echo "" | mailx -s "cptools2: {job_file} analysis completed successfully "$USER@ed.ac.uk""
+        echo "" | mailx -s "cptools2: {job_file} analysis completed" ""$USER@ed.ac.uk"
     fi
     """.format(logfile_location=logfile_location,
                job_file=job_file,
