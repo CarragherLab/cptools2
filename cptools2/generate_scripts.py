@@ -162,9 +162,9 @@ def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
     analysis_script.loop_through_file(cmd_path["cp_commands"])
     analysis_loc = os.path.join(commands_location,
                                 "{}_analysis_script.sh".format(time_now))
+    analysis_script.template += make_logfile_text(logfile_location, job_hex)
     print("** saving analysis submission script at '{}'".format(analysis_loc))
     analysis_script.save(analysis_loc)
-
     destaging_script = BodgeScript(
         name="destaging_{}".format(job_hex),
         memory="1G",
@@ -181,6 +181,24 @@ def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
     # create script to submit staging, analysis and destaging scripts
     submit_script = make_submit_script(commands_location, time_now)
     utils.make_executable(submit_script)
+
+
+def make_logfile_text(logfile_location, job_file):
+    text = """
+    # get the exit code from the cellprofiler job
+    RETURN_VAL=$?
+
+    if [[ $RETURN_VAL == 0]]; then
+        RETURN_STATUS="Finished"
+    else
+        RETURN_STATUS="Failed with error code: $RETURN_VAL
+    fi
+
+    LOG_FILE_LOC={logfile_location}/{job_file}.log
+    echo "`date +"%Y%m%d %H:%M"`  $JOB_ID  $SGE_TASK_ID  $RETURN_STATUS" >> $LOG_FILE_LOC
+    """.format(logfile_location=logfile_location,
+               job_file=job_file)
+    return textwrap.dedent(text)
 
 
 def load_venv_store():
@@ -237,6 +255,13 @@ def make_submit_script(commands_location, job_date):
     # create text for a shell script that qsub's the scripts
     output = """
              #!/bin/sh
+             
+             # This script submits the staging, analysis and destaging
+             # scripts in the correct order
+
+             # NOTE: run this as a shell script, NOT a submission script
+             # so either call `./name_of_script` or `bash name_of_script`
+
              qsub {staging_script}
              qsub {analysis_script}
              qsub {destaging_script}

@@ -146,6 +146,7 @@ class Job(object):
             file path to location in which to store the stage, analysis and
             destage commands.
         """
+        print("** creating image list")
         if self.has_loaddata is False:
             self._create_loaddata(job_size)
         cp_commands, rsync_commands, rm_commands = [], [], []

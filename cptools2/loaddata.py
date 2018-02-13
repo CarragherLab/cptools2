@@ -74,7 +74,7 @@ def cast_dataframe(dataframe, check_nan=True):
     # rename FileName columns from 1, 2... to FileName_W1, FileName_W2 ...
     columns = {}
     for i in range(1, n_channels+1):
-        columns[i] = "FileName_W" + str(i)
+        columns[i] = "FileName_W{0}".format(str(i))
     wide_df.rename(columns=columns, inplace=True)
     # duplicate PathName for each channel
     for i in range(1, n_channels+1):
@@ -82,7 +82,7 @@ def cast_dataframe(dataframe, check_nan=True):
     wide_df.drop(["path"], axis=1, inplace=True)
     if check_nan is True:
         if utils.any_nan_values(dataframe):
-            raise Warning("dataframe contains missing values")
+            raise LoadDataError("dataframe contains missing values")
     return wide_df
 
 
