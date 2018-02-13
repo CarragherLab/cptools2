@@ -191,7 +191,7 @@ def make_logfile_text(logfile_location, job_file):
     if [[ $RETURN_VAL == 0]]; then
         RETURN_STATUS="Finished"
     else
-        RETURN_STATUS="Failed with error code: $RETURN_VAL
+        RETURN_STATUS="Failed with error code: $RETURN_VAL"
     fi
 
     LOG_FILE_LOC={logfile_location}/{job_file}.log
