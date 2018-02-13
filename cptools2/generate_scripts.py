@@ -188,7 +188,7 @@ def make_logfile_text(logfile_location, job_file):
     # get the exit code from the cellprofiler job
     RETURN_VAL=$?
 
-    if [[ $RETURN_VAL == 0]]; then
+    if [[ $RETURN_VAL == 0 ]]; then
         RETURN_STATUS="Finished"
     else
         RETURN_STATUS="Failed with error code: $RETURN_VAL"
@@ -255,7 +255,7 @@ def make_submit_script(commands_location, job_date):
     # create text for a shell script that qsub's the scripts
     output = """
              #!/bin/sh
-             
+
              # This script submits the staging, analysis and destaging
              # scripts in the correct order
 
