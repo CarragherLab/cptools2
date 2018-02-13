@@ -134,6 +134,7 @@ def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
     # append random hex to job names - this allows you to run multiple jobs
     # without the -hold_jid flags fron clashing
     job_hex = script_generator.generate_random_hex()
+    n_tasks = commands_count_dict["cp_commands"]
     # FIXME: using AnalysisScript class for everything, due to the 
     #        {Staging, Destaging}Script class not having loop_through_file
     stage_script = BodgeScript(
@@ -152,7 +153,7 @@ def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
 
     analysis_script = script_generator.AnalysisScript(
         name="analysis_{}".format(job_hex),
-        tasks=commands_count_dict["cp_commands"],
+        tasks=n_tasks,
         hold_jid_ad="staging_{}".format(job_hex),
         pe="sharedmem 1",
         memory="12G",
@@ -162,7 +163,9 @@ def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
     analysis_script.loop_through_file(cmd_path["cp_commands"])
     analysis_loc = os.path.join(commands_location,
                                 "{}_analysis_script.sh".format(time_now))
-    analysis_script.template += make_logfile_text(logfile_location, job_hex)
+    analysis_script.template += make_logfile_text(logfile_location,
+                                                  job_file=job_hex,
+                                                  n_tasks=n_tasks)
     print("** saving analysis submission script at '{}'".format(analysis_loc))
     analysis_script.save(analysis_loc)
     destaging_script = BodgeScript(
@@ -183,7 +186,7 @@ def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
     utils.make_executable(submit_script)
 
 
-def make_logfile_text(logfile_location, job_file):
+def make_logfile_text(logfile_location, job_file, n_tasks):
     text = """
     # get the exit code from the cellprofiler job
     RETURN_VAL=$?
@@ -196,8 +199,15 @@ def make_logfile_text(logfile_location, job_file):
 
     LOG_FILE_LOC={logfile_location}/{job_file}.log
     echo "`date +"%Y%m%d %H:%M"`  $JOB_ID  $SGE_TASK_ID  $RETURN_STATUS" >> $LOG_FILE_LOC
+
+    NUM_FINISHED_JOBS=$(cat $LOG_FILE_LOC | wc -l)
+
+    if [[ $NUM_FINISHED == {n_tasks} ]]; then
+        echo "" | mailx -s "cptools2: {job_file} analysis completed successfully "$USER@ed.ac.uk""
+    fi
     """.format(logfile_location=logfile_location,
-               job_file=job_file)
+               job_file=job_file,
+               n_tasks=n_tasks)
     return textwrap.dedent(text)
 
 
