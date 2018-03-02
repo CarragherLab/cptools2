@@ -29,12 +29,10 @@ class Job(object):
             path to imageXpress experiment that contains plate sub-directories
         """
         self.exp_dir = exp_dir
-        plate_names = os.listdir(exp_dir)
-        # filter out any files which are not directories
-        # might be caused by files saved in the experiment direcotry
         plate_paths = filelist.paths_to_plates(exp_dir)
+        plate_names = [i.split(os.sep)[-1] for i in plate_paths]
         img_files = [filelist.files_from_plate(p) for p in plate_paths]
-        for idx, plate in enumerate(plate_paths):
+        for idx, plate in enumerate(plate_names):
             self.plate_store[plate] = [plate_paths[idx], img_files[idx]]
 
 
