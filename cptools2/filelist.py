@@ -22,6 +22,8 @@ def files_from_plate(plate_dir, ext=".tif", clean=True, truncate=True,
     sanitise: Boolean (default=True)
         whether to escape whitespace in the filepaths
     """
+    if not os.path.isdir(plate_dir):
+        raise RuntimeError("'{}' is not a plate directory".format(plate_dir))
     files = glob.glob(plate_dir + "/*/*/*" + ext)
     if clean is True:
         files = parserix.clean.clean(file_list=files, ext=ext)
