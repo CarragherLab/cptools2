@@ -44,13 +44,24 @@ def files_from_plate(plate_dir, ext=".tif", clean=True, truncate=True,
 def paths_to_plates(experiment_directory):
     """
     Return the absolute file path to all plates contained within
-    an ImageXpress experiment directory
+    an ImageXpress experiment directory.
+
+    Parameters:
+    -----------
+    experiment_directory: string
+        Path to top-level experiment in the ImageXpress directory.
+        This should contain sub-directories of plates.
+
+    Returns:
+    --------
+    list of fully-formed paths to the plate directories.
     """
     exp_abs_path = os.path.abspath(experiment_directory)
     # check the experiment directory exists
     if os.path.isdir(exp_abs_path):
         plates = os.listdir(experiment_directory)
-        return [os.path.join(exp_abs_path, plate) for plate in plates]
+        plate_paths = [os.path.join(exp_abs_path, plate) for plate in plates]
+        return [path for path in plate_paths if os.path.isdir(path)]
     else:
         err_msg = "'{}' directory not found".format(exp_abs_path)
         raise RuntimeError(err_msg)

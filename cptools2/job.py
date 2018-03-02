@@ -32,10 +32,9 @@ class Job(object):
         plate_names = os.listdir(exp_dir)
         # filter out any files which are not directories
         # might be caused by files saved in the experiment direcotry
-        plate_names = [name for name in plate_names if os.path.isdir(name)]
         plate_paths = filelist.paths_to_plates(exp_dir)
         img_files = [filelist.files_from_plate(p) for p in plate_paths]
-        for idx, plate in enumerate(plate_names):
+        for idx, plate in enumerate(plate_paths):
             self.plate_store[plate] = [plate_paths[idx], img_files[idx]]
 
 
