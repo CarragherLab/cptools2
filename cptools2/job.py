@@ -59,6 +59,9 @@ class Job(object):
             self.plate_store[plates] = [full_path, img_files]
         elif isinstance(plates, list):
             full_path = [os.path.join(exp_dir, i) for i in plates]
+            # filter out anything that isn't a directory
+            # incase someone has saved files in the experiment directory
+            full_path = [i for i in full_path if os.isdir(i)]
             img_files = [filelist.files_from_plate(plate) for plate in full_path]
             for idx, plate in enumerate(plates):
                 self.plate_store[plate] = [full_path[idx], img_files[idx]]
