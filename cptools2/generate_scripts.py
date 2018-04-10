@@ -77,8 +77,15 @@ def lines_in_commands(commands_location):
     return _lines_in_commands(**command_paths)
 
 
-def load_module_text():
+def load_module_text(anaconda=True):
     """returns load module commands"""
+    if anaconda:
+        return textwrap.dedent(
+            """
+            module load anaconda/5.0.1
+            source activate cellprofiler
+            """
+        )
     user = os.environ["USER"]
     venv_store = load_venv_store()
     try:
