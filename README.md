@@ -32,6 +32,10 @@ We could run this as `python /path/to/cptools2/cptools2 awesome_experiment-1.yml
 
 This produces a directory containing a loaddata file for each task, and three text files containing staging commands, cellprofiler commands, and de-staging commands that can be run as three concurrent array jobs.
 
+A script named `YYYY-MM-DD-h:m:s_SUBMIT_JOBS.sh` is created which will submit
+the three jobs in the correct order. This can be run with
+`./YYYY-MM-DD-h:m:s_SUBMIT_JOBS.sh` or `bash YYYY-MM-DD-h:m:s_SUBMIT_JOBS.sh`
+on a login node (the ones that can submit jobs to the queue).
 
 #### Adding an alias
 
