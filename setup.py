@@ -8,6 +8,9 @@ setup(name="cptools2",
       license="MIT",
       packages=["cptools2"],
       tests_require=["pytest"],
+      entry_points={
+          "console_scripts": ["cptools2 = cptools2.__main__:main"]
+          },
       dependency_links=[
             "https://github.com/carragherlab/parserix/tarball/master#egg=parserix-0.1",
             "https://github.com/carragherlab/scissorhands/tarball/master#egg=scissorhands-0.1",
