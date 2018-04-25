@@ -151,6 +151,9 @@ def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
         tasks=commands_count_dict["staging"]
     )
     stage_script.template += "#$ -q staging\n"
+    # limit staging node requests
+    stage_script.template += "#$ -p -500\n"
+    stage_script.template += "#$ -tc 20\n"
     stage_script.bodge_array_loop(phase="staging",
                                   input_file=cmd_path["staging"])
     stage_loc = os.path.join(commands_location,
