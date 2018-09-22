@@ -1,9 +1,15 @@
+"""
+TODO: module docstring
+"""
+
 import os
 from cptools2 import filelist
 from cptools2 import splitter
 from cptools2 import loaddata
 from cptools2 import commands
 from cptools2 import utils
+from cptools2 import colours
+
 
 class Job(object):
     """
@@ -17,7 +23,6 @@ class Job(object):
         self.plate_store = dict()
         self.loaddata_store = dict()
         self.has_loaddata = False
-
 
     def add_experiment(self, exp_dir):
         """
@@ -34,7 +39,6 @@ class Job(object):
         img_files = [filelist.files_from_plate(p) for p in plate_paths]
         for idx, plate in enumerate(plate_names):
             self.plate_store[plate] = [plate_paths[idx], img_files[idx]]
-
 
     def add_plate(self, plates, exp_dir):
         """
@@ -65,7 +69,6 @@ class Job(object):
         else:
             raise ValueError("plates has to be a string of a list of strings")
 
-
     def remove_plate(self, plates):
         """
         remove plate(s) from plate_store
@@ -83,7 +86,6 @@ class Job(object):
         else:
             raise ValueError("plates has to be a string or a list of strings")
 
-
     def chunk(self, job_size=96):
         """
         group image list into separate jobs, individually for each plate
@@ -98,7 +100,6 @@ class Job(object):
             chunks = splitter.split(self.plate_store[key][1], job_size)
             self.plate_store[key][1] = chunks
         self.chunked = True
-
 
     def _create_loaddata(self, job_size=None):
         """
@@ -128,7 +129,6 @@ class Job(object):
                 self.loaddata_store[key] = df_loaddata
         self.has_loaddata = True
 
-
     def create_commands(self, pipeline, location, commands_location, job_size):
         """
         bit of a beast, TODO: refactor
@@ -146,15 +146,15 @@ class Job(object):
             file path to location in which to store the stage, analysis and
             destage commands.
         """
-        print("** creating image list")
+        print(colours.green("[cptools2]"), colours.purple("creating image list"))
         if self.has_loaddata is False:
             self._create_loaddata(job_size)
         cp_commands, rsync_commands, rm_commands = [], [], []
-        print("** creating output directories at '{}'".format(location))
+        print(colours.green("[cptools2]"), colours.purple("creating output directories at '{}'".format(location)))
         commands.make_output_directories(location=location)
         # for each job per plate, create loaddata and commands
         platenames = sorted(self.plate_store.keys())
-        print("** detected {} plates in experiment".format(len(platenames)))
+        print(colours.green("[cptools2]"), colours.purple("detected {} plates in experiment".format(len(platenames))))
         for i, plate in enumerate(platenames, 1):
             print("\t {}. {}".format(i, plate))
             for job_num, dataframe in enumerate(self.loaddata_store[plate]):
@@ -188,11 +188,11 @@ class Job(object):
                 rm_cmd = commands.rm_string(directory=img_location)
                 rm_commands.append(rm_cmd)
         # write commands to disk as a txt file
-        print("** creating image filelist")
-        print("** creating csv files for LoadData")
-        print("** creating staging commands")
-        print("** creating Cellprofiler commands")
-        print("** creating destaging commands")
+        print(colours.green("[cptools2]"), colours.purple("creating image filelist"))
+        print(colours.green("[cptools2]"), colours.purple("creating csv files for LoadData"))
+        print(colours.green("[cptools2]"), colours.purple("creating staging commands"))
+        print(colours.green("[cptools2]"), colours.purple("creating Cellprofiler commands"))
+        print(colours.green("[cptools2]"), colours.purple("creating destaging commands"))
         commands.write_commands(commands_location=commands_location,
                                 rsync_commands=rsync_commands,
                                 cp_commands=cp_commands,
