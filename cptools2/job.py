@@ -8,7 +8,7 @@ from cptools2 import splitter
 from cptools2 import loaddata
 from cptools2 import commands
 from cptools2 import utils
-from cptools import colours
+from cptools2 import colours
 from cptools2.colours import pretty_print
 
 
