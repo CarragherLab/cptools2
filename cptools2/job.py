@@ -151,7 +151,7 @@ class Job(object):
         if self.has_loaddata is False:
             self._create_loaddata(job_size)
         cp_commands, rsync_commands, rm_commands = [], [], []
-        pretty_print("creating output directories at '{}'".format(location))
+        pretty_print("creating output directories at {}".format(colours.yellow(location)))
         commands.make_output_directories(location=location)
         # for each job per plate, create loaddata and commands
         platenames = sorted(self.plate_store.keys())

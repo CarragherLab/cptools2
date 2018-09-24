@@ -10,6 +10,7 @@ from datetime import datetime
 import yaml
 from scissorhands import script_generator
 from cptools2 import utils
+from cptools2 import colours
 from cptools2.colours import pretty_print
 
 
@@ -74,7 +75,6 @@ def lines_in_commands(commands_location):
          "destaging":   int}
     """
     command_paths = make_command_paths(commands_location)
-    pretty_print("saving commands at '{}'".format(commands_location))
     return _lines_in_commands(**command_paths)
 
 
@@ -159,7 +159,6 @@ def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
                                   input_file=cmd_path["staging"])
     stage_loc = os.path.join(commands_location,
                              "{}_staging_script.sh".format(time_now))
-    pretty_print("saving staging submission script at '{}'".format(stage_loc))
     stage_script.save(stage_loc)
 
     analysis_script = script_generator.AnalysisScript(
@@ -177,7 +176,6 @@ def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
     analysis_script.template += make_logfile_text(logfile_location,
                                                   job_file=job_hex,
                                                   n_tasks=n_tasks)
-    pretty_print("saving analysis submission script at '{}'".format(analysis_loc))
     analysis_script.save(analysis_loc)
     destaging_script = BodgeScript(
         name="destaging_{}".format(job_hex),
@@ -190,11 +188,10 @@ def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
                                       input_file=cmd_path["destaging"])
     destage_loc = os.path.join(commands_location,
                                "{}_destaging_script.sh".format(time_now))
-    pretty_print("saving destaging submission script at '{}'".format(destage_loc))
     destaging_script.save(destage_loc)
     # create script to submit staging, analysis and destaging scripts
     submit_script = make_submit_script(commands_location, time_now)
-    pretty_print("saving master submission script at {}".format(submit_script))
+    pretty_print("saving master submission script at {}".format(colours.yellow(submit_script)))
     utils.make_executable(submit_script)
 
 
