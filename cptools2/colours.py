@@ -23,10 +23,13 @@ def bold(s):
     return _colour(BOLD).format(s)
 
 def yellow(s):
-    return _colour(WARNING).format(s)
+    return _colour(YELLOW).format(s)
 
 def red(s):
-    return _colour(FAIL).format(s)
+    return _colour(RED).format(s)
 
 def purple(s):
-    return _colour(HEADER).format(s)
+    return _colour(PURPLE).format(s)
+
+def pretty_print(s):
+    print("{} {}".format(green("[cptools2]"), purple(s)))

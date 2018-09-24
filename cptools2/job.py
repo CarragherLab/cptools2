@@ -8,7 +8,8 @@ from cptools2 import splitter
 from cptools2 import loaddata
 from cptools2 import commands
 from cptools2 import utils
-from cptools2 import colours
+from cptools import colours
+from cptools2.colours import pretty_print
 
 
 class Job(object):
@@ -146,17 +147,17 @@ class Job(object):
             file path to location in which to store the stage, analysis and
             destage commands.
         """
-        print(colours.green("[cptools2]"), colours.purple("creating image list"))
+        pretty_print("creating image list")
         if self.has_loaddata is False:
             self._create_loaddata(job_size)
         cp_commands, rsync_commands, rm_commands = [], [], []
-        print(colours.green("[cptools2]"), colours.purple("creating output directories at '{}'".format(location)))
+        pretty_print("creating output directories at '{}'".format(location))
         commands.make_output_directories(location=location)
         # for each job per plate, create loaddata and commands
         platenames = sorted(self.plate_store.keys())
-        print(colours.green("[cptools2]"), colours.purple("detected {} plates in experiment".format(len(platenames))))
+        pretty_print("detected {} plates in experiment".format(len(platenames)))
         for i, plate in enumerate(platenames, 1):
-            print("\t {}. {}".format(i, plate))
+            print(colours.purple("\t {}".format(i)), colours.yellow("{}".format(plate)))
             for job_num, dataframe in enumerate(self.loaddata_store[plate]):
                 name = "{}_{}".format(plate, str(job_num))
                 output_loc = os.path.join(location, "raw_data", name)
@@ -188,11 +189,11 @@ class Job(object):
                 rm_cmd = commands.rm_string(directory=img_location)
                 rm_commands.append(rm_cmd)
         # write commands to disk as a txt file
-        print(colours.green("[cptools2]"), colours.purple("creating image filelist"))
-        print(colours.green("[cptools2]"), colours.purple("creating csv files for LoadData"))
-        print(colours.green("[cptools2]"), colours.purple("creating staging commands"))
-        print(colours.green("[cptools2]"), colours.purple("creating Cellprofiler commands"))
-        print(colours.green("[cptools2]"), colours.purple("creating destaging commands"))
+        pretty_print("creating image filelist")
+        pretty_print("creating csv files for LoadData")
+        pretty_print("creating staging commands")
+        pretty_print("creating Cellprofiler commands")
+        pretty_print("creating destaging commands")
         commands.write_commands(commands_location=commands_location,
                                 rsync_commands=rsync_commands,
                                 cp_commands=cp_commands,

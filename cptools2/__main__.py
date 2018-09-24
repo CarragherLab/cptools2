@@ -4,7 +4,7 @@ from cptools2 import generate_scripts
 from cptools2 import job
 from cptools2 import parse_yaml
 from cptools2 import utils
-from cptools2 import colours
+from cptools2.colours import pretty_print
 
 
 def check_arguments():
@@ -80,11 +80,11 @@ def main():
         raise EddieNodeError("Not on a staging node, cannot access datastore")
     # parse yaml file into a dictionary
     config_file = check_config_file()
-    print(colours.green("[cptools2]"), colours.purple("parsing config file '{}'".format(config_file)))
+    pretty_print("parsing config file '{}'".format(config_file))
     config = parse_yaml.parse_config_file(config_file)
     configure_job(config)
     make_scripts(config_file)
-    print(colours.green"DONE!"))
+    pretty_print("DONE!")
 
 
 class EddieNodeError(Exception):
