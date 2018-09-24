@@ -155,7 +155,10 @@ class Job(object):
         commands.make_output_directories(location=location)
         # for each job per plate, create loaddata and commands
         platenames = sorted(self.plate_store.keys())
-        pretty_print("detected {} plates in experiment".format(colours.yellow(len(platenames))))
+        pretty_print("detected {} {}".format(
+            colours.yellow(len(platenames)),
+            colours.purple("plates"))
+        )
         for i, plate in enumerate(platenames, 1):
             print(colours.purple("\t {}.".format(i)), colours.yellow("{}".format(plate)))
             for job_num, dataframe in enumerate(self.loaddata_store[plate]):
