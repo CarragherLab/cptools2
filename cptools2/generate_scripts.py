@@ -80,7 +80,7 @@ def lines_in_commands(commands_location):
 
 def load_module_text():
     """returns load module commands"""
-    return "module load anaconda/5.0.0.1"
+    return "module load igmm/apps/anaconda/5.0.0.1"
 
 
 def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
