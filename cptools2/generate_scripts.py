@@ -78,39 +78,9 @@ def lines_in_commands(commands_location):
     return _lines_in_commands(**command_paths)
 
 
-def load_module_text(anaconda=True):
+def load_module_text():
     """returns load module commands"""
-    if anaconda:
-        return textwrap.dedent(
-            """
-            module load anaconda/5.0.1
-            source activate cellprofiler
-            """
-        )
-    user = os.environ["USER"]
-    venv_store = load_venv_store()
-    try:
-        venv_path = venv_store[user]
-        print("** known user, inserting {}'s CellProfiler".format(user),
-              "virtual environment path in analysis script")
-    except KeyError:
-        venv_path = "# unknown user, insert path to Cellprofiler virtual environment here"
-        print("** unknown user")
-        print("\t ** unable to insert path to Cellprofiler virtual environment"
-              "in the analysis script")
-    return textwrap.dedent(
-        """
-        module load igmm/apps/hdf5/1.8.16
-        module load igmm/apps/python/2.7.10
-        module load igmm/apps/jdk/1.8.0_66
-        module load igmm/libs/libpng/1.6.18
-
-        # activate the cellprofiler virtualenvironment
-        # NOTE: might have to modify this for individual users to point to your
-        #       virtual environment
-        source {venv_path}
-        """.format(venv_path=venv_path)
-    )
+    return "module load anaconda/5.0.0.1"
 
 
 def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
