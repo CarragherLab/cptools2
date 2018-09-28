@@ -184,33 +184,6 @@ def make_logfile_text(logfile_location, job_file, n_tasks):
     return textwrap.dedent(text)
 
 
-def load_venv_store():
-    """
-    Load the virtual environment yaml file that details each user's path to
-    their cellprofiler virtualenvironment.
-
-    If the venv_store is not found it returns an empty dictionary, which
-    should result in a KeyError when looking up a user's path in
-    `load_module_text()`.
-
-    Returns:
-    --------
-
-    Dictionary
-        {user: /path/to/cellprofiler/virtualenv}
-        or empty Dictionary
-    """
-    possible_paths = ["/exports/igmm/eddie/Drug-Discovery/cp_venvs.yaml"]
-    for path in possible_paths:
-        if os.path.isfile(path):
-            with open(path, "r") as f:
-                yaml_dict = yaml.load(f)
-            return yaml_dict
-    print("** No venv_store found, not inserting path to user's cellprofiler ",
-          "virtual environment in submission script")
-    return dict()
-
-
 def make_submit_script(commands_location, job_date):
     """
     Create a shell script which will submit the staging, analysis and
