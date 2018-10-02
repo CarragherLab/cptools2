@@ -4,14 +4,16 @@ staging, analysis and destaging jobs
 """
 
 from __future__ import print_function
+
 import os
 import textwrap
 from datetime import datetime
+
 import yaml
-from scissorhands import script_generator
-from cptools2 import utils
-from cptools2 import colours
+from cptools2 import colours, utils
 from cptools2.colours import pretty_print
+
+from scissorhands import script_generator
 
 
 def make_command_paths(commands_location):
@@ -80,7 +82,10 @@ def lines_in_commands(commands_location):
 
 def load_module_text():
     """returns load module commands"""
-    return "module load anaconda/5.0.0.1"
+    return """
+           module load anaconda/5.0.1
+           source activate cellprofiler
+           """
 
 
 def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
@@ -121,10 +126,12 @@ def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
         output=os.path.join(logfile_location, "staging"),
         tasks=commands_count_dict["staging"]
     )
-    stage_script.template += "#$ -q staging\n"
     # limit staging node requests
-    stage_script.template += "#$ -p -500\n"
-    stage_script.template += "#$ -tc 20\n"
+    stage_script += """
+                    #$ -q staging
+                    #$ -p -500
+                    #$ -tc 20
+                    """
     stage_script.bodge_array_loop(phase="staging",
                                   input_file=cmd_path["staging"])
     stage_loc = os.path.join(commands_location,
@@ -139,13 +146,13 @@ def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
         memory="12G",
         output=os.path.join(logfile_location, "analysis")
     )
-    analysis_script.template += load_module_text()
+    analysis_script += load_module_text()
     analysis_script.loop_through_file(cmd_path["cp_commands"])
     analysis_loc = os.path.join(commands_location,
                                 "{}_analysis_script.sh".format(time_now))
-    analysis_script.template += make_logfile_text(logfile_location,
-                                                  job_file=job_hex,
-                                                  n_tasks=n_tasks)
+    analysis_script += make_logfile_text(logfile_location,
+                                         job_file=job_hex,
+                                         n_tasks=n_tasks)
     analysis_script.save(analysis_loc)
     destaging_script = BodgeScript(
         name="destaging_{}".format(job_hex),
@@ -273,4 +280,3 @@ class BodgeScript(script_generator.AnalysisScript):
             """.format(phase=phase, input_file=input_file)
         )
         self.template += text
-
