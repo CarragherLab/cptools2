@@ -1,5 +1,5 @@
-from parserix import parse as _parse
 import pandas as _pd
+from parserix import parse as _parse
 
 
 def _well_site_table(img_list):
@@ -87,4 +87,3 @@ def split(img_list, job_size=96):
     df_img = _well_site_table(img_list)
     grouped_list = _group_images(df_img)
     return [chunk for chunk in chunks(grouped_list, job_size)]
-

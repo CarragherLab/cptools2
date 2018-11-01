@@ -1,5 +1,7 @@
 import os
+
 from cptools2 import utils
+
 
 def make_cp_cmnd(name, pipeline, location, output_loc):
     """
@@ -235,4 +237,3 @@ def check_commands(location):
     err_msg = "Commands file '{}' is empty, something has gone wrong".format(location)
     if n_lines < 1:
         raise RuntimeError(err_msg)
-

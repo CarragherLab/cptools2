@@ -126,16 +126,15 @@ def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
         output=os.path.join(logfile_location, "staging"),
         tasks=commands_count_dict["staging"]
     )
-    stage_script.template += "#$ -q staging\n"
+    stage_script += "#$ -q staging\n"
     # limit staging node requests
-    stage_script.template += "#$ -p -500\n"
-    stage_script.template += "#$ -tc 20\n"
+    stage_script += "#$ -p -500\n"
+    stage_script += "#$ -tc 20\n"
     stage_script.bodge_array_loop(phase="staging",
                                   input_file=cmd_path["staging"])
     stage_loc = os.path.join(commands_location,
                              "{}_staging_script.sh".format(time_now))
     stage_script.save(stage_loc)
-
     analysis_script = script_generator.AnalysisScript(
         name="analysis_{}".format(job_hex),
         tasks=n_tasks,
@@ -144,13 +143,13 @@ def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
         memory="12G",
         output=os.path.join(logfile_location, "analysis")
     )
-    analysis_script.template += load_module_text()
+    analysis_script += load_module_text()
     analysis_script.loop_through_file(cmd_path["cp_commands"])
     analysis_loc = os.path.join(commands_location,
                                 "{}_analysis_script.sh".format(time_now))
-    analysis_script.template += make_logfile_text(logfile_location,
-                                                  job_file=job_hex,
-                                                  n_tasks=n_tasks)
+    analysis_script += make_logfile_text(logfile_location,
+                                         job_file=job_hex,
+                                         n_tasks=n_tasks)
     analysis_script.save(analysis_loc)
     destaging_script = BodgeScript(
         name="destaging_{}".format(job_hex),

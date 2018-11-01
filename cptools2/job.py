@@ -3,12 +3,8 @@ TODO: module docstring
 """
 
 import os
-from cptools2 import filelist
-from cptools2 import splitter
-from cptools2 import loaddata
-from cptools2 import commands
-from cptools2 import utils
-from cptools2 import colours
+
+from cptools2 import colours, commands, filelist, loaddata, splitter, utils
 from cptools2.colours import pretty_print
 
 
@@ -206,4 +202,3 @@ class Job(object):
         cmnds_files = [os.path.join(commands_location, name + ".txt") for name in names]
         for cmnd_file in cmnds_files:
             commands.check_commands(cmnd_file)
-

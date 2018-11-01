@@ -1,5 +1,6 @@
 import glob
 import os
+
 import parserix
 from cptools2 import utils
 
@@ -65,4 +66,3 @@ def paths_to_plates(experiment_directory):
     else:
         err_msg = "'{}' directory not found".format(exp_abs_path)
         raise RuntimeError(err_msg)
-

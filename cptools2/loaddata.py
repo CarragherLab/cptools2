@@ -3,9 +3,11 @@ Create dataframes/csv-files for CellProfiler's LoadData module
 """
 
 import textwrap
+
 import pandas as _pd
-from parserix import parse as _parse
 from cptools2 import utils
+from parserix import parse as _parse
+
 
 def create_loaddata(img_list):
     """
@@ -39,12 +41,12 @@ def create_long_loaddata(img_list):
     just_filenames = [_parse.img_filename(i) for i in img_list]
     df_img = _pd.DataFrame({
         "URL"               : just_filenames,
-        "path"              : [_parse.path(i) for i in img_list],
-        "Metadata_platename": [_parse.plate_name(i) for i in img_list],
-        "Metadata_well"     : [_parse.img_well(i) for i in just_filenames],
-        "Metadata_site"     : [_parse.img_site(i) for i in just_filenames],
+        "path"              : [_parse.path(i)        for i in img_list],
+        "Metadata_platename": [_parse.plate_name(i)  for i in img_list],
+        "Metadata_well"     : [_parse.img_well(i)    for i in just_filenames],
+        "Metadata_site"     : [_parse.img_site(i)    for i in just_filenames],
         "Metadata_channel"  : [_parse.img_channel(i) for i in just_filenames],
-        "Metadata_platenum" : [_parse.plate_num(i) for i in img_list]
+        "Metadata_platenum" : [_parse.plate_num(i)   for i in img_list]
         })
     return df_img
 

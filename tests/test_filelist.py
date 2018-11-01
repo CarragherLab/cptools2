@@ -27,7 +27,7 @@ def test_files_from_plate_truncate():
     """files_from_plate with truncated file-paths"""
     plate_path = os.path.join(TEST_PATH, "test-plate-1")
     output = filelist.files_from_plate(plate_path,
-        clean=True, truncate=True)
+                                       clean=True, truncate=True)
     for f in output:
         assert len(f.split(os.sep)) == 4
 
