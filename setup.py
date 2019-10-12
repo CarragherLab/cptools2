@@ -8,6 +8,7 @@ setup(name="cptools2",
       license="MIT",
       packages=["cptools2"],
       tests_require=["pytest"],
+      python_requires=">=3.5",
       entry_points={
           "console_scripts": ["cptools2 = cptools2.__main__:main"]
           },
