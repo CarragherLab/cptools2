@@ -14,12 +14,13 @@ class Job(object):
     de-stating commands for an SGE array job.
     """
 
-    def __init__(self):
+    def __init__(self, is_new_ix):
         self.exp_dir = None
         self.chunked = False
         self.plate_store = dict()
         self.loaddata_store = dict()
         self.has_loaddata = False
+        self.is_new_ix = is_new_ix
 
     def add_experiment(self, exp_dir):
         """
@@ -113,7 +114,7 @@ class Job(object):
                     # unnest channel groupings
                     # only there before chunking to keep images together
                     unnested = list(utils.flatten(chunk))
-                    df_loaddata = loaddata.create_loaddata(unnested)
+                    df_loaddata = loaddata.create_loaddata(unnested, is_new_ix=self.is_new_ix)
                     if index < len(img_list):
                         loaddata.check_dataframe_size(df_loaddata, job_size)
                     self.loaddata_store[key].append(df_loaddata)
@@ -122,7 +123,7 @@ class Job(object):
                 # flatten these nested lists
                 unnested = list(utils.flatten(img_list))
                 # just a single dataframe for the whole imagelist
-                df_loaddata = loaddata.create_loaddata(unnested)
+                df_loaddata = loaddata.create_loaddata(unnested, is_new_ix=self.is_new_ix)
                 self.loaddata_store[key] = df_loaddata
         self.has_loaddata = True
 

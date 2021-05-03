@@ -1,0 +1,14 @@
+experiment : /path/to/experiment
+remove plate:
+  - plate_1
+  - plate_2
+add plate:
+    - experiment: /path/to/new/experiment
+    - plates:
+        - plate_3
+        - plate_4
+chunk: 46
+pipeline: tests/example_pipeline.cppipe
+new_ix: true
+location: /example/location
+commands location: /home/user

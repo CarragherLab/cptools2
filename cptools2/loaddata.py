@@ -9,7 +9,7 @@ from cptools2 import utils
 from parserix import parse as _parse
 
 
-def create_loaddata(img_list):
+def create_loaddata(img_list, is_new_ix=False):
     """
     create a dataframe suitable for cellprofilers LoadData module
 
@@ -21,11 +21,11 @@ def create_loaddata(img_list):
     --------
     pandas DataFrame
     """
-    df_long = create_long_loaddata(img_list)
+    df_long = create_long_loaddata(img_list, is_new_ix)
     return cast_dataframe(df_long)
 
 
-def create_long_loaddata(img_list):
+def create_long_loaddata(img_list, is_new_ix=False):
     """
     create a dataframe of image paths with metadata columns
 
@@ -33,20 +33,24 @@ def create_long_loaddata(img_list):
     -----------
     img_list: list
         list of image paths
+    is_new_ix: Boolean (default=False)
+        whether or not the filepaths are from the new ImageXpress
+        which alters how they are parsed.
 
     Returns:
     --------
     pandas DataFrame
     """
+    old_path = False if is_new_ix else True
     just_filenames = [_parse.img_filename(i) for i in img_list]
     df_img = _pd.DataFrame({
-        "URL"               : just_filenames,
-        "path"              : [_parse.path(i)        for i in img_list],
-        "Metadata_platename": [_parse.plate_name(i)  for i in img_list],
-        "Metadata_well"     : [_parse.img_well(i)    for i in just_filenames],
-        "Metadata_site"     : [_parse.img_site(i)    for i in just_filenames],
-        "Metadata_channel"  : [_parse.img_channel(i) for i in just_filenames],
-        "Metadata_platenum" : [_parse.plate_num(i)   for i in img_list]
+        "URL": just_filenames,
+        "path": [_parse.path(i) for i in img_list],
+        "Metadata_platename": [_parse.plate_name(i, old_path=old_path) for i in img_list],
+        "Metadata_well": [_parse.img_well(i) for i in just_filenames],
+        "Metadata_site": [_parse.img_site(i) for i in just_filenames],
+        "Metadata_channel": [_parse.img_channel(i) for i in just_filenames],
+        "Metadata_platenum": [_parse.plate_num(i, old_path=old_path) for i in img_list]
         })
     return df_img
 
