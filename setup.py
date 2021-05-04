@@ -16,4 +16,4 @@ setup(name="cptools2",
             "https://github.com/carragherlab/parserix/tarball/new_ix#egg=parserix-0.1",
             "https://github.com/carragherlab/scissorhands/tarball/master#egg=scissorhands-0.1",
       ],
-      install_requires=["pyyaml", "pandas>=0.16", "parserix>=0.1", "scissorhands>=0.1"])
+      install_requires=["pyyaml>=5.1", "pandas>=0.16", "parserix>=0.1", "scissorhands>=0.1"])
