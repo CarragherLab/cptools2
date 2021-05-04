@@ -4,11 +4,14 @@ from cptools2 import parse_yaml
 
 CURRENT_PATH = os.path.dirname(__file__)
 TEST_PATH = os.path.join(CURRENT_PATH, "test_config.yaml")
+TEST_PATH2 = os.path.join(CURRENT_PATH, "test_config2.yaml")
 TEST_BROKEN = os.path.join(CURRENT_PATH, "test_config_broken.yaml")
 
 def test_open_yaml():
     """cptools2.parse_yaml.open_yaml(path_to_yaml)"""
     yaml_dict = parse_yaml.open_yaml(TEST_PATH)
+    assert isinstance(yaml_dict, dict)
+    yaml_dict = parse_yaml.open_yaml(TEST_PATH2)
     assert isinstance(yaml_dict, dict)
 
 
@@ -59,4 +62,12 @@ def test_create_commands():
                       "job_size": 46}
 
 
+def test_new_ix():
+    """cptools2.parse_yaml.is_new_ix(yaml_dict)"""
+    yaml_dict_1 = parse_yaml.open_yaml(TEST_PATH)
+    yaml_dict_2 = parse_yaml.open_yaml(TEST_PATH2)
+    assert parse_yaml.is_new_ix(yaml_dict_1) == False
+    assert parse_yaml.is_new_ix(yaml_dict_2) == True
+    assert parse_yaml.parse_config_file(TEST_PATH).is_new_ix == False
+    assert parse_yaml.parse_config_file(TEST_PATH2).is_new_ix == True
 

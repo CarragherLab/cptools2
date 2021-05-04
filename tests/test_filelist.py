@@ -3,15 +3,25 @@ from cptools2 import filelist
 
 CURRENT_PATH = os.path.dirname(__file__)
 TEST_PATH = os.path.join(CURRENT_PATH, "example_dir")
+TEST_PATH_NEW = os.path.join(CURRENT_PATH, "example_dir_new_paths")
 
 
 def test_files_from_plate():
     """see if we get image files from a plate directory"""
     plate_path = os.path.join(TEST_PATH, "test-plate-1")
-    output = filelist.files_from_plate(plate_path,
-        clean=True, truncate=False)
+    output = filelist.files_from_plate(
+        plate_path, clean=True, truncate=False
+    )
     assert len(output) > 0
     for f in output:
+        assert f.endswith(".tif")
+    # with new IX paths
+    plate_path_new = os.path.join(TEST_PATH_NEW, "test-plate-1")
+    output_new = filelist.files_from_plate(
+        plate_path_new, clean=True, truncate=False, is_new_ix=True
+    )
+    assert len(output_new) > 0
+    for f in output_new:
         assert f.endswith(".tif")
 
 

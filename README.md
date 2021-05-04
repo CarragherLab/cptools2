@@ -50,6 +50,7 @@ There are configuration details you can add to a job:
 - `add plate` :
     - `experiment` : path to another ImageXpress experiment
     - `plates` : plate name(s) in the above experiment
+- `new_ix`: if true/yes then will treat filepaths as from the new ImageXpress
 
 i.e we could remove some plates from an experiment, and also include some plates from a different experiment
 
@@ -91,6 +92,18 @@ chunk : 46
 pipeline : /path/to/cellprofiler/pipeline.cppipe
 location : /path/to/scratch/space
 commands location : /home/user
+```
+
+**NOTE:** The default is expecting old ImageXpress filepaths (for backwarsd
+compatibility), in order to correctly parse metadata from the new IX paths you
+can specify in the config file with `new_ix`.
+```yaml
+experiment : path/to/imageXpress/experiment
+chunk : 46
+pipeline : /path/to/cellprofiler/pipeline.cppipe
+location : /path/to/scratch/space
+commands location : /home/user
+new_ix: true
 ```
 
 

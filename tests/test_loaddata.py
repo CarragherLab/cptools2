@@ -5,8 +5,11 @@ from cptools2 import filelist
 
 CURRENT_PATH = os.path.dirname(__file__)
 TEST_PATH = os.path.join(CURRENT_PATH, "example_dir")
+TEST_PATH_NEW = os.path.join(CURRENT_PATH, "example_dir_new_paths")
 TEST_PATH_PLATE_1 = os.path.join(TEST_PATH, "test-plate-1")
+TEST_PATH_NEW_PLATE_1 = os.path.join(TEST_PATH_NEW, "test-plate-1")
 IMG_LIST = filelist.files_from_plate(TEST_PATH_PLATE_1)
+IMG_LIST_NEW = filelist.files_from_plate(TEST_PATH_NEW_PLATE_1, is_new_ix=True)
 
 
 def test_create_long_loaddata():
@@ -14,6 +17,9 @@ def test_create_long_loaddata():
     long_df = loaddata.create_long_loaddata(IMG_LIST)
     assert isinstance(long_df, pd.DataFrame)
     assert long_df.shape == (len(IMG_LIST), 7)
+    long_df_new_paths = loaddata.create_long_loaddata(IMG_LIST_NEW, is_new_ix=True)
+    assert isinstance(long_df_new_paths, pd.DataFrame)
+    assert long_df_new_paths.shape == (len(IMG_LIST_NEW), 7)
 
 
 def test_cast_dataframe():
@@ -48,4 +54,10 @@ def test_create_loaddata():
     long_df = loaddata.create_long_loaddata(IMG_LIST)
     wide_df = loaddata.cast_dataframe(long_df)
     assert output.equals(wide_df)
+    # same again but for new paths
+    output_new_paths = loaddata.create_loaddata(IMG_LIST_NEW, is_new_ix=True)
+    # make our own
+    long_df_new_paths = loaddata.create_long_loaddata(IMG_LIST_NEW, is_new_ix=True)
+    wide_df_new_paths = loaddata.cast_dataframe(long_df_new_paths)
+    assert output_new_paths.equals(wide_df_new_paths)
 
