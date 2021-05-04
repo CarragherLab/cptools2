@@ -38,8 +38,7 @@ def configure_job(config):
     ---------
     nothing, saves commands and scripts to disk
     """
-    is_new_ix = config["new_ix"]
-    jobber = job.Job(is_new_ix=is_new_ix)
+    jobber = job.Job(is_new_ix=config.is_new_ix)
     # some of the optional arguments might be none if that option was not present in the
     # configuration file, in which case don't pass them as arguments to the methods
     if config.experiment_args is not None:

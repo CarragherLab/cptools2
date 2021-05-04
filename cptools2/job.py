@@ -34,7 +34,7 @@ class Job(object):
         self.exp_dir = exp_dir
         plate_paths = filelist.paths_to_plates(exp_dir)
         plate_names = [i.split(os.sep)[-1] for i in plate_paths]
-        img_files = [filelist.files_from_plate(p) for p in plate_paths]
+        img_files = [filelist.files_from_plate(p, is_new_ix=self.is_new_ix) for p in plate_paths]
         for idx, plate in enumerate(plate_names):
             self.plate_store[plate] = [plate_paths[idx], img_files[idx]]
 
@@ -57,11 +57,11 @@ class Job(object):
         """
         if isinstance(plates, str):
             full_path = os.path.join(exp_dir, plates)
-            img_files = filelist.files_from_plate(full_path)
+            img_files = filelist.files_from_plate(full_path, is_new_ix=self.is_new_ix)
             self.plate_store[plates] = [full_path, img_files]
         elif isinstance(plates, list):
             full_path = [os.path.join(exp_dir, i) for i in plates]
-            img_files = [filelist.files_from_plate(plate) for plate in full_path]
+            img_files = [filelist.files_from_plate(plate, is_new_ix=self.is_new_ix) for plate in full_path]
             for idx, plate in enumerate(plates):
                 self.plate_store[plate] = [full_path[idx], img_files[idx]]
         else:
