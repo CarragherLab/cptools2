@@ -14,12 +14,13 @@ class Job(object):
     de-stating commands for an SGE array job.
     """
 
-    def __init__(self):
+    def __init__(self, is_new_ix):
         self.exp_dir = None
         self.chunked = False
         self.plate_store = dict()
         self.loaddata_store = dict()
         self.has_loaddata = False
+        self.is_new_ix = is_new_ix
 
     def add_experiment(self, exp_dir):
         """
@@ -33,7 +34,7 @@ class Job(object):
         self.exp_dir = exp_dir
         plate_paths = filelist.paths_to_plates(exp_dir)
         plate_names = [i.split(os.sep)[-1] for i in plate_paths]
-        img_files = [filelist.files_from_plate(p) for p in plate_paths]
+        img_files = [filelist.files_from_plate(p, is_new_ix=self.is_new_ix) for p in plate_paths]
         for idx, plate in enumerate(plate_names):
             self.plate_store[plate] = [plate_paths[idx], img_files[idx]]
 
@@ -56,11 +57,11 @@ class Job(object):
         """
         if isinstance(plates, str):
             full_path = os.path.join(exp_dir, plates)
-            img_files = filelist.files_from_plate(full_path)
+            img_files = filelist.files_from_plate(full_path, is_new_ix=self.is_new_ix)
             self.plate_store[plates] = [full_path, img_files]
         elif isinstance(plates, list):
             full_path = [os.path.join(exp_dir, i) for i in plates]
-            img_files = [filelist.files_from_plate(plate) for plate in full_path]
+            img_files = [filelist.files_from_plate(plate, is_new_ix=self.is_new_ix) for plate in full_path]
             for idx, plate in enumerate(plates):
                 self.plate_store[plate] = [full_path[idx], img_files[idx]]
         else:
@@ -113,7 +114,7 @@ class Job(object):
                     # unnest channel groupings
                     # only there before chunking to keep images together
                     unnested = list(utils.flatten(chunk))
-                    df_loaddata = loaddata.create_loaddata(unnested)
+                    df_loaddata = loaddata.create_loaddata(unnested, is_new_ix=self.is_new_ix)
                     if index < len(img_list):
                         loaddata.check_dataframe_size(df_loaddata, job_size)
                     self.loaddata_store[key].append(df_loaddata)
@@ -122,7 +123,7 @@ class Job(object):
                 # flatten these nested lists
                 unnested = list(utils.flatten(img_list))
                 # just a single dataframe for the whole imagelist
-                df_loaddata = loaddata.create_loaddata(unnested)
+                df_loaddata = loaddata.create_loaddata(unnested, is_new_ix=self.is_new_ix)
                 self.loaddata_store[key] = df_loaddata
         self.has_loaddata = True
 

@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name="cptools2",
-      version=0.1,
+      version=0.2,
       url="https://github.com/swarchal/cptools2",
       description="Tools for running CellProfiler on HPC setups",
       author="Scott Warchal",
@@ -13,7 +13,7 @@ setup(name="cptools2",
           "console_scripts": ["cptools2 = cptools2.__main__:main"]
           },
       dependency_links=[
-            "https://github.com/carragherlab/parserix/tarball/master#egg=parserix-0.1",
-            "https://github.com/carragherlab/scissorhands/tarball/master#egg=scissorhands-0.1",
+            "https://github.com/carragherlab/parserix/tarball/new_ix#egg=parserix-0.2",
+            "https://github.com/carragherlab/scissorhands/tarball/master#egg=scissorhands-0.2",
       ],
-      install_requires=["pyyaml", "pandas>=0.16", "parserix>=0.1", "scissorhands>=0.1"])
+      install_requires=["pyyaml>=5.1", "pandas>=0.16", "parserix>=0.2", "scissorhands>=0.2"])
