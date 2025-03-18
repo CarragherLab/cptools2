@@ -49,7 +49,7 @@ def create_long_loaddata(img_list, is_new_ix=False):
         "Metadata_platename": [_parse.plate_name(i, old_path=old_path) for i in img_list],
         "Metadata_well": [_parse.img_well(i) for i in just_filenames],
         "Metadata_site": [_parse.img_site(i) for i in just_filenames],
-        "Metadata_channel": [_parse.img_channel(i) for i in just_filenames],
+        "Metadata_channel": [_parse.img_channel(i) for i in img_list],
         "Metadata_platenum": [_parse.plate_num(i, old_path=old_path) for i in img_list]
         })
     return df_img
