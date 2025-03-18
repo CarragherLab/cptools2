@@ -5,9 +5,58 @@
 Running CellProfiler on computing clusters. This is aimed towards the University of Edinburgh's Eddie3 cluster with the staging workflow.
 
 ## Installation:
+
+It is generally recommended to install dependencies into a separate Python environment. To set one up from an existing Python install:
+
+```
+python -m venv path/to/new/environment
+source path/to/new/environment/bin/activate
+python setup.py install
+```
+
+Or with [Conda](https://conda-forge.org/):
+
+```
+conda create -n cptools2 -c conda-forge 'python>=3.5'
+conda activate cptools2
+python setup.py install
+```
+
+This will create the executable 'cptools2', available in your $PATH.
+
+If you still wish to use the centrally installed Python:
+
 `python setup.py install --user`
 
 
+### Installation for testing
+
+You can install the dependencies for development and testing with:
+
+```
+python -m venv path/to/new/environment
+source path/to/new/environment/bin/activate
+pip install 'pyyaml>=5.1' 'pandas>=0.16' 'git+https://github.com/carragherlab/parserix.git' 'git+https://github.com/carragherlab/scissorhands.git'
+```
+
+Or with Conda:
+
+```
+conda create -n cptools2 -c conda-forge 'pyyaml>=5.1' 'pandas>=0.16'
+conda activate cptools2
+pip install 'git+https://github.com/carragherlab/parserix.git' 'git+https://github.com/carragherlab/scissorhands.git'
+```
+
+You can then run cptools2 from source via the `__main__.py` script:
+
+```
+python cptools2/__main__.py
+```
+
+You'll also need to make a few modifications if testing outside of Eddie:
+
+- in \_\_main\_\_.main(), comment out the check for utils.on_staging_node()
+- in generate_scripts, add the argument `user='<user>'` to all calls to BodgeScript, AnalysisScript
 
 
 ## Wiki:
@@ -17,7 +66,7 @@ For more details see the [wiki](https://github.com/CarragherLab/cptools2/wiki).
 
 cptools2 can use a configuration file to list the jobs parameters.
 
-For example if we have a a file named `awesome_experiment-1.yml` containing:
+For example if we have a file named `awesome_experiment-1.yml` containing:
 
 ```yaml
 experiment : path/to/imageXpress/experiment
