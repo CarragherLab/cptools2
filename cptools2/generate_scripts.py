@@ -7,7 +7,6 @@ from __future__ import print_function
 import os
 import textwrap
 from datetime import datetime
-import yaml
 from scissorhands import script_generator
 from cptools2 import utils
 from cptools2 import colours
@@ -82,7 +81,7 @@ def load_module_text():
     """returns load module commands"""
     return textwrap.dedent(
         """
-        module load anaconda/5.0.1
+        module load miniforge/24.7.1
         source activate cellprofiler
         """
     )
