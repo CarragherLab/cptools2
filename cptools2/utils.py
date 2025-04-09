@@ -66,8 +66,10 @@ def prefix_filepaths(dataframe, name, location):
     pandas.DataFrame with altered `PathName_` columns
     """
     path_cols = [col for col in dataframe.columns if col.startswith("PathName")]
-    dataframe[path_cols] = dataframe[path_cols].applymap(
-        lambda x: os.path.join(location, "img_data", name, x)
+    # Updated from deprecated .applymap() to pandas 2.0+ compatible approach
+    for col in path_cols:
+        dataframe[col] = dataframe[col].map(
+            lambda x: os.path.join(location, "img_data", name, x)
         )
     return dataframe
 
