@@ -85,7 +85,11 @@ def load_module_text():
     """returns load module commands"""
     return textwrap.dedent(
         """
+<<<<<<< HEAD
         module load anaconda/2024.02
+=======
+        module load anaconda/2024.02 # Updated for current eddie installation
+>>>>>>> 2f97130a284c7f3d989bda1f64b5cb33b8a699e3
         source activate cellprofiler
         """
     )
