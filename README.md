@@ -7,9 +7,6 @@ Running CellProfiler on computing clusters. This is aimed towards the University
 ## Installation:
 `python setup.py install --user`
 
-
-
-
 ## Wiki:
 For more details see the [wiki](https://github.com/CarragherLab/cptools2/wiki).
 

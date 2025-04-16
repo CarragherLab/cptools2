@@ -161,29 +161,45 @@ def create_commands(yaml_dict):
     --------
     dictionary
     """
-    if "pipeline" in yaml_dict:
-        pipeline_arg = yaml_dict["pipeline"]
-        if isinstance(pipeline_arg, list):
-            pipeline_arg = pipeline_arg[0]
-        pipeline_arg = os.path.abspath(pipeline_arg)
-        if not os.path.isfile(pipeline_arg):
-            raise IOError("'{}' pipeline not found".format(pipeline_arg))
-    if "location" in yaml_dict:
-        location_arg = yaml_dict["location"]
-        if isinstance(location_arg, list):
-            location_arg = location_arg[0]
-    # TODO more options rather than exactly "commands location"
-    if "commands location" in yaml_dict:
-        commands_loc_arg = yaml_dict["commands location"]
-        if isinstance(commands_loc_arg, list):
-            commands_loc_arg = commands_loc_arg[0]
-    # need the chunk size to check LoadData dataframes are the correct size
+    # Check for required keys first
+    required_keys = ["pipeline", "location", "commands location"]
+    missing_keys = [key for key in required_keys if key not in yaml_dict]
+    if missing_keys:
+        raise ValueError(f"Missing required configuration key(s): {', '.join(missing_keys)}")
+
+    # Process pipeline argument
+    pipeline_arg = yaml_dict["pipeline"]
+    if isinstance(pipeline_arg, list):
+        pipeline_arg = pipeline_arg[0]
+    pipeline_arg = os.path.abspath(pipeline_arg)
+    if not os.path.isfile(pipeline_arg):
+        raise IOError(f"'{pipeline_arg}' pipeline not found")
+
+    # Process location argument
+    location_arg = yaml_dict["location"]
+    if isinstance(location_arg, list):
+        location_arg = location_arg[0]
+
+    # Process commands location argument
+    commands_loc_arg = yaml_dict["commands location"]
+    if isinstance(commands_loc_arg, list):
+        commands_loc_arg = commands_loc_arg[0]
+
+    # Process optional chunk argument (for LoadData size check)
+    chunk_arg = None
     if "chunk" in yaml_dict:
-        chunk_arg = yaml_dict["chunk"]
-        if isinstance(chunk_arg, list):
-            chunk_arg = int(chunk_arg[0])
-    else:
-        chunk_arg = None
+        chunk_val = yaml_dict["chunk"]
+        if isinstance(chunk_val, list):
+            chunk_arg = int(chunk_val[0])
+        elif isinstance(chunk_val, (int, str)): # Allow int or string that can be cast
+             try:
+                 chunk_arg = int(chunk_val)
+             except ValueError:
+                 raise ValueError(f"Invalid value for 'chunk': {chunk_val}. Must be an integer.")
+        else:
+             raise ValueError(f"Invalid type for 'chunk': {type(chunk_val)}. Must be an integer or list containing an integer.")
+
+
     return {"pipeline"          : pipeline_arg,
             "location"          : location_arg,
             "commands_location" : commands_loc_arg,
@@ -193,15 +209,15 @@ def create_commands(yaml_dict):
 def check_yaml_args(yaml_dict):
     """
     check the validity of the yaml arguments
-
+    
     raises a ValueError if any of the arguments in the yaml setup file are
     not recognised
-
+    
     Parameters:
     -----------
     yaml_dict: dict
         dictionary version of the config yaml file
-
+        
     Returns:
     --------
     nothing if successful, otherwise raises a ValueError
@@ -213,7 +229,8 @@ def check_yaml_args(yaml_dict):
                   "commands location",
                   "remove plate",
                   "add plate",
-                  "new_ix"]
+                  "new_ix",
+                  "join_files"]  # Added join_files to valid arguments
     bad_arguments = []
     for argument in yaml_dict.keys():
         if argument not in valid_args:
@@ -226,12 +243,12 @@ def check_yaml_args(yaml_dict):
 def parse_config_file(config_file):
     """
     parse config file, store dictionaries in a named tuple
-
+    
     Parameters:
     ------------
     config_file: string
         path to configuration/yaml file which lists the experiment, pipeline etc.
-
+        
     Returns:
     ---------
     namedtuple:
@@ -241,17 +258,45 @@ def parse_config_file(config_file):
         config.add_plate_args      : dict
         config.create_command_args : dict
         config.is_new_ix           : bool
+        config.join_files_patterns : list or None
     """
     yaml_dict = open_yaml(config_file)
     # check the arguments in the yaml file are recognised
     check_yaml_args(yaml_dict)
     # create namedtuple to store the configuration dictionaries
     names = ["experiment_args", "chunk_args", "add_plate_args",
-             "remove_plate_args", "create_command_args", "is_new_ix"]
+             "remove_plate_args", "create_command_args", "is_new_ix",
+             "join_files_patterns"]
     config = namedtuple("config", names)
     return config(experiment_args=experiment(yaml_dict),
                   chunk_args=chunk(yaml_dict),
                   remove_plate_args=remove_plate(yaml_dict),
                   add_plate_args=add_plate(yaml_dict),
                   create_command_args=create_commands(yaml_dict),
-                  is_new_ix=is_new_ix(yaml_dict))
+                  is_new_ix=is_new_ix(yaml_dict),
+                  join_files_patterns=join_files(yaml_dict))
+
+
+def join_files(yaml_dict):
+    """
+    Get specifications for joining files after analysis
+    
+    Parameters:
+    -----------
+    yaml_dict: dict
+        Dictionary version of the config yaml file
+        
+    Returns:
+    --------
+    List of file patterns to join, or None if not specified
+    """
+    if "join_files" in yaml_dict:
+        join_files_arg = yaml_dict["join_files"]
+        # Convert to list if it's a single string
+        if isinstance(join_files_arg, str):
+            return [join_files_arg]
+        # It's already a list
+        elif isinstance(join_files_arg, list):
+            return join_files_arg
+    # Not specified
+    return None

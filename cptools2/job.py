@@ -203,3 +203,24 @@ class Job(object):
         cmnds_files = [os.path.join(commands_location, name + ".txt") for name in names]
         for cmnd_file in cmnds_files:
             commands.check_commands(cmnd_file)
+
+    def join_results(self, location, patterns=None):
+        """
+        Join result files for each plate based on specified patterns.
+        
+        Parameters:
+        -----------
+        location : string
+            Path to where the results are stored
+        patterns : list or None
+            List of file patterns to join (e.g., ["Image.csv", "Cells.csv"])
+            If None, no files will be joined
+            
+        Returns:
+        --------
+        Dictionary with joined file information
+        """
+        from cptools2.file_tools import join_plate_files
+        
+        raw_data_location = os.path.join(location, "raw_data")
+        return join_plate_files(self.plate_store, raw_data_location, patterns)
