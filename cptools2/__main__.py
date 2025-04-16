@@ -50,6 +50,7 @@ def configure_job(config):
     if config.chunk_args is not None:
         jobber.chunk(**config.chunk_args)
     jobber.create_commands(**config.create_command_args)
+    return jobber
 
 
 def make_scripts(config_file):
@@ -83,8 +84,18 @@ def main():
     config_file = check_config_file()
     pretty_print("parsing config file {}".format(colours.yellow(config_file)))
     config = parse_yaml.parse_config_file(config_file)
-    configure_job(config)
+    jobber = configure_job(config)
     make_scripts(config_file)
+    
+    # Perform file joining if patterns are specified
+    if config.join_files_patterns:
+        patterns_str = ", ".join([colours.yellow(p) for p in config.join_files_patterns])
+        pretty_print("Joining files for patterns: {}".format(patterns_str))
+        jobber.join_results(location=config.create_command_args["location"],
+                            patterns=config.join_files_patterns)
+    else:
+        pretty_print("No file joining will be performed (not specified in config)")
+    
     pretty_print("DONE!")
 
 
