@@ -87,15 +87,6 @@ def main():
     jobber = configure_job(config)
     make_scripts(config_file)
     
-    # Perform file joining if patterns are specified
-    if config.join_files_patterns:
-        patterns_str = ", ".join([colours.yellow(p) for p in config.join_files_patterns])
-        pretty_print("Joining files for patterns: {}".format(patterns_str))
-        jobber.join_results(location=config.create_command_args["location"],
-                            patterns=config.join_files_patterns)
-    else:
-        pretty_print("No file joining will be performed (not specified in config)")
-    
     pretty_print("DONE!")
 
 

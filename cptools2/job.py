@@ -1,5 +1,8 @@
 """
-TODO: module docstring
+Job management module for cptools2.
+
+Handles experiment configuration, command generation, and result processing
+for CellProfiler analysis on computing clusters.
 """
 
 import os
@@ -127,23 +130,106 @@ class Job(object):
                 self.loaddata_store[key] = df_loaddata
         self.has_loaddata = True
 
+    def _process_plate_job(self, plate, job_num, dataframe, pipeline, location, job_size):
+        """Processes a single job within a plate, generating commands and files."""
+        name = f"{plate}_{job_num}"
+        output_loc = os.path.join(location, "raw_data", name)
+        # Ensure img_list corresponds to the correct job_num and is flattened
+        img_list = list(utils.flatten(self.plate_store[plate][1][job_num]))
+        filelist_name = os.path.join(location, "filelist", name)
+        img_location = os.path.join(location, "img_data", name)
+        plate_loc_orig = self.plate_store[plate][0]
+        # make sure filepath has a leading forward-slash and remove
+        # the actual plate name or otherwise the rsync commands ends
+        # with the plate-name duplicated
+        plate_loc = os.path.join("/", *plate_loc_orig.split(os.sep)[:-1])
+
+        # Generate commands
+        cp_cmnd = commands.make_cp_cmnd(name=name, pipeline=pipeline,
+                                        location=location,
+                                        output_loc=output_loc)
+        rsync_cmnd = commands.make_rsync_cmnd(plate_loc=plate_loc,
+                                                filelist_name=filelist_name,
+                                                img_location=img_location)
+        rm_cmd = commands.rm_string(directory=img_location)
+
+        # Write auxiliary files
+        commands.write_loaddata(name=name, location=location,
+                                dataframe=dataframe)
+        commands.write_filelist(img_list=img_list,
+                                filelist_name=filelist_name)
+
+        return cp_cmnd, rsync_cmnd, rm_cmd
+
+    def _process_plate(self, plate, pipeline, location, job_size):
+        """Processes all jobs for a single plate, collecting commands."""
+        plate_cp_commands = []
+        plate_rsync_commands = []
+        plate_rm_commands = []
+
+        print(colours.purple("\t Processing plate:"), colours.yellow(f"{plate}"))
+        # Iterate through jobs for the current plate
+        for job_num, dataframe in enumerate(self.loaddata_store[plate]):
+            # Call helper to process the job and get commands
+            cp_cmnd, rsync_cmnd, rm_cmd = self._process_plate_job(
+                plate, job_num, dataframe, pipeline, location, job_size
+            )
+            # Append commands to the plate's command lists
+            plate_cp_commands.append(cp_cmnd)
+            plate_rsync_commands.append(rsync_cmnd)
+            plate_rm_commands.append(rm_cmd)
+
+        return plate_cp_commands, plate_rsync_commands, plate_rm_commands
+
+    def _write_and_check_commands(self, commands_location, rsync_commands, cp_commands, rm_commands):
+        """Writes command lists to files and checks their validity."""
+        # Print status updates
+        pretty_print("creating image filelist")
+        # Note: LoadData CSVs created earlier. Now writing command files.
+        pretty_print("writing command files...")
+        pretty_print("creating staging commands")
+        pretty_print("creating Cellprofiler commands")
+        pretty_print("creating destaging commands")
+
+        # Write commands to disk
+        commands.write_commands(commands_location=commands_location,
+                                rsync_commands=rsync_commands,
+                                cp_commands=cp_commands,
+                                rm_commands=rm_commands)
+
+        # Check commands files are not empty
+        names = ["staging", "cp_commands", "destaging"]
+        cmnds_files = [os.path.join(commands_location, name + ".txt") for name in names]
+        for cmnd_file in cmnds_files:
+            commands.check_commands(cmnd_file)
+
     def create_commands(self, pipeline, location, commands_location, job_size):
         """
-        bit of a beast, TODO: refactor
+        Orchestrates the creation of staging, analysis, and destaging commands.
 
-        create stage, analysis and destage commands and write to disk
+        Ensures LoadData is generated, creates output directories,
+        processes each plate and job via helper methods, and writes
+        the final command files.
 
         Parameters:
         ------------
         pipeline : string
-            path to cellprofiler pipeline
+            Path to the CellProfiler pipeline file.
         location : string
-            file path to location in which the loaddata, images and results
-            will be stored
+            Base directory for storing LoadData CSVs, intermediate image
+            data, and final results.
         commands_location: string
-            file path to location in which to store the stage, analysis and
-            destage commands.
+            Directory where the staging, cp_commands, and destaging
+            command files will be written.
+        job_size : int
+            Used for LoadData generation and validation if chunking occurred.
         """
+        # --- Input Validation ---
+        if not os.path.isfile(pipeline):
+            raise FileNotFoundError(f"Pipeline file not found: {pipeline}")
+        # Potentially add more checks for location/commands_location if needed
+
+        # --- Processing Start ---
         pretty_print("creating image list")
         if self.has_loaddata is False:
             self._create_loaddata(job_size)
@@ -156,53 +242,19 @@ class Job(object):
             colours.yellow(len(platenames)),
             colours.purple("plates"))
         )
-        for i, plate in enumerate(platenames, 1):
-            print(colours.purple("\t {}.".format(i)), colours.yellow("{}".format(plate)))
-            for job_num, dataframe in enumerate(self.loaddata_store[plate]):
-                name = "{}_{}".format(plate, str(job_num))
-                output_loc = os.path.join(location, "raw_data", name)
-                img_list = list(utils.flatten(self.plate_store[plate][1][job_num]))
-                filelist_name = os.path.join(location, "filelist", name)
-                img_location = os.path.join(location, "img_data", name)
-                plate_loc = self.plate_store[plate][0]
-                # make sure filepath has a leading forward-slash and remove
-                # the actual plate name or otherwise the rsync commands ends
-                # with the plate-name duplicated
-                plate_loc = os.path.join("/", *plate_loc.split(os.sep)[:-1])
-                # append cp commands
-                cp_cmnd = commands.make_cp_cmnd(name=name, pipeline=pipeline,
-                                                location=location,
-                                                output_loc=output_loc)
-                cp_commands.append(cp_cmnd)
-                # write loaddata csv to disk
-                commands.write_loaddata(name=name, location=location,
-                                        dataframe=dataframe)
-                # write filelist to disk
-                commands.write_filelist(img_list=img_list,
-                                        filelist_name=filelist_name)
-                # append rsync commands
-                rsync_cmnd = commands.make_rsync_cmnd(plate_loc=plate_loc,
-                                                      filelist_name=filelist_name,
-                                                      img_location=img_location)
-                rsync_commands.append(rsync_cmnd)
-                # make and append rm command
-                rm_cmd = commands.rm_string(directory=img_location)
-                rm_commands.append(rm_cmd)
-        # write commands to disk as a txt file
-        pretty_print("creating image filelist")
-        pretty_print("creating csv files for LoadData")
-        pretty_print("creating staging commands")
-        pretty_print("creating Cellprofiler commands")
-        pretty_print("creating destaging commands")
-        commands.write_commands(commands_location=commands_location,
-                                rsync_commands=rsync_commands,
-                                cp_commands=cp_commands,
-                                rm_commands=rm_commands)
-        # check commands files are not empty, raise an error if they are
-        names = ["staging", "cp_commands", "destaging"]
-        cmnds_files = [os.path.join(commands_location, name + ".txt") for name in names]
-        for cmnd_file in cmnds_files:
-            commands.check_commands(cmnd_file)
+        # Process each plate using the helper method
+        for plate in platenames:
+            # Call helper to process the plate and get commands
+            plate_cp_commands, plate_rsync_commands, plate_rm_commands = self._process_plate(
+                plate, pipeline, location, job_size
+            )
+            # Extend the main command lists with commands from this plate
+            cp_commands.extend(plate_cp_commands)
+            rsync_commands.extend(plate_rsync_commands)
+            rm_commands.extend(plate_rm_commands)
+
+        # Write commands to disk and check files
+        self._write_and_check_commands(commands_location, rsync_commands, cp_commands, rm_commands)
 
     def join_results(self, location, patterns=None):
         """
