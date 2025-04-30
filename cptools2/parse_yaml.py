@@ -199,7 +199,6 @@ def create_commands(yaml_dict):
         else:
              raise ValueError(f"Invalid type for 'chunk': {type(chunk_val)}. Must be an integer or list containing an integer.")
 
-
     return {"pipeline"          : pipeline_arg,
             "location"          : location_arg,
             "commands_location" : commands_loc_arg,
@@ -230,7 +229,7 @@ def check_yaml_args(yaml_dict):
                   "remove plate",
                   "add plate",
                   "new_ix",
-                  "join_files"]  # Added join_files to valid arguments
+                  "join_files"]  # Removed use_base64 from valid arguments
     bad_arguments = []
     for argument in yaml_dict.keys():
         if argument not in valid_args:

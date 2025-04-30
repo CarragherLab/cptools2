@@ -35,23 +35,43 @@ import glob
 import pandas as pd
 from cptools2.colours import pretty_print, yellow, purple
 
+def _discover_plates_from_raw_data(raw_data_location):
+    """Discover plate names by examining directory structure in raw_data."""
+    plate_names = set()
+    try:
+        # Look for directories like 'plateName_chunkNum' inside raw_data_location
+        for item in os.listdir(raw_data_location):
+            item_path = os.path.join(raw_data_location, item)
+            if os.path.isdir(item_path) and '_' in item:
+                plate_name = item.split('_')[0]
+                plate_names.add(plate_name)
+    except FileNotFoundError:
+        pretty_print(f"Warning: Raw data location {raw_data_location} not found during plate discovery.", colour='yellow')
+        return []
+    if not plate_names:
+        pretty_print(f"Warning: No plate directories found in {raw_data_location}. Cannot join files.", colour='yellow')
+    return sorted(list(plate_names))
+
 def join_plate_files(plate_store, raw_data_location, patterns=None):
     """
     Join result files for each plate based on specified patterns.
     
+    If plate_store is None, attempts to discover plate names from the
+    directory structure within raw_data_location.
+    
     Parameters:
     -----------
-    plate_store : dict
-        Dictionary of plates from Job.plate_store
+    plate_store : dict or None
+        Dictionary of plates from Job.plate_store, or None to discover plates.
     raw_data_location : string
-        Path to where raw data is stored
+        Path to where raw data (chunked directories like 'plateName_chunkNum') is stored.
     patterns : list or None
         List of file patterns to join (e.g., ["Image.csv", "Cells.csv"])
-        If None, no files will be joined
+        If None, no files will be joined.
         
     Returns:
     --------
-    Dictionary with joined file information
+    Dictionary with joined file information, or None if no patterns.
     """
     if not patterns:
         pretty_print("No file joining patterns specified. Skipping file joining.")
@@ -61,8 +81,18 @@ def join_plate_files(plate_store, raw_data_location, patterns=None):
         ", ".join([yellow(pattern) for pattern in patterns])))
     
     results = {}
-    plate_names = sorted(plate_store.keys())
     
+    # Determine plate names: use plate_store if provided, otherwise discover
+    if plate_store:
+        plate_names = sorted(plate_store.keys())
+        pretty_print(f"Using plate names from provided plate_store: {len(plate_names)}")
+    else:
+        pretty_print(f"No plate_store provided. Discovering plates from: {raw_data_location}")
+        plate_names = _discover_plates_from_raw_data(raw_data_location)
+        if not plate_names:
+            return None # Stop if no plates were found
+        pretty_print(f"Discovered plate names: {', '.join(purple(p) for p in plate_names)}")
+
     for pattern in patterns:
         pretty_print("Processing pattern: {}".format(yellow(pattern)))
         

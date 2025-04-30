@@ -244,17 +244,22 @@ class Job(object):
         )
         # Process each plate using the helper method
         for plate in platenames:
-            # Call helper to process the plate and get commands
-            plate_cp_commands, plate_rsync_commands, plate_rm_commands = self._process_plate(
+            # Collect commands for the current plate
+            p_cp, p_rsync, p_rm = self._process_plate(
                 plate, pipeline, location, job_size
             )
-            # Extend the main command lists with commands from this plate
-            cp_commands.extend(plate_cp_commands)
-            rsync_commands.extend(plate_rsync_commands)
-            rm_commands.extend(plate_rm_commands)
+            # Extend the main command lists
+            cp_commands.extend(p_cp)
+            rsync_commands.extend(p_rsync)
+            rm_commands.extend(p_rm)
 
-        # Write commands to disk and check files
-        self._write_and_check_commands(commands_location, rsync_commands, cp_commands, rm_commands)
+        # --- Write and Check Commands ---
+        self._write_and_check_commands(
+            commands_location=commands_location,
+            rsync_commands=rsync_commands,
+            cp_commands=cp_commands,
+            rm_commands=rm_commands,
+        )
 
     def join_results(self, location, patterns=None):
         """
