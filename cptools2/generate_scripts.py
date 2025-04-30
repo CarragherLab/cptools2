@@ -83,7 +83,7 @@ def load_module_text():
     """returns load module commands"""
     return textwrap.dedent(
         """
-        module load anaconda/5.0.1
+        module load anaconda/2025.02
         source activate cellprofiler
         """
     )
@@ -302,7 +302,7 @@ def make_join_files_script(config, commands_location, logfile_location, job_hex,
     join_script = script_generator.SGEScript(
         name=f"join_{job_hex}",
         memory="2G",  # Adjust memory as needed
-        hold_jid_ad=f"destaging_{job_hex}",
+        hold_jid=f"destaging_{job_hex}",
         tasks=1,
         output=os.path.join(logfile_location, "join")
     )
