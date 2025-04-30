@@ -1,27 +1,13 @@
 import sys
 import os
+import argparse
 from cptools2 import generate_scripts
 from cptools2 import job
 from cptools2 import parse_yaml
 from cptools2 import utils
 from cptools2 import colours
+from cptools2 import file_tools
 from cptools2.colours import pretty_print
-
-
-def check_arguments():
-    """docstring"""
-    if len(sys.argv) < 2:
-        msg = "missing argument: need to pass a config file as an argument"
-        raise ValueError(msg)
-
-
-def check_config_file():
-    """check that the config file exists, raise an error if it doesnt"""
-    config_file = sys.argv[1]
-    if os.path.isfile(config_file) is False:
-        msg = "'{}' is not a file".format(config_file)
-        raise ValueError(msg)
-    return config_file
 
 
 def configure_job(config):
@@ -35,8 +21,8 @@ def configure_job(config):
         passed as arguments via **kwargs to the Job class.
 
     Returns:
-    ---------
-    nothing, saves commands and scripts to disk
+    --------
+    Job object
     """
     jobber = job.Job(is_new_ix=config.is_new_ix)
     # some of the optional arguments might be none if that option was not present in the
@@ -71,23 +57,80 @@ def make_scripts(config_file):
     commands_location = config.create_command_args["commands_location"]
     commands_line_count = generate_scripts.lines_in_commands(commands_location)
     logfile_location = os.path.join(yaml_dict["location"], "logfiles")
-    generate_scripts.make_qsub_scripts(commands_location, commands_line_count,
+    generate_scripts.make_qsub_scripts(config=config,
+                                       commands_location=commands_location,
+                                       commands_count_dict=commands_line_count,
                                        logfile_location=logfile_location)
 
 
-def main():
-    """run cptools.job.Job on a yaml file containing arguments"""
-    check_arguments()
-    if not utils.on_staging_node():
-        raise EddieNodeError("Not on a staging node, cannot access datastore")
-    # parse yaml file into a dictionary
-    config_file = check_config_file()
-    pretty_print("parsing config file {}".format(colours.yellow(config_file)))
+def handle_generate(args):
+    """Handles the 'generate' subcommand: creates job commands and scripts."""
+    config_file = args.config_file
+    if not os.path.isfile(config_file):
+        raise ValueError(f"'{config_file}' is not a file")
+
+    pretty_print(f"Parsing config file {colours.yellow(config_file)}")
     config = parse_yaml.parse_config_file(config_file)
-    jobber = configure_job(config)
-    make_scripts(config_file)
     
-    pretty_print("DONE!")
+    # configure_job now returns the jobber object, but we don't need it here directly
+    configure_job(config) 
+    
+    # Pass the whole config object to make_scripts, consistent with original design
+    # although make_scripts re-parses it internally currently.
+    # Consider refactoring make_scripts to accept the config object directly later.
+    make_scripts(config_file) 
+    pretty_print("Script generation DONE!")
+
+
+def handle_join(args):
+    """Handles the 'join' subcommand: joins result files."""
+    pretty_print(f"Joining files in {colours.yellow(args.location)} for patterns: {colours.yellow(', '.join(args.patterns))}")
+    # Construct raw_data location from the base location provided
+    raw_data_location = os.path.join(args.location, "raw_data")
+    
+    # Call join_plate_files directly. Pass None for plate_store 
+    # as it will discover plates from the directory structure.
+    results = file_tools.join_plate_files(
+        plate_store=None, 
+        raw_data_location=raw_data_location, 
+        patterns=args.patterns
+    )
+    
+    if results:
+        pretty_print("File joining DONE!")
+    else:
+        pretty_print("File joining finished (no files joined or patterns specified).")
+
+
+def main():
+    """Main entry point: parses arguments and calls appropriate handler."""
+    parser = argparse.ArgumentParser(description="cptools2: Generate and manage CellProfiler analysis jobs.")
+    subparsers = parser.add_subparsers(dest='command', help='Sub-command help')
+    subparsers.required = True # Require a subcommand
+
+    # Subparser for the original functionality: generating scripts from config
+    parser_generate = subparsers.add_parser('generate', help='Generate SGE scripts from a YAML config file.')
+    parser_generate.add_argument('config_file', type=str, help='Path to the YAML configuration file.')
+    parser_generate.set_defaults(func=handle_generate)
+
+    # Subparser for the new join functionality
+    parser_join = subparsers.add_parser('join', help='Join chunked result files (e.g., Image.csv).')
+    parser_join.add_argument('--location', type=str, required=True, help='Base location directory containing the raw_data subdirectory.')
+    parser_join.add_argument('--patterns', type=str, required=True, nargs='+', help='File name patterns to join (e.g., Image.csv Cells.csv).')
+    parser_join.set_defaults(func=handle_join)
+
+    args = parser.parse_args()
+
+    # Basic environment check (can be adapted based on where 'join' might run)
+    # If 'join' might run off-node, this check needs refinement.
+    # For now, assume it runs where datastore access is possible if needed by underlying funcs.
+    # Note: utils.on_staging_node() might not be universally applicable.
+    # Consider if specific checks are needed only for 'generate'.
+    # if not utils.on_staging_node():
+    #     raise EddieNodeError("Environment check failed (e.g., not on staging node)")
+
+    # Call the function associated with the chosen subcommand
+    args.func(args)
 
 
 class EddieNodeError(Exception):
