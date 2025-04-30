@@ -8,6 +8,7 @@ import os
 import textwrap
 from datetime import datetime
 import yaml
+import base64
 from scissorhands import script_generator
 from cptools2 import utils
 from cptools2 import colours
@@ -88,13 +89,15 @@ def load_module_text():
     )
 
 
-def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
+def make_qsub_scripts(config, commands_location, commands_count_dict, logfile_location):
     """
     Create and save qsub submission scripts in the same location as the
     commands.
 
     Parameters:
     -----------
+    config: object
+        Configuration object from parse_yaml.parse_config_file.
     commands_location: string
         path to directory that contains staging, cp_commands, and destaging
         command files.
@@ -106,16 +109,15 @@ def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
         where to store the log files. By default this will store them
         in a directory alongside the results.
 
-
     Returns:
-    ---------
+    --------
     Nothing, writes files to `commands_location`
     """
     cmd_path = make_command_paths(commands_location)
     time_now = datetime.now().replace(microsecond=0)
     time_now = str(time_now).replace(" ", "-")
     # append random hex to job names - this allows you to run multiple jobs
-    # without the -hold_jid flags fron clashing
+    # without the -hold_jid flags from clashing
     job_hex = script_generator.generate_random_hex()
     n_tasks = commands_count_dict["cp_commands"]
     # FIXME: using AnalysisScript class for everything, due to the 
@@ -130,8 +132,10 @@ def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
     # limit staging node requests
     stage_script += "#$ -p -500\n"
     stage_script += "#$ -tc 20\n"
-    stage_script.bodge_array_loop(phase="staging",
-                                  input_file=cmd_path["staging"])
+    
+    # Use the base64-safe method for staging commands
+    stage_script.base64_safe_array_loop(phase="staging",
+                                        input_file=cmd_path["staging"])
     stage_loc = os.path.join(commands_location,
                              "{}_staging_script.sh".format(time_now))
     stage_script.save(stage_loc)
@@ -158,15 +162,24 @@ def make_qsub_scripts(commands_location, commands_count_dict, logfile_location):
         tasks=commands_count_dict["destaging"],
         output=os.path.join(logfile_location, "destaging")
     )
-    destaging_script.bodge_array_loop(phase="destaging",
-                                      input_file=cmd_path["destaging"])
+    # Use the base64-safe method for destaging commands
+    destaging_script.base64_safe_array_loop(phase="destaging",
+                                          input_file=cmd_path["destaging"])
     destage_loc = os.path.join(commands_location,
                                "{}_destaging_script.sh".format(time_now))
     destaging_script.save(destage_loc)
+
+    # Generate join script if patterns are specified in config
+    join_script_loc = make_join_files_script(config=config,
+                                             commands_location=commands_location,
+                                             logfile_location=logfile_location,
+                                             job_hex=job_hex,
+                                             time_now=time_now)
+
     # create script to submit staging, analysis and destaging scripts
-    submit_script = make_submit_script(commands_location, time_now)
-    pretty_print("saving master submission script at {}".format(colours.yellow(submit_script)))
-    utils.make_executable(submit_script)
+    submit_script_path = make_submit_script(commands_location, time_now, join_script_loc)
+    pretty_print("saving master submission script at {}".format(colours.yellow(submit_script_path)))
+    utils.make_executable(submit_script_path)
 
 
 def make_logfile_text(logfile_location, job_file, n_tasks):
@@ -188,7 +201,7 @@ def make_logfile_text(logfile_location, job_file, n_tasks):
     return textwrap.dedent(text)
 
 
-def make_submit_script(commands_location, job_date):
+def make_submit_script(commands_location, job_date, join_script_loc=None):
     """
     Create a shell script which will submit the staging, analysis and
     destaging scripts.
@@ -199,6 +212,8 @@ def make_submit_script(commands_location, job_date):
         path to where the commands are stored
     job_date: string
         date for the submission scripts
+    join_script_loc: string or None
+        path to the join script, or None if no join script is to be submitted
 
     Returns:
     --------
@@ -228,6 +243,12 @@ def make_submit_script(commands_location, job_date):
             """.format(staging_script=script_dict["staging"],
                        analysis_script=script_dict["analysis"],
                        destaging_script=script_dict["destaging"])
+
+    # Add join script submission if it was created
+    if join_script_loc:
+        # Append the qsub command for the join script
+        output += "qsub {}".format(join_script_loc)
+
     save_location = "{}/{}_SUBMIT_JOBS.sh".format(commands_location, job_date)
     # save this shell script and return it's path
     with open(save_location, "w") as f:
@@ -235,33 +256,114 @@ def make_submit_script(commands_location, job_date):
     return save_location
 
 
+def make_join_files_script(config, commands_location, logfile_location, job_hex, time_now):
+    """
+    Create a qsub submission script for joining result files based on patterns.
+
+    Parameters:
+    -----------
+    config: object
+        Configuration object created by parse_yaml.parse_config_file.
+        Expected to have 'join_files_patterns' and 'create_command_args["location"]'.
+    commands_location: string
+        Path to directory where commands and scripts are stored.
+    logfile_location: string
+        Path to directory where log files should be stored.
+    job_hex: string
+        Random hex string to make job names unique.
+    time_now: string
+        Timestamp string for script naming.
+
+    Returns:
+    --------
+    string or None
+        Path to the generated join script, or None if no patterns were specified.
+    """
+    # Check if join_files_patterns exists on the config object and has content
+    if not hasattr(config, 'join_files_patterns') or not config.join_files_patterns:
+        pretty_print("No file joining patterns specified or attribute missing, skipping join script generation.")
+        return None
+
+    patterns = config.join_files_patterns
+    # Ensure create_command_args and location exist before accessing
+    if not hasattr(config, 'create_command_args') or "location" not in config.create_command_args:
+        pretty_print("Error: 'location' not found in config.create_command_args. Cannot generate join script.", colour='red')
+        return None
+    location = config.create_command_args["location"]
+
+    patterns_str = ", ".join([colours.yellow(p) for p in patterns])
+    pretty_print(f"Generating join script for patterns: {patterns_str}")
+
+    # Construct the command to run the join operation
+    # Assuming a CLI like 'cptools2 join ...' exists. Adjust if needed.
+    patterns_arg = " ".join([f'--patterns "{p}"' for p in patterns])
+    join_command = f'cptools2 join --location "{location}" {patterns_arg}'
+
+    join_script = script_generator.Script(
+        name=f"join_{job_hex}",
+        memory="2G",  # Adjust memory as needed
+        hold_jid_ad=f"destaging_{job_hex}",
+        tasks=1,
+        output=os.path.join(logfile_location, "join")
+    )
+
+    # Add necessary environment setup (adjust if different modules are needed)
+    join_script += load_module_text()
+    join_script += "\\n" # Add a newline for clarity
+
+    # Add the join command
+    join_script += join_command + "\\n"
+
+    # Add logging similar to analysis script
+    # Customize log message if needed
+    join_script += textwrap.dedent(f"""
+    # get the exit code from the join job
+    RETURN_VAL=$?
+
+    if [[ $RETURN_VAL == 0 ]]; then
+        RETURN_STATUS="Finished"
+    else
+        RETURN_STATUS="Failed with error code: $RETURN_VAL"
+    fi
+
+    LOG_FILE_LOC={logfile_location}/join_{job_hex}.log
+    echo "`date +"%Y-%m-%d %H:%M"`  "$JOB_ID"  "$SGE_TASK_ID"  "$RETURN_STATUS"" >> "$LOG_FILE_LOC"
+    """)
+
+    join_loc = os.path.join(commands_location, f"{time_now}_join_script.sh")
+    join_script.save(join_loc)
+    pretty_print(f"Saving join script at {colours.yellow(join_loc)}")
+    utils.make_executable(join_loc) # Make it executable
+
+    return join_loc
+
+
 class BodgeScript(script_generator.AnalysisScript):
     """
-    Whilst trying to fix rsync issues with filepaths containing spaces,
-    the rsync commands stopped working when called from `$SEED`, though
-    will work if saved as a single command in a shell script, and then calling
-    bash on that script.
-
-    So this class inherits scissorhands.script_generator.AnalsisScript, but
-    adds an extra method which should be used instead of .loop_through_file().
+    This class provides methods to handle rsync commands with filepaths containing spaces
+    or other special characters when running within Grid Engine array jobs.
+    
+    It inherits from scissorhands.script_generator.AnalysisScript and adds
+    methods that properly handle special characters in command execution.
     """
 
     def __init__(self, *args, **kwargs):
         script_generator.AnalysisScript.__init__(self, *args, **kwargs)
 
-    def bodge_array_loop(self, phase, input_file):
+    def base64_safe_array_loop(self, phase, input_file):
         """
-        As a temporary fix (hopefully), this method can work instead of
-        scissorhands.script_generator.AnalysisScript.loop_through_file()
-
+        Uses base64 encoding/decoding to preserve all special characters in commands.
+        
+        This method assumes the commands in input_file have been base64 encoded.
+        See commands.py's write_commands() function for the encoding step.
+        
         Parameters:
         -----------
         phase: string
             prefix of the hidden commands file, e.g "staging" or "destaging"
         input_file: string
-            path to a file. This file should contain multiple lines of commands.
-            Each line will be run separately in an array job.
-
+            path to a file containing base64-encoded commands
+        
         Returns:
         ---------
         nothing, adds text to template
@@ -269,28 +371,15 @@ class BodgeScript(script_generator.AnalysisScript):
         text = textwrap.dedent(
             """
             SEEDFILE="{input_file}"
-            SEED=$(awk "NR==$SGE_TASK_ID" "$SEEDFILE")
-            # create shell script from single command, run, then delete
-            echo "$SEED" > .{phase}_"$JOB_ID"_"$SGE_TASK_ID".sh
-            bash .{phase}_"$JOB_ID"_"$SGE_TASK_ID".sh
-            rm .{phase}_"$JOB_ID"_"$SGE_TASK_ID".sh
+            ENCODED_SEED=$(awk "NR==$SGE_TASK_ID" "$SEEDFILE")
+            # Decode the base64 command
+            SEED=$(echo "$ENCODED_SEED" | base64 --decode)
+            # Execute the decoded command directly
+            eval "$SEED"
+            # Log the command for debugging
+            echo "[{phase}] Executed command for task $SGE_TASK_ID" >&2
             """.format(phase=phase, input_file=input_file)
         )
         self.template += text
-
-## Make a join files submission script
-### Using the join files command, we can join multiple files together
-### This is useful for when we have multiple plates in a single experiment
-### and we want to run the same analysis on each plate. 
-
-    # Perform file joining if patterns are specified
-    if config.join_files_patterns:
-        patterns_str = ", ".join([colours.yellow(p) for p in config.join_files_patterns])
-        pretty_print("Joining files for patterns: {}".format(patterns_str))
-        jobber.join_results(location=config.create_command_args["location"],
-                            patterns=config.join_files_patterns)
-    else:
-        pretty_print("No file joining will be performed (not specified in config)")
-    
 
 

@@ -1,4 +1,5 @@
 import os
+import base64
 
 from cptools2 import utils
 
@@ -99,6 +100,34 @@ def _write_single(commands_location, commands, final_name):
             outfile.write(line + "\n")
 
 
+def _write_single_base64(commands_location, commands, final_name):
+    """
+    write commands as base64-encoded strings
+    
+    This helps preserve special characters (like spaces in file paths) that
+    might otherwise be misinterpreted when executed in Grid Engine array jobs.
+    
+    Parameters:
+    -----------
+    commands_location: string
+        directory where to save the commands
+    commands: list
+        list of commands to write to disk, each will be base64 encoded
+    final_name: string
+        filename, what to call the commands file
+        
+    Returns:
+    --------
+    nothing, writes base64-encoded commands to disk
+    """
+    cmnd_loc = os.path.join(commands_location, final_name + ".txt")
+    with open(cmnd_loc, "w") as outfile:
+        for line in commands:
+            # Encode each command to bypass shell interpretation issues
+            encoded_line = base64.b64encode(line.encode()).decode()
+            outfile.write(encoded_line + "\n")
+
+
 def write_commands(commands_location, rsync_commands, cp_commands, rm_commands):
     """
     writes all commands, for stage, cp and destage commands
@@ -108,11 +137,11 @@ def write_commands(commands_location, rsync_commands, cp_commands, rm_commands):
     commands_location:
         directory where to store the commands
     rsync_commands: list
-        list of rsync commands
+        list of rsync commands (will be base64 encoded)
     cp_commands: list
-        list of cellprofiler commands
+        list of cellprofiler commands (will NOT be base64 encoded)
     rm_commands: list
-        list of destating/rm commands
+        list of destating/rm commands (will be base64 encoded)
 
     Returns:
     --------
@@ -121,7 +150,14 @@ def write_commands(commands_location, rsync_commands, cp_commands, rm_commands):
     commands = [rsync_commands, cp_commands, rm_commands]
     names = ["staging", "cp_commands", "destaging"]
     for command, name in zip(commands, names):
-        _write_single(commands_location, command, name)
+        # Always use base64 encoding for rsync (staging) and rm (destaging) commands
+        # which might contain file paths with special characters.
+        # CellProfiler commands (cp_commands) are not encoded.
+        if name == "staging" or name == "destaging":
+            _write_single_base64(commands_location, command, name)
+        else:
+            # For cp_commands, write directly without encoding
+            _write_single(commands_location, command, name)
 
 
 def make_rsync_cmnd(plate_loc, filelist_name, img_location):
@@ -131,16 +167,17 @@ def make_rsync_cmnd(plate_loc, filelist_name, img_location):
     file-list so it forms a complete path.
     Destination will include the entire path located in the file-list, therefore
     truncation is recommended,
-    Desination can also begin with a directory that has not yet been created,
+    Destination can also begin with a directory that has not yet been created,
     the directory will be created by the rsync command.
-    Escape characters will be added to spaces in filenames.
+    
+    This function properly quotes paths to handle spaces in filenames safely.
 
     Parameters:
     -----------
     plate_loc: string
         source destination of the plates in the ImageXpress directory
     filelist_name: string
-        path to the filelist, this will be used with the --file-from flag
+        path to the filelist, this will be used with the --files-from flag
     img_location: string
         path to the directory in which to copy the file to in the rsync command
 
@@ -149,8 +186,9 @@ def make_rsync_cmnd(plate_loc, filelist_name, img_location):
     string: an rsync command
     """
     # NOTE: setting permissions with o+ means others have read/write/execution
-    #       access, not very secture but it's a temporary file which is going
+    #       access, not very secure but it's a temporary file which is going
     #       to be deleted afterwards anyway.
+    # Use double quotes to properly handle paths with spaces
     return "rsync -s --perms --chmod=a+rwx --files-from=\"{filelist}\" \"{source}\" \"{destination}\""\
         .format(filelist=filelist_name,
                 source=plate_loc,
