@@ -299,7 +299,7 @@ def make_join_files_script(config, commands_location, logfile_location, job_hex,
     patterns_arg = " ".join([f'--patterns "{p}"' for p in patterns])
     join_command = f'cptools2 join --location "{location}" {patterns_arg}'
 
-    join_script = script_generator.Script(
+    join_script = script_generator.SGEScript(
         name=f"join_{job_hex}",
         memory="2G",  # Adjust memory as needed
         hold_jid_ad=f"destaging_{job_hex}",
