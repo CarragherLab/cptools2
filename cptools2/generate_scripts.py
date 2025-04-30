@@ -83,7 +83,7 @@ def load_module_text():
     """returns load module commands"""
     return textwrap.dedent(
         """
-        module load anaconda/2025.02
+        module load anaconda/2024.02
         source activate cellprofiler
         """
     )
