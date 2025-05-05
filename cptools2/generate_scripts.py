@@ -79,14 +79,23 @@ def lines_in_commands(commands_location):
     return _lines_in_commands(**command_paths)
 
 
-def load_module_text():
-    """returns load module commands"""
-    return textwrap.dedent(
+def load_module_text(is_cellprofiler=False):
+    """returns load module commands, optionally activating cellprofiler env"""
+    script_text = textwrap.dedent(
         """
-        module load anaconda/2025.02
-        source activate cellprofiler
+        # Initialise Environment Modules
+        . /etc/profile.d/modules.sh
+
+        module load anaconda/2024.02
         """
     )
+    if is_cellprofiler:
+        script_text += textwrap.dedent(
+            """
+            source activate cellprofiler
+            """
+        )
+    return script_text
 
 
 def make_qsub_scripts(config, commands_location, commands_count_dict, logfile_location):
@@ -122,7 +131,7 @@ def make_qsub_scripts(config, commands_location, commands_count_dict, logfile_lo
     n_tasks = commands_count_dict["cp_commands"]
     # FIXME: using AnalysisScript class for everything, due to the 
     #        {Staging, Destaging}Script class not having loop_through_file
-    stage_script = BodgeScript(
+    stage_script = SafePathScript(
         name="staging_{}".format(job_hex),
         memory="1G",
         output=os.path.join(logfile_location, "staging"),
@@ -147,7 +156,7 @@ def make_qsub_scripts(config, commands_location, commands_count_dict, logfile_lo
         memory="12G",
         output=os.path.join(logfile_location, "analysis")
     )
-    analysis_script += load_module_text()
+    analysis_script += load_module_text(is_cellprofiler=True)
     analysis_script.loop_through_file(cmd_path["cp_commands"])
     analysis_loc = os.path.join(commands_location,
                                 "{}_analysis_script.sh".format(time_now))
@@ -155,7 +164,7 @@ def make_qsub_scripts(config, commands_location, commands_count_dict, logfile_lo
                                          job_file=job_hex,
                                          n_tasks=n_tasks)
     analysis_script.save(analysis_loc)
-    destaging_script = BodgeScript(
+    destaging_script = SafePathScript(
         name="destaging_{}".format(job_hex),
         memory="1G",
         hold_jid_ad="analysis_{}".format(job_hex),
@@ -302,13 +311,13 @@ def make_join_files_script(config, commands_location, logfile_location, job_hex,
     join_script = script_generator.SGEScript(
         name=f"join_{job_hex}",
         memory="2G",  # Adjust memory as needed
-        hold_jid=f"destaging_{job_hex}",
+        hold_jid_ad=f"destaging_{job_hex}",
         tasks=1,
         output=os.path.join(logfile_location, "join")
     )
 
     # Add necessary environment setup (adjust if different modules are needed)
-    join_script += load_module_text()
+    join_script += load_module_text(is_cellprofiler=False) # Only load base module
     join_script += "\\n" # Add a newline for clarity
 
     # Add the join command
@@ -338,7 +347,7 @@ def make_join_files_script(config, commands_location, logfile_location, job_hex,
     return join_loc
 
 
-class BodgeScript(script_generator.AnalysisScript):
+class SafePathScript(script_generator.AnalysisScript):
     """
     This class provides methods to handle rsync commands with filepaths containing spaces
     or other special characters when running within Grid Engine array jobs.
