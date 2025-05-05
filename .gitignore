@@ -1,3 +1,4 @@
+# Ignore python cache and build artifacts
 *__pycache__*
 *.pyc
 *.swp
@@ -7,3 +8,9 @@ build/
 *.egg*
 .directory
 .coverage
+
+# Ignore specific files
+README_BASE64_UPDATE.md
+
+# Ignore directories related to specific projects/features
+yaml_generator/
