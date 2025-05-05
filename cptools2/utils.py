@@ -113,17 +113,48 @@ def count_lines_in_file(input_file):
 
 def sanitise_filename(filename):
     """
-    add escape characters to spaces in filenames
+    Properly handle special characters in filenames, particularly spaces
+    
+    This function adds backslash escapes to spaces in filenames,
+    which is needed for shell command compatibility. Note that this is often
+    still insufficient for complex nested command execution in SGE array jobs.
+    Consider using the base64 encoding approach for complete reliability.
 
     Parameters:
     ------------
     filename: string
+        Path or filename that may contain spaces or special characters
 
     Returns:
     --------
     string
+        Filename with spaces properly escaped
     """
+    # Escape spaces with backslash
     return filename.replace(" ", "\ ")
+
+
+def sanitise_paths_in_dataframe(dataframe):
+    """
+    Apply sanitise_filename to all paths in a dataframe
+    
+    This is useful for LoadData dataframes that contain file paths
+    which might contain spaces or special characters.
+    
+    Parameters:
+    ------------
+    dataframe: pandas.DataFrame
+        DataFrame containing PathName columns to sanitize
+    
+    Returns:
+    --------
+    pandas.DataFrame
+        DataFrame with sanitized paths
+    """
+    path_cols = [col for col in dataframe.columns if col.startswith("PathName")]
+    for col in path_cols:
+        dataframe[col] = dataframe[col].map(sanitise_filename)
+    return dataframe
 
 
 def on_staging_node():

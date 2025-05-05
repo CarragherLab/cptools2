@@ -22,6 +22,7 @@ chunk : 46
 pipeline : /path/to/cellprofiler/pipeline.cppipe
 location : /path/to/scratch/space
 commands location : /home/user
+new_ix: true
 ```
 
 We could run this as `cptools2 awesome_experiment-1.yml`
@@ -103,6 +104,23 @@ commands location : /home/user
 new_ix: true
 ```
 
+## Joining Result Files
+
+You can automatically join chunked output files (e.g., `Image.csv`, `Cells.csv`) 
+for each plate after the analysis finishes using the `join_files` option. 
+Provide a single filename or a list of filenames to join.
+
+```yaml
+experiment : path/to/imageXpress/experiment
+chunk : 96
+pipeline : /path/to/cellprofiler/pipeline.cppipe
+location : /path/to/scratch/space
+commands location : /home/user
+# Join specific files after analysis
+join_files: ["Image.csv", "Cells.csv", "Nuclei.csv"] 
+```
+
+If this option is omitted, no files will be joined automatically.
 
 --------------------------
 

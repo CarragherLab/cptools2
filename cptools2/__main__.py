@@ -72,6 +72,18 @@ def handle_generate(args):
     pretty_print(f"Parsing config file {colours.yellow(config_file)}")
     config = parse_yaml.parse_config_file(config_file)
     
+    # --- Determine and Create Required Directories ---
+    # Re-open yaml to get base location easily (could also get from config.create_command_args)
+    yaml_dict = parse_yaml.open_yaml(config_file) 
+    commands_location = config.create_command_args["commands_location"]
+    logfile_location = os.path.join(yaml_dict["location"], "logfiles")
+
+    pretty_print(f"Ensuring commands directory exists: {colours.yellow(commands_location)}")
+    os.makedirs(commands_location, exist_ok=True)
+    pretty_print(f"Ensuring logfile directory exists: {colours.yellow(logfile_location)}")
+    os.makedirs(logfile_location, exist_ok=True)
+    # ------------------------------------------------
+
     # configure_job now returns the jobber object, but we don't need it here directly
     configure_job(config) 
     
