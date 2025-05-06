@@ -153,7 +153,7 @@ def make_qsub_scripts(config, commands_location, commands_count_dict, logfile_lo
         tasks=n_tasks,
         hold_jid_ad="staging_{}".format(job_hex),
         pe="sharedmem 1",
-        memory="12G",
+        memory="24G",
         output=os.path.join(logfile_location, "analysis")
     )
     analysis_script += load_module_text(is_cellprofiler=True)
@@ -311,7 +311,7 @@ def make_join_files_script(config, commands_location, logfile_location, job_hex,
     join_script = script_generator.SGEScript(
         name=f"join_{job_hex}",
         memory="2G",  # Adjust memory as needed
-        hold_jid_ad=f"destaging_{job_hex}",
+        hold_jid=f"destaging_{job_hex}",
         tasks=1,
         output=os.path.join(logfile_location, "join")
     )
