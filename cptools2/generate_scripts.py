@@ -83,9 +83,6 @@ def load_module_text(is_cellprofiler=False):
     """returns load module commands, optionally activating cellprofiler env"""
     script_text = textwrap.dedent(
         """
-        # Initialise Environment Modules
-        . /etc/profile.d/modules.sh
-
         module load anaconda/2024.02
         """
     )
@@ -311,17 +308,17 @@ def make_join_files_script(config, commands_location, logfile_location, job_hex,
     join_script = script_generator.SGEScript(
         name=f"join_{job_hex}",
         memory="2G",  # Adjust memory as needed
-        hold_jid=f"destaging_{job_hex}",
         tasks=1,
         output=os.path.join(logfile_location, "join")
     )
+    # Manually add the correct directive to wait for all tasks of the destaging array job
+    join_script += f"#$ -hold_jid destaging_{job_hex}\n"
 
     # Add necessary environment setup (adjust if different modules are needed)
     join_script += load_module_text(is_cellprofiler=False) # Only load base module
-    join_script += "\\n" # Add a newline for clarity
 
     # Add the join command
-    join_script += join_command + "\\n"
+    join_script += join_command + "\n"
 
     # Add logging similar to analysis script
     # Customize log message if needed
