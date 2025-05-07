@@ -315,6 +315,7 @@ def make_join_files_script(config, commands_location, logfile_location, job_hex,
     join_script += f"#$ -hold_jid destaging_{job_hex}\n"
 
     # Add necessary environment setup (adjust if different modules are needed)
+    join_script += ". /etc/profile.d/modules.sh\n"  # Ensure module command is available
     join_script += load_module_text(is_cellprofiler=False) # Only load base module
 
     # Add the join command
