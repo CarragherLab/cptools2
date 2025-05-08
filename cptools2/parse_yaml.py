@@ -171,6 +171,10 @@ def create_commands(yaml_dict):
     pipeline_arg = yaml_dict["pipeline"]
     if isinstance(pipeline_arg, list):
         pipeline_arg = pipeline_arg[0]
+    
+    # Expand environment variables like $USER
+    pipeline_arg = os.path.expandvars(pipeline_arg)
+    
     pipeline_arg = os.path.abspath(pipeline_arg)
     if not os.path.isfile(pipeline_arg):
         raise IOError(f"'{pipeline_arg}' pipeline not found")
