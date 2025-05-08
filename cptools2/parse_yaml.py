@@ -183,11 +183,15 @@ def create_commands(yaml_dict):
     location_arg = yaml_dict["location"]
     if isinstance(location_arg, list):
         location_arg = location_arg[0]
+    # Expand environment variables like $USER
+    location_arg = os.path.expandvars(location_arg)
 
     # Process commands location argument
     commands_loc_arg = yaml_dict["commands location"]
     if isinstance(commands_loc_arg, list):
         commands_loc_arg = commands_loc_arg[0]
+    # Expand environment variables like $USER
+    commands_loc_arg = os.path.expandvars(commands_loc_arg)
 
     # Process optional chunk argument (for LoadData size check)
     chunk_arg = None
