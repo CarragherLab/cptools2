@@ -183,7 +183,32 @@ def make_qsub_scripts(config, commands_location, commands_count_dict, logfile_lo
                                              time_now=time_now)
 
     # create script to submit staging, analysis and destaging scripts
-    submit_script_path = make_submit_script(commands_location, time_now, join_script_loc)
+    transfer_script_loc = None
+    if hasattr(config, 'data_destination_path') and config.data_destination_path:
+        # Define the source directory for the transfer script
+        # This assumes joined results are in a subdirectory named 'joined_results' 
+        # under the main 'location' specified in the config.
+        if not hasattr(config, 'create_command_args') or "location" not in config.create_command_args:
+            pretty_print("Error: 'location' not found in config.create_command_args. Cannot determine source for transfer script.", colour='red')
+        else:
+            # Assuming 'location' is the base for results, and joined files are in a subfolder
+            # We need to construct the full path to the *source* of the joined files on Eddie for rsync
+            # The `config.create_command_args["location"]` is the *base* output directory for CP.
+            # We assume the `join_files` operation places its output within this directory, potentially in a specific subdirectory.
+            # For now, let's assume the `join` operation places files directly in `config.create_command_args["location"]`
+            # or that `config.create_command_args["location"]` itself is what needs to be copied after joining.
+            # The user's bash script implies a `joined_results` subdirectory.
+            # Let's use `config.create_command_args["location"]` as the source and users can make it more specific if needed.
+            eddie_source_dir = config.create_command_args["location"] # This is the directory where cellprofiler output and subsequently joined files are expected
+            
+            transfer_script_loc = make_datastore_transfer_script(config=config,
+                                                              commands_location=commands_location,
+                                                              logfile_location=logfile_location,
+                                                              job_hex=job_hex,
+                                                              time_now=time_now,
+                                                              eddie_source_dir=eddie_source_dir)
+
+    submit_script_path = make_submit_script(commands_location, time_now, join_script_loc, transfer_script_loc)
     pretty_print("saving master submission script at {}".format(colours.yellow(submit_script_path)))
     utils.make_executable(submit_script_path)
 
@@ -207,7 +232,7 @@ def make_logfile_text(logfile_location, job_file, n_tasks):
     return textwrap.dedent(text)
 
 
-def make_submit_script(commands_location, job_date, join_script_loc=None):
+def make_submit_script(commands_location, job_date, join_script_loc=None, transfer_script_loc=None):
     """
     Create a shell script which will submit the staging, analysis and
     destaging scripts.
@@ -220,6 +245,8 @@ def make_submit_script(commands_location, job_date, join_script_loc=None):
         date for the submission scripts
     join_script_loc: string or None
         path to the join script, or None if no join script is to be submitted
+    transfer_script_loc: string or None
+        path to the transfer script, or None if no transfer script is to be submitted
 
     Returns:
     --------
@@ -252,8 +279,11 @@ def make_submit_script(commands_location, job_date, join_script_loc=None):
 
     # Add join script submission if it was created
     if join_script_loc:
-        # Append the qsub command for the join script
-        output += "qsub {}".format(join_script_loc)
+        output += "qsub {}\n".format(join_script_loc)
+    
+    # Add transfer script submission if it was created
+    if transfer_script_loc:
+        output += "qsub {}\n".format(transfer_script_loc)
 
     save_location = "{}/{}_SUBMIT_JOBS.sh".format(commands_location, job_date)
     # save this shell script and return it's path
@@ -346,6 +376,156 @@ def make_join_files_script(config, commands_location, logfile_location, job_hex,
     utils.make_executable(join_loc) # Make it executable
 
     return join_loc
+
+
+def make_datastore_transfer_script(config, commands_location, logfile_location, job_hex, time_now, eddie_source_dir):
+    """
+    Create a script to transfer joined data to DataStore.
+    This script will run on a staging node after the join operation completes.
+    
+    Parameters:
+    -----------
+    config: object
+        Configuration object containing DataStore paths
+    commands_location: string
+        Path where scripts are being saved
+    logfile_location: string
+        Path where logs should be saved
+    job_hex: string
+        Unique identifier for this job set
+    time_now: string
+        Timestamp for naming files
+    eddie_source_dir: string
+        Source directory on Eddie for the rsync operation.
+    
+    Returns:
+    --------
+    string
+        Path to the created transfer script, or None if not created.
+    """
+    datastore_dest = config.data_destination_path
+    if not datastore_dest:
+        pretty_print("No datastore_destination specified in config, skipping transfer script generation.")
+        return None
+
+    pretty_print(f"Generating datastore transfer script from {colours.yellow(eddie_source_dir)} to {colours.yellow(datastore_dest)}")
+
+    transfer_script = script_generator.SGEScript(
+        name=f"transfer_{job_hex}",
+        memory="1G", # As per user's bash script example
+        tasks=1,
+        output=os.path.join(logfile_location, "transfer") # Log for the transfer job itself
+    )
+    
+    # Set queue and dependency
+    transfer_script += "#$ -q staging\n" # Run on staging node
+    transfer_script += f"#$ -hold_jid join_{job_hex}\n" # Wait for the join job to complete
+    
+    # Define paths within the script
+    transfer_script += f"EDDIE_SOURCE_DIR=\"{eddie_source_dir}\"\n"
+    transfer_script += f"DATASTORE_DEST_DIR=\"{datastore_dest}\"\n"
+    
+    # Add logging setup (within the script)
+    # Ensure logfile_location is accessible from the staging node or use a path on scratch
+    # For simplicity, using the provided logfile_location, assuming it's on scratch.
+    transfer_script += f"LOG_PARENT_DIR=\"{logfile_location}\"\n" # This is where the transfer.oXXX and transfer.eXXX will go
+    transfer_script += "mkdir -p \"$LOG_PARENT_DIR\"\n" # Ensure main log dir exists for .o and .e files
+    # Specific log file for rsync output etc.
+    transfer_script += f"RSYNC_LOG_FILE=\"$LOG_PARENT_DIR/transfer_to_datastore_{job_hex}_${{JOB_ID}}.log\"\n"
+    transfer_script += "echo \"Starting data transfer at $(date)\" > \"$RSYNC_LOG_FILE\"\n"
+    transfer_script += "echo \"From: $EDDIE_SOURCE_DIR\" >> \"$RSYNC_LOG_FILE\"\n"
+    transfer_script += "echo \"To: $DATASTORE_DEST_DIR\" >> \"$RSYNC_LOG_FILE\"\n"
+    
+    # Create destination directory (rsync can also do this with -R, but explicit mkdir -p is safer)
+    transfer_script += "mkdir -p \"$DATASTORE_DEST_DIR\"\n"
+    
+    # Transfer data using rsync
+    transfer_script += "rsync -av --stats \"$EDDIE_SOURCE_DIR/\" \"$DATASTORE_DEST_DIR/\" >> \"$RSYNC_LOG_FILE\" 2>&1\n"
+    
+    # Check result and log completion status
+    transfer_script += textwrap.dedent(""" \
+    # Check transfer result
+    RETURN_VAL=$?
+    if [[ $RETURN_VAL == 0 ]]; then
+        RETURN_STATUS="Transfer completed successfully"
+    else
+        RETURN_STATUS="Transfer failed with error code: $RETURN_VAL"
+    fi
+    
+    # Log completion
+    echo "Transfer finished at $(date): $RETURN_STATUS" >> "$RSYNC_LOG_FILE"
+    """)
+    
+    # Optional email notification - checking for attribute directly on config
+    if hasattr(config, 'notification_email') and config.notification_email:
+        email_address = config.notification_email
+        email_content_file = f"$LOG_PARENT_DIR/email_content_{job_hex}_${{JOB_ID}}.txt"
+
+        # Script to generate and send email
+        email_script = textwrap.dedent(f"""
+
+# Determine email content based on transfer status
+if [[ \"$RETURN_STATUS\" == \"Transfer completed successfully\" ]]; then
+    FILE_COUNT=$(find \"$DATASTORE_DEST_DIR\" -type f | wc -l)
+    TOTAL_SIZE=$(du -sh \"$DATASTORE_DEST_DIR\" | cut -f1)
+    EMAIL_SUBJECT=\"cptools2 Analysis Completed - Job ${{JOB_ID}} - Success\"
+    cat > \"{email_content_file}\" << EOF
+Your cptools2 analysis script is complete, you can find your data saved in your project directory ${{DATASTORE_DEST_DIR}}.
+
+Successfully transferred ${{FILE_COUNT}} files with a total size of ${{TOTAL_SIZE}}.
+
+Thank you for using cptools2.
+
+If you have any feedback or noticed any bugs then please let me know.
+
+Best Wishes,
+
+Mungo Harvey (he/him)
+Postdoctoral Research Assistant
+
+E: mharvey2@ed.ac.uk
+
+UK Dementia Research Institute at The University of Edinburgh
+Centre for Clinical Brain Sciences | Selveraj Lab & Chandran Lab, Chancellor's Building
+Institute of Genetics and Cancer  | Carragher Lab, Edinburgh Cancer Research
+EOF
+else
+    EMAIL_SUBJECT=\"cptools2 Analysis Completed - Job ${{JOB_ID}} - Transfer Failed\"
+    cat > \"{email_content_file}\" << EOF
+Your cptools2 analysis script completed, but the data transfer from ${{EDDIE_SOURCE_DIR}} to ${{DATASTORE_DEST_DIR}} failed.
+
+Status: ${{RETURN_STATUS}}
+
+Please check the logs in {logfile_location} for more details (specifically the transfer log: {os.path.join(logfile_location, f'transfer_to_datastore_{job_hex}_${{JOB_ID}}.log')}).
+
+Best Wishes,
+
+Mungo Harvey (he/him)
+Postdoctoral Research Assistant
+
+E: mharvey2@ed.ac.uk
+
+UK Dementia Research Institute at The University of Edinburgh
+Centre for Clinical Brain Sciences | Selveraj Lab & Chandran Lab, Chancellor's Building
+Institute of Genetics and Cancer  | Carragher Lab, Edinburgh Cancer Research
+EOF
+fi
+
+# Send the email
+mail -s \"$EMAIL_SUBJECT\" \"{email_address}\" < \"{email_content_file}\"
+
+# Clean up the email content file
+rm -f \"{email_content_file}\"        
+""")
+        transfer_script += email_script
+    
+    # Save the script
+    transfer_loc = os.path.join(commands_location, f"{time_now}_transfer_script.sh")
+    transfer_script.save(transfer_loc)
+    pretty_print(f"Saving datastore transfer script at {colours.yellow(transfer_loc)}")
+    utils.make_executable(transfer_loc)
+    
+    return transfer_loc
 
 
 class SafePathScript(script_generator.AnalysisScript):

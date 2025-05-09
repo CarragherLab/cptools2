@@ -237,7 +237,8 @@ def check_yaml_args(yaml_dict):
                   "remove plate",
                   "add plate",
                   "new_ix",
-                  "join_files"]  # Removed use_base64 from valid arguments
+                  "join_files",
+                  "data_destination"]
     bad_arguments = []
     for argument in yaml_dict.keys():
         if argument not in valid_args:
@@ -266,6 +267,7 @@ def parse_config_file(config_file):
         config.create_command_args : dict
         config.is_new_ix           : bool
         config.join_files_patterns : list or None
+        config.data_destination_path: str or None
     """
     yaml_dict = open_yaml(config_file)
     # check the arguments in the yaml file are recognised
@@ -273,7 +275,7 @@ def parse_config_file(config_file):
     # create namedtuple to store the configuration dictionaries
     names = ["experiment_args", "chunk_args", "add_plate_args",
              "remove_plate_args", "create_command_args", "is_new_ix",
-             "join_files_patterns"]
+             "join_files_patterns", "data_destination_path"]
     config = namedtuple("config", names)
     return config(experiment_args=experiment(yaml_dict),
                   chunk_args=chunk(yaml_dict),
@@ -281,7 +283,8 @@ def parse_config_file(config_file):
                   add_plate_args=add_plate(yaml_dict),
                   create_command_args=create_commands(yaml_dict),
                   is_new_ix=is_new_ix(yaml_dict),
-                  join_files_patterns=join_files(yaml_dict))
+                  join_files_patterns=join_files(yaml_dict),
+                  data_destination_path=data_destination(yaml_dict))
 
 
 def join_files(yaml_dict):
@@ -306,4 +309,32 @@ def join_files(yaml_dict):
         elif isinstance(join_files_arg, list):
             return join_files_arg
     # Not specified
+    return None
+
+
+def data_destination(yaml_dict):
+    """
+    Get the destination path for transferring joined data.
+
+    This is optional, so if not there then return None.
+
+    Parameters:
+    -----------
+    yaml_dict: dict
+        Dictionary version of the config yaml file
+
+    Returns:
+    --------
+    str or None
+        The data destination path, or None if not specified.
+    """
+    if "data_destination" in yaml_dict:
+        dest_arg = yaml_dict["data_destination"]
+        if isinstance(dest_arg, list):
+            # Take the first element if it's a list
+            return os.path.expandvars(str(dest_arg[0]))
+        elif isinstance(dest_arg, str):
+            return os.path.expandvars(dest_arg)
+        else:
+            raise ValueError(f"Invalid type for 'data_destination': {type(dest_arg)}. Must be a string or list of strings.")
     return None
