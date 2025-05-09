@@ -318,6 +318,9 @@ def make_join_files_script(config, commands_location, logfile_location, job_hex,
     join_script += ". /etc/profile.d/modules.sh\n"  # Ensure module command is available
     join_script += load_module_text(is_cellprofiler=False) # Only load base module
 
+    # Add ~/.local/bin to PATH
+    join_script += "export PATH=\"$HOME/.local/bin:$PATH\"\n"
+
     # Add the join command
     join_script += join_command + "\n"
 
