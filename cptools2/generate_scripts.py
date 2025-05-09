@@ -408,7 +408,11 @@ def make_datastore_transfer_script(config, commands_location, logfile_location, 
         pretty_print("No datastore_destination specified in config, skipping transfer script generation.")
         return None
 
-    pretty_print(f"Generating datastore transfer script from {colours.yellow(eddie_source_dir)} to {colours.yellow(datastore_dest)}")
+    # Construct the specific source directory for rsync
+    # eddie_source_dir is config.create_command_args["location"]
+    specific_eddie_source_for_transfer = os.path.join(eddie_source_dir, "raw_data", "joined_files").replace("\\", "/")
+
+    pretty_print(f"Generating datastore transfer script from {colours.yellow(specific_eddie_source_for_transfer)} to {colours.yellow(datastore_dest)}")
 
     transfer_script = script_generator.SGEScript(
         name=f"transfer_{job_hex}",
@@ -422,7 +426,7 @@ def make_datastore_transfer_script(config, commands_location, logfile_location, 
     transfer_script += f"#$ -hold_jid join_{job_hex}\n" # Wait for the join job to complete
     
     # Define paths within the script
-    transfer_script += f"EDDIE_SOURCE_DIR=\"{eddie_source_dir}\"\n"
+    transfer_script += f"EDDIE_SOURCE_DIR=\"{specific_eddie_source_for_transfer}\"\n" # Use the more specific source path
     transfer_script += f"DATASTORE_DEST_DIR=\"{datastore_dest}\"\n"
     
     # Add logging setup (within the script)
@@ -472,7 +476,7 @@ if [[ \"$RETURN_STATUS\" == \"Transfer completed successfully\" ]]; then
     cat > \"{email_content_file}\" << EOF
 Your cptools2 analysis script is complete, you can find your data saved in your project directory ${{DATASTORE_DEST_DIR}}.
 
-Successfully transferred ${{FILE_COUNT}} files with a total size of ${{TOTAL_SIZE}}.
+Successfully transferred ${{FILE_COUNT}} files with a total size of ${{TOTAL_SIZE}} from ${{EDDIE_SOURCE_DIR}}.
 
 Thank you for using cptools2.
 
@@ -512,7 +516,7 @@ EOF
 fi
 
 # Send the email
-mail -s \"$EMAIL_SUBJECT\" \"{email_address}\" < \"{email_content_file}\"
+mail -s \"$EMAIL_SUBJECT\" \"$USER@ed.ac.uk\" < \"{email_content_file}\"
 
 # Clean up the email content file
 rm -f \"{email_content_file}\"        
