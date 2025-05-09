@@ -78,11 +78,6 @@ def handle_generate(args):
     commands_location = os.path.expandvars(config.create_command_args["commands_location"])
     logfile_location = os.path.expandvars(os.path.join(yaml_dict["location"], "logfiles"))
 
-    print(f"[DEBUG] Raw yaml_dict['location']: {yaml_dict['location']}")
-    print(f"[DEBUG] Raw config.create_command_args['commands_location']: {config.create_command_args['commands_location']}")
-    print(f"[DEBUG] Expanded commands_location: {commands_location}")
-    print(f"[DEBUG] Expanded logfile_location: {logfile_location}")
-
     pretty_print(f"Ensuring commands directory exists: {colours.yellow(commands_location)}")
     os.makedirs(commands_location, exist_ok=True)
     pretty_print(f"Ensuring logfile directory exists: {colours.yellow(logfile_location)}")
