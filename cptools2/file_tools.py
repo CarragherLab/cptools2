@@ -112,7 +112,9 @@ def join_plate_files(plate_store, raw_data_location, patterns=None):
                 combined_csv = pd.concat([pd.read_csv(f, low_memory=False) for f in matched_files])
                 
                 # Save to output location
-                output_dir = os.path.join(raw_data_location, "joined_files")
+                # Place joined_files adjacent to raw_data_location
+                parent_dir = os.path.dirname(raw_data_location)
+                output_dir = os.path.join(parent_dir, "joined_files")
                 os.makedirs(output_dir, exist_ok=True)
                 output_file = os.path.join(output_dir, f"{plate_name}_{pattern}")
                 

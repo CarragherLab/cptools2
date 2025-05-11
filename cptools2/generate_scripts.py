@@ -410,7 +410,7 @@ def make_datastore_transfer_script(config, commands_location, logfile_location, 
 
     # Construct the specific source directory for rsync
     # eddie_source_dir is config.create_command_args["location"]
-    specific_eddie_source_for_transfer = os.path.join(eddie_source_dir, "raw_data", "joined_files").replace("\\", "/")
+    specific_eddie_source_for_transfer = os.path.join(eddie_source_dir, "joined_files").replace("\\", "/")
 
     pretty_print(f"Generating datastore transfer script from {colours.yellow(specific_eddie_source_for_transfer)} to {colours.yellow(datastore_dest)}")
 
