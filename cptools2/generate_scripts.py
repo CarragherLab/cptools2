@@ -562,7 +562,102 @@ class SafePathScript(script_generator.AnalysisScript):
         ---------
         nothing, adds text to template
         """
-        text = textwrap.dedent(
+        # Start with an empty string for the full script to be added to template
+        full_script_addition = ""
+
+        if phase == "staging":
+            # Define the disk space check logic only for the "staging" phase
+            disk_check_logic = textwrap.dedent(
+                """
+                # --- BEGIN DISK SPACE CHECK for {phase} ---
+                # Define parameters
+                SCRATCH_DIR="/exports/eddie/scratch/$USER"
+                MAX_USAGE=80        # Maximum allowed percentage (80%)
+                WAIT_INTERVAL=600   # Wait interval in seconds (10 minutes)
+                MAX_RETRIES=48      # Maximum number of retries (8 hours total wait time)
+
+                echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Starting space check for $SCRATCH_DIR. Max usage: $MAX_USAGE%."
+
+                # Function to validate integer
+                is_integer() {{
+                  case $1 in
+                    ''|*[!0-9]*) return 1 ;; # Empty string or contains non-digits
+                    *) return 0 ;;            # All digits
+                  esac
+                }}
+
+                # Space check with retry logic
+                RETRY_COUNT=0
+                while true; do
+                  # Get disk usage with error handling
+                  df_output=$(df -P "$SCRATCH_DIR" 2>/dev/null)
+
+                  # Check if df_output is valid
+                  if [ -z "$df_output" ] || [ "$(echo "$df_output" | wc -l)" -lt 2 ]; then
+                    echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') ERROR: Task $SGE_TASK_ID: 'df -P $SCRATCH_DIR' produced unexpected or empty output."
+                    echo "[{phase}] DF output was:"
+                    echo "$df_output"
+
+                    RETRY_COUNT=$((RETRY_COUNT + 1))
+                    if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+                      echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') WARNING: Task $SGE_TASK_ID: Maximum retries ($MAX_RETRIES) reached for df error. Proceeding anyway."
+                      break # Exit loop and proceed despite df errors after max retries
+                    fi
+
+                    echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Retrying df in $WAIT_INTERVAL seconds (attempt $RETRY_COUNT/$MAX_RETRIES)."
+                    sleep "$WAIT_INTERVAL"
+                    continue
+                  fi
+
+                  # Parse percentage and available space
+                  current_usage_percent=$(echo "$df_output" | awk 'NR==2 {{print $5}}')
+                  current_usage=$(echo "$current_usage_percent" | sed 's/%//')
+                  avail_kb=$(echo "$df_output" | awk 'NR==2 {{print $4}}')
+                  avail_gb=$(echo "scale=2; $avail_kb/1024/1024" | bc) # Requires bc command
+
+                  # Validate parsed values
+                  if ! is_integer "$current_usage"; then
+                    echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') ERROR: Task $SGE_TASK_ID: Could not parse disk usage percentage '$current_usage_percent'."
+                    echo "[{phase}] Full DF output was:"
+                    echo "$df_output"
+
+                    RETRY_COUNT=$((RETRY_COUNT + 1))
+                    if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+                      echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') WARNING: Task $SGE_TASK_ID: Maximum retries ($MAX_RETRIES) reached for parsing error. Proceeding anyway."
+                      break # Exit loop and proceed despite parsing errors after max retries
+                    fi
+
+                    echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Retrying parse check in $WAIT_INTERVAL seconds (attempt $RETRY_COUNT/$MAX_RETRIES)."
+                    sleep "$WAIT_INTERVAL"
+                    continue
+                  fi
+
+                  # Check if usage is below threshold
+                  if [ "$current_usage" -le "$MAX_USAGE" ]; then
+                    echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Disk usage is $current_usage% ($avail_gb GB available) for $SCRATCH_DIR. Proceeding with {phase}."
+                    break # Exit loop as space is sufficient
+                  else
+                    echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Disk usage is $current_usage% ($avail_gb GB available) for $SCRATCH_DIR (Limit: $MAX_USAGE%)."
+
+                    RETRY_COUNT=$((RETRY_COUNT + 1))
+                    if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+                      echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') WARNING: Task $SGE_TASK_ID: Maximum retries ($MAX_RETRIES) reached waiting for space. Proceeding anyway."
+                      break # Exit loop and proceed despite high usage after max retries
+                    fi
+
+                    echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Waiting for $WAIT_INTERVAL seconds before re-checking (attempt $RETRY_COUNT/$MAX_RETRIES)."
+                    sleep "$WAIT_INTERVAL"
+                  fi
+                done
+                # --- END DISK SPACE CHECK ---
+
+                echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Proceeding to execute {phase} command (after disk check)."
+                """.format(phase=phase)  # Only phase needed for this part
+            )
+            full_script_addition += disk_check_logic
+
+        # Always include the command execution logic
+        command_execution_logic = textwrap.dedent(
             """
             SEEDFILE="{input_file}"
             ENCODED_SEED=$(awk "NR==$SGE_TASK_ID" "$SEEDFILE")
@@ -570,10 +665,12 @@ class SafePathScript(script_generator.AnalysisScript):
             SEED=$(echo "$ENCODED_SEED" | base64 --decode)
             # Execute the decoded command directly
             eval "$SEED"
-            # Log the command for debugging
-            echo "[{phase}] Executed command for task $SGE_TASK_ID" >&2
-            """.format(phase=phase, input_file=input_file)
+            # Log the command completion for debugging
+            echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Completed executing {phase} command."
+            """.format(phase=phase, input_file=input_file)  # Both phase and input_file needed
         )
-        self.template += text
+        full_script_addition += command_execution_logic
+
+        self.template += full_script_addition
 
 
