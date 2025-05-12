@@ -92,24 +92,42 @@ def add_plate(yaml_dict):
 
     Returns:
     --------
-    dictionary
+    list of dictionaries, each suitable for Job.add_plate kwargs
     """
     if "add plate" in yaml_dict:
-        add_plate_dicts = yaml_dict["add plate"]
-        # returns a list of dictionaries
-        if isinstance(add_plate_dicts, list):
-            for d in add_plate_dicts:
-                if "experiment" in d.keys():
-                    # is the experiment labels
-                    experiment = str(d["experiment"])
-                if "plates" in d.keys():
-                    # is the plates, either a string or a list
-                    plate_args = d["plates"]
-                    if isinstance(plate_args, str):
-                        plates = [d["plates"]]
-                    if isinstance(plate_args, list):
-                        plates = d["plates"]
-            return {"exp_dir" : experiment, "plates" : plates}
+        add_plate_entries = yaml_dict["add plate"]
+        plate_list = []
+
+        # Ensure add_plate_entries is always a list for consistent processing
+        if not isinstance(add_plate_entries, list):
+            add_plate_entries = [add_plate_entries]
+
+        for entry in add_plate_entries:
+            if not isinstance(entry, dict):
+                # Handle cases where entry might not be a dictionary as expected
+                # You might want to log a warning or raise an error here
+                # For now, skipping non-dictionary entries
+                continue
+
+            exp_dir = None
+            plates = None
+
+            if "experiment" in entry:
+                exp_dir = str(entry["experiment"])
+            if "plates" in entry:
+                plate_args = entry["plates"]
+                if isinstance(plate_args, str):
+                    plates = [plate_args]
+                elif isinstance(plate_args, list):
+                    plates = plate_args
+            
+            # Only add to list if both exp_dir and plates are found
+            if exp_dir is not None and plates is not None:
+                 plate_list.append({"exp_dir": exp_dir, "plates": plates})
+            # Consider adding error handling or logging if one is missing
+
+        # Return the list of plates, or None if the list is empty
+        return plate_list if plate_list else None 
     else:
         return None
 
