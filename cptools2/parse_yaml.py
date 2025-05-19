@@ -156,12 +156,30 @@ def remove_plate(yaml_dict):
 
 
 def is_new_ix(yaml_dict):
-    """docstring"""
+    """
+    Check if the ImageXpress data follows the new or old format.
+    
+    Parameters:
+    -----------
+    yaml_dict: dict
+        Dictionary version of the config yaml file
+    
+    Returns:
+    --------
+    bool
+        True if using the new ImageXpress format, False otherwise.
+        Defaults to True if not specified in the config.
+    """
     if "new_ix" in yaml_dict:
-        new_ix = yaml_dict["new_ix"]
-    else:
-        new_ix = False
-    return new_ix
+        new_ix_value = yaml_dict["new_ix"]
+        # Handle boolean values directly
+        if isinstance(new_ix_value, bool):
+            return new_ix_value
+        # Handle string values "true" or "false"
+        elif isinstance(new_ix_value, str):
+            return new_ix_value.lower() == 'true'
+    # Default to True if not specified
+    return True
 
 
 def create_commands(yaml_dict):
