@@ -562,13 +562,30 @@ class SafePathScript(script_generator.AnalysisScript):
         ---------
         nothing, adds text to template
         """
-        # Start with an empty string for the full script to be added to template
         full_script_addition = ""
 
         if phase == "staging":
+            # Stagger logic specific to staging phase
+            stagger_script_part = textwrap.dedent(
+                f'''
+                # --- BEGIN STAGGER DELAY for {{phase}} Task $SGE_TASK_ID ---
+                # SGE_TASK_ID is 1-based. For the first task (SGE_TASK_ID=1), delay is 0.
+                STAGGER_DELAY_SECONDS=$(echo "scale=2; ($SGE_TASK_ID - 1) * 0.1" | bc)
+                echo "[{{phase}}] $(date +\'%Y-%m-%d %H:%M:%S\') INFO: Task $SGE_TASK_ID: Stagger delay calculated: $STAGGER_DELAY_SECONDS seconds." >&2
+                # Ensure STAGGER_DELAY_SECONDS is not negative or empty, and sleep only if > 0
+                # Use bc -l for the comparison to handle floating point numbers correctly.
+                if [[ -n "$STAGGER_DELAY_SECONDS" && $(echo "$STAGGER_DELAY_SECONDS > 0" | bc -l) -eq 1 ]]; then
+                    echo "[{{phase}}] $(date +\'%Y-%m-%d %H:%M:%S\') INFO: Task $SGE_TASK_ID: Sleeping for $STAGGER_DELAY_SECONDS seconds before disk check." >&2
+                    sleep "$STAGGER_DELAY_SECONDS"
+                fi
+                echo "[{{phase}}] $(date +\'%Y-%m-%d %H:%M:%S\') INFO: Task $SGE_TASK_ID: Stagger delay complete. Proceeding to disk space check." >&2
+                # --- END STAGGER DELAY ---
+                '''
+            ).format(phase=phase) # Pass phase to format the {{phase}} placeholder in stagger_script_part
+
             # Define the disk space check logic only for the "staging" phase
             # The custom log file will be in the directory specified by self.output (SGE's -o path)
-            disk_check_logic = textwrap.dedent(
+            disk_check_logic_original = textwrap.dedent(
                 f"""
                 # --- BEGIN DISK SPACE CHECK for {{phase}} ---
                 LOG_DIR_FOR_CUSTOM_LOGS="{self.output}"
@@ -579,17 +596,17 @@ class SafePathScript(script_generator.AnalysisScript):
                 SCRATCH_DIR="/exports/eddie/scratch/$USER"
                 MAX_USAGE=80        # Maximum allowed percentage (80%)
                 WAIT_INTERVAL=600   # Wait interval in seconds (10 minutes)
-                MAX_RETRIES=48      # Maximum number of retries (16 hours total wait time)
+                MAX_RETRIES=48      # Maximum number of retries (8 hours total wait time)
 
                 echo "[{{phase}}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task ${{SGE_TASK_ID}}: Starting space check for $SCRATCH_DIR. Max usage: $MAX_USAGE%." >> "$CUSTOM_LOG_FILE"
 
                 # Function to validate integer
-                is_integer() {{
+                is_integer() {{{{ # Double curlies for f-string, then single for shell func
                   case $1 in
                     ''|*[!0-9]*) return 1 ;; # Empty string or contains non-digits
                     *) return 0 ;;            # All digits
                   esac
-                }}
+                }}}}
 
                 # Space check with retry logic
                 RETRY_COUNT=0
@@ -615,9 +632,9 @@ class SafePathScript(script_generator.AnalysisScript):
                   fi
 
                   # Parse percentage and available space
-                  current_usage_percent=$(echo "$df_output" | awk 'NR==2 {{print $5}}') # Note: {{ and }} for awk
+                  current_usage_percent=$(echo "$df_output" | awk 'NR==2 {{{{print $5}}}}') # Quadruple curlies for awk
                   current_usage=$(echo "$current_usage_percent" | sed 's/%//')
-                  avail_kb=$(echo "$df_output" | awk 'NR==2 {{print $4}}') # Note: {{ and }} for awk
+                  avail_kb=$(echo "$df_output" | awk 'NR==2 {{{{print $4}}}}') # Quadruple curlies for awk
                   avail_gb=$(echo "scale=2; $avail_kb/1024/1024" | bc) # Requires bc command
 
                   # Validate parsed values
@@ -658,14 +675,16 @@ class SafePathScript(script_generator.AnalysisScript):
 
                 # This specific log message still goes to stderr for the main SGE log
                 echo "[{{phase}}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task ${{SGE_TASK_ID}}: Proceeding to execute {{phase}} command (after disk check)." >&2
-                """.format(phase=phase) # Pass phase to format the {phase} placeholder
-            ).format(phase=phase) # Pass phase to format the {phase} placeholder
+                """.format(phase=phase) # Pass phase to format the {{phase}} placeholder in disk_check_logic_original
+            )
+            # Combine stagger and disk check logic
+            disk_check_logic = stagger_script_part + "\n" + disk_check_logic_original
             full_script_addition += disk_check_logic
 
         # Always include the command execution logic
         # These main command execution logs go to stderr (SGE default error file)
         command_execution_logic = textwrap.dedent(
-            """
+            '''
             SEEDFILE="{input_file}"
             ENCODED_SEED=$(awk "NR==$SGE_TASK_ID" "$SEEDFILE")
             # Decode the base64 command
@@ -673,9 +692,9 @@ class SafePathScript(script_generator.AnalysisScript):
             # Execute the decoded command directly
             eval "$SEED"
             # Log the command completion for debugging
-            echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Completed executing {phase} command." >&2
-            """.format(phase=phase, input_file=input_file)  # Both phase and input_file needed
-        )
+            echo "[{{phase}}] $(date +\'%Y-%m-%d %H:%M:%S\') INFO: Task $SGE_TASK_ID: Completed executing {{phase}} command." >&2
+            '''
+        ).format(phase=phase, input_file=input_file)  # No stagger_commands here
         full_script_addition += command_execution_logic
 
         self.template += full_script_addition
