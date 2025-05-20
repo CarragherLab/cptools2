@@ -675,7 +675,7 @@ class SafePathScript(script_generator.AnalysisScript):
 
                 # This specific log message still goes to stderr for the main SGE log
                 echo "[{{phase}}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task ${{SGE_TASK_ID}}: Proceeding to execute {{phase}} command (after disk check)." >&2
-                """.format(phase=phase) # Pass phase to format the {{phase}} placeholder in disk_check_logic_original
+                """ # f-string handles phase formatting, no .format() needed here
             )
             # Combine stagger and disk check logic
             disk_check_logic = stagger_script_part + "\n" + disk_check_logic_original
