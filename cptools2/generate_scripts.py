@@ -601,12 +601,12 @@ class SafePathScript(script_generator.AnalysisScript):
                 echo "[{{phase}}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task ${{SGE_TASK_ID}}: Starting space check for $SCRATCH_DIR. Max usage: $MAX_USAGE%." >> "$CUSTOM_LOG_FILE"
 
                 # Function to validate integer
-                is_integer() {{{{ # Double curlies for f-string, then single for shell func
+                is_integer() {{ # Double curlies in f-string to produce single literal brace for shell
                   case $1 in
                     ''|*[!0-9]*) return 1 ;; # Empty string or contains non-digits
                     *) return 0 ;;            # All digits
                   esac
-                }}}}
+                }}
 
                 # Space check with retry logic
                 RETRY_COUNT=0
@@ -632,9 +632,9 @@ class SafePathScript(script_generator.AnalysisScript):
                   fi
 
                   # Parse percentage and available space
-                  current_usage_percent=$(echo "$df_output" | awk 'NR==2 {{{{print $5}}}}') # Quadruple curlies for awk
+                  current_usage_percent=$(echo "$df_output" | awk 'NR==2 {{print $5}}') # Double curlies for awk block
                   current_usage=$(echo "$current_usage_percent" | sed 's/%//')
-                  avail_kb=$(echo "$df_output" | awk 'NR==2 {{{{print $4}}}}') # Quadruple curlies for awk
+                  avail_kb=$(echo "$df_output" | awk 'NR==2 {{print $4}}') # Double curlies for awk block
                   avail_gb=$(echo "scale=2; $avail_kb/1024/1024" | bc) # Requires bc command
 
                   # Validate parsed values
