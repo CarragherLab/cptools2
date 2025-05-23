@@ -247,6 +247,8 @@ def make_submit_script(commands_location, job_date, join_script_loc=None, transf
         path to the join script, or None if no join script is to be submitted
     transfer_script_loc: string or None
         path to the transfer script, or None if no transfer script is to be submitted
+    # email_notification_script_loc: string or None
+    #     path to the email notification script, or None if no email script is to be submitted
 
     Returns:
     --------
@@ -284,6 +286,10 @@ def make_submit_script(commands_location, job_date, join_script_loc=None, transf
     # Add transfer script submission if it was created
     if transfer_script_loc:
         output += "qsub {}\n".format(transfer_script_loc)
+
+    # Add email notification script submission if it was created
+    # if email_notification_script_loc:
+    #     output += "qsub {}\n".format(email_notification_script_loc)
 
     save_location = "{}/{}_SUBMIT_JOBS.sh".format(commands_location, job_date)
     # save this shell script and return it's path
@@ -425,6 +431,10 @@ def make_datastore_transfer_script(config, commands_location, logfile_location, 
     transfer_script += "#$ -q staging\n" # Run on staging node
     transfer_script += f"#$ -hold_jid join_{job_hex}\n" # Wait for the join job to complete
     
+    # Add SGE email notification directives
+    transfer_script += "#$ -m e\n"  # Email on job end
+    transfer_script += "#$ -M $USER@ed.ac.uk\n" # Email to user's uni address
+
     # Define paths within the script
     transfer_script += f"EDDIE_SOURCE_DIR=\"{specific_eddie_source_for_transfer}\"\n" # Use the more specific source path
     transfer_script += f"DATASTORE_DEST_DIR=\"{datastore_dest}\"\n"
@@ -435,10 +445,9 @@ def make_datastore_transfer_script(config, commands_location, logfile_location, 
     transfer_script += f"LOG_PARENT_DIR=\"{logfile_location}\"\n" # This is where the transfer.oXXX and transfer.eXXX will go
     transfer_script += "mkdir -p \"$LOG_PARENT_DIR\"\n" # Ensure main log dir exists for .o and .e files
     # Specific log file for rsync output etc.
-    transfer_script += f"RSYNC_LOG_FILE=\"$LOG_PARENT_DIR/transfer_to_datastore_{job_hex}_${{JOB_ID}}.log\"\n"
+    transfer_script += f"RSYNC_LOG_FILE=\"$LOG_PARENT_DIR/transfer_to_datastore_{job_hex}.log\"\n" # Standardized log name
     transfer_script += "echo \"Starting data transfer at $(date)\" > \"$RSYNC_LOG_FILE\"\n"
     transfer_script += "echo \"From: $EDDIE_SOURCE_DIR\" >> \"$RSYNC_LOG_FILE\"\n"
-    transfer_script += "echo \"To: $DATASTORE_DEST_DIR\" >> \"$RSYNC_LOG_FILE\"\n"
     
     # Create destination directory (rsync can also do this with -R, but explicit mkdir -p is safer)
     transfer_script += "mkdir -p \"$DATASTORE_DEST_DIR\"\n"
@@ -460,69 +469,6 @@ def make_datastore_transfer_script(config, commands_location, logfile_location, 
     echo "Transfer finished at $(date): $RETURN_STATUS" >> "$RSYNC_LOG_FILE"
     """)
     
-    # Optional email notification - checking for attribute directly on config
-    if hasattr(config, 'notification_email') and config.notification_email:
-        email_address = config.notification_email
-        email_content_file = f"$LOG_PARENT_DIR/email_content_{job_hex}_${{JOB_ID}}.txt"
-
-        # Script to generate and send email
-        email_script = textwrap.dedent(f"""
-
-# Determine email content based on transfer status
-if [[ \"$RETURN_STATUS\" == \"Transfer completed successfully\" ]]; then
-    FILE_COUNT=$(find \"$DATASTORE_DEST_DIR\" -type f | wc -l)
-    TOTAL_SIZE=$(du -sh \"$DATASTORE_DEST_DIR\" | cut -f1)
-    EMAIL_SUBJECT=\"cptools2 Analysis Completed - Job ${{JOB_ID}} - Success\"
-    cat > \"{email_content_file}\" << EOF
-Your cptools2 analysis script is complete, you can find your data saved in your project directory ${{DATASTORE_DEST_DIR}}.
-
-Successfully transferred ${{FILE_COUNT}} files with a total size of ${{TOTAL_SIZE}} from ${{EDDIE_SOURCE_DIR}}.
-
-Thank you for using cptools2.
-
-If you have any feedback or noticed any bugs then please let me know.
-
-Best Wishes,
-
-Mungo Harvey (he/him)
-Postdoctoral Research Assistant
-
-E: mharvey2@ed.ac.uk
-
-UK Dementia Research Institute at The University of Edinburgh
-Centre for Clinical Brain Sciences | Selveraj Lab & Chandran Lab, Chancellor's Building
-Institute of Genetics and Cancer  | Carragher Lab, Edinburgh Cancer Research
-EOF
-else
-    EMAIL_SUBJECT=\"cptools2 Analysis Completed - Job ${{JOB_ID}} - Transfer Failed\"
-    cat > \"{email_content_file}\" << EOF
-Your cptools2 analysis script completed, but the data transfer from ${{EDDIE_SOURCE_DIR}} to ${{DATASTORE_DEST_DIR}} failed.
-
-Status: ${{RETURN_STATUS}}
-
-Please check the logs in {logfile_location} for more details (specifically the transfer log: {os.path.join(logfile_location, f'transfer_to_datastore_{job_hex}_${{JOB_ID}}.log')}).
-
-Best Wishes,
-
-Mungo Harvey (he/him)
-Postdoctoral Research Assistant
-
-E: mharvey2@ed.ac.uk
-
-UK Dementia Research Institute at The University of Edinburgh
-Centre for Clinical Brain Sciences | Selveraj Lab & Chandran Lab, Chancellor's Building
-Institute of Genetics and Cancer  | Carragher Lab, Edinburgh Cancer Research
-EOF
-fi
-
-# Send the email
-mail -s \"$EMAIL_SUBJECT\" \"$USER@ed.ac.uk\" < \"{email_content_file}\"
-
-# Clean up the email content file
-rm -f \"{email_content_file}\"        
-""")
-        transfer_script += email_script
-    
     # Save the script
     transfer_loc = os.path.join(commands_location, f"{time_now}_transfer_script.sh")
     transfer_script.save(transfer_loc)
@@ -530,6 +476,137 @@ rm -f \"{email_content_file}\"
     utils.make_executable(transfer_loc)
     
     return transfer_loc
+
+
+# def make_email_notification_script(config, commands_location, logfile_location, job_hex, time_now, eddie_source_dir):
+#     """
+#     Creates a script to send an email notification after data transfer.
+#     This script will run on a login node or a node with mailx configured.
+#     It checks the transfer log to determine success or failure.
+#
+#     Parameters:
+#     -----------
+#     config: object
+#         Configuration object. Expected to have 'notification_email', 
+#         'data_destination_path', and 'create_command_args["location"]'.
+#     commands_location: string
+#         Path where scripts are being saved.
+#     logfile_location: string
+#         Path where logs for the main jobs are saved. This is where the transfer log is found.
+#     job_hex: string
+#         Unique identifier for this job set.
+#     time_now: string
+#         Timestamp for naming files.
+#     eddie_source_dir: string
+#         Source directory on Eddie for the rsync operation (used in email content).
+#
+#     Returns:
+#     --------
+#     string
+#         Path to the created email notification script, or None if not created.
+#     """
+#     if not hasattr(config, 'notification_email') or not config.notification_email:
+#         pretty_print("No notification_email specified in config, skipping email notification script generation.")
+#         return None
+#
+#     datastore_dest = config.data_destination_path
+#     if not datastore_dest: # Should ideally not happen if email is specified, but good check
+#         pretty_print("No datastore_destination specified, cannot generate meaningful email. Skipping email script.")
+#         return None
+#         
+#     email_address = config.notification_email
+#     
+#     # Standardized log file name, matching the one in make_datastore_transfer_script
+#     transfer_log_file = os.path.join(logfile_location, f"transfer_to_datastore_{job_hex}.log")
+#     
+#     # eddie_source_dir is config.create_command_args["location"] used by transfer script for its source.
+#     # For the email, we want to report the specific subdirectory that was meant to be transferred.
+#     specific_eddie_source_for_email = os.path.join(eddie_source_dir, "joined_files").replace("\\\\", "/")
+#
+#
+#     pretty_print(f"Generating email notification script. Will monitor: {colours.yellow(transfer_log_file)}")
+#
+#     email_script = script_generator.SGEScript(
+#         name=f"email_notify_{job_hex}",
+#         memory="1G", # Minimal memory for a simple script
+#         tasks=1,
+#         output=os.path.join(logfile_location, "email_notification") # Log for the email job itself
+#     )
+#     
+#     # SGE options for email
+#     email_script += f"#$ -m ea\\n" # Email on end or abort
+#     email_script += f"#$ -M {email_address}\\n"
+#     email_script += f"#$ -hold_jid transfer_{job_hex}\\n" # Wait for the transfer job
+#
+#     # Define paths and variables within the script
+#     email_script += f"TRANSFER_LOG_FILE=\\"{transfer_log_file}\\"\\n"
+#     email_script += f"EDDIE_SOURCE_DIR_REPORT=\\"{specific_eddie_source_for_email}\\"\\n"
+#     email_script += f"DATASTORE_DEST_DIR_REPORT=\\"{datastore_dest}\\"\\n"
+#     email_script += f"LOGFILE_LOCATION_REPORT=\\"{logfile_location}\\"\\n"
+#     email_script += f"JOB_HEX_REPORT=\\"{job_hex}\\"\\n" # For constructing specific log names if needed in email
+#
+#     # Script logic to parse log and send email
+#     # Constructing the script string carefully to avoid f-string escaping issues for shell syntax
+#     email_logic_parts = [
+#         f'echo "Email notification script started at $(date) for job hex: {job_hex}"',
+#         'sleep 10', # Wait a few seconds for log file
+#         'if [ ! -f "$TRANSFER_LOG_FILE" ]; then',
+#         f'    EMAIL_SUBJECT="cptools2 Alert - Job {job_hex} - Transfer Log NOT FOUND"',
+#         f'    EMAIL_BODY="The transfer log file $TRANSFER_LOG_FILE was not found.\\\\nPlease check the job status and logs in $LOGFILE_LOCATION_REPORT."',
+#         'else',
+#         '    if grep -q "Transfer completed successfully" "$TRANSFER_LOG_FILE"; then',
+#         '        FILE_COUNT_LINE=$(grep "Number of files transferred:" "$TRANSFER_LOG_FILE")',
+#         '        TOTAL_SIZE_LINE=$(grep "Total transferred file size:" "$TRANSFER_LOG_FILE")',
+#         '        FILE_COUNT=$(echo "$FILE_COUNT_LINE" | grep -o \'[0-9]*\' | head -n 1)',
+#         # Note: The sed command for TOTAL_SIZE needs careful escaping for backslashes and parentheses
+#         '        TOTAL_SIZE=$(echo "$TOTAL_SIZE_LINE" | sed -n \'s/.*Total transferred file size: \\\\([^ ]*\\\\).*/\\\\1/p\')',
+#         '        if [ -z "$FILE_COUNT" ]; then FILE_COUNT="unknown"; fi',
+#         '        if [ -z "$TOTAL_SIZE" ]; then TOTAL_SIZE="unknown"; fi',
+#         f'        EMAIL_SUBJECT="cptools2 Analysis Data Transfer Completed - Job {job_hex} - Success"',
+#         '        EMAIL_BODY="Your cptools2 analysis data transfer has completed successfully.\\\\n\\\\n"',
+#         '        EMAIL_BODY+="Data has been transferred from: $EDDIE_SOURCE_DIR_REPORT\\\\n"',
+#         '        EMAIL_BODY+="To DataStore destination: $DATASTORE_DEST_DIR_REPORT\\\\n\\\\n"',
+#         '        EMAIL_BODY+="Files transferred: $FILE_COUNT\\\\n"',
+#         '        EMAIL_BODY+="Total size: $TOTAL_SIZE\\\\n\\\\n"',
+#         '        EMAIL_BODY+="Thank you for using cptools2.\\\\n\\\\n"',
+#         '        EMAIL_BODY+="If you have any feedback or noticed any bugs then please let me know.\\\\n\\\\n"',
+#         '        EMAIL_BODY+="Best Wishes,\\\\n\\\\nMungo Harvey (he/him)\\\\nPostdoctoral Research Assistant\\\\n\\\\nE: mharvey2@ed.ac.uk"',
+#         '    elif grep -q "Transfer failed" "$TRANSFER_LOG_FILE"; then',
+#         f'        EMAIL_SUBJECT="cptools2 Analysis Data Transfer FAILED - Job {job_hex}"',
+#         '        EMAIL_BODY="Your cptools2 analysis data transfer has FAILED.\\\\n\\\\n"',
+#         '        EMAIL_BODY+="Attempted transfer from: $EDDIE_SOURCE_DIR_REPORT\\\\n"',
+#         '        EMAIL_BODY+="To DataStore destination: $DATASTORE_DEST_DIR_REPORT\\\\n\\\\n"',
+#         '        EMAIL_BODY+="Please check the transfer log: $TRANSFER_LOG_FILE\\\\n"',
+#         '        EMAIL_BODY+="And other job logs in: $LOGFILE_LOCATION_REPORT\\\\n\\\\n"',
+#         '        EMAIL_BODY+="Best Wishes,\\\\n\\\\nMungo Harvey (he/him)\\\\nPostdoctoral Research Assistant\\\\n\\\\nE: mharvey2@ed.ac.uk"',
+#         '    else',
+#         f'        EMAIL_SUBJECT="cptools2 Alert - Job {job_hex} - Transfer Status UNKNOWN"',
+#         '        EMAIL_BODY="The status of the data transfer for job {job_hex} could not be determined from the log file: $TRANSFER_LOG_FILE.\\\\n\\\\n"',
+#         '        EMAIL_BODY+="Please check the job status and logs in $LOGFILE_LOCATION_REPORT manually.\\\\n\\\\n"',
+#         '        EMAIL_BODY+="Transfer from: $EDDIE_SOURCE_DIR_REPORT\\\\n"',
+#         '        EMAIL_BODY+="To DataStore destination: $DATASTORE_DEST_DIR_REPORT"',
+#         '    fi',
+#         'fi',
+#         f'echo "Sending email notification to {email_address}..."',
+#         # Using -e with echo for newline interpretation in body, subject needs to be quoted for mail command
+#         f'echo -e "$EMAIL_BODY" | mail -s "$EMAIL_SUBJECT" "{email_address}"',
+#         'if [ $? -eq 0 ]; then',
+#         '    echo "Email command executed successfully."',
+#         'else',
+#         '    echo "Email command failed with exit code $?."',
+#         '    exit 1',
+#         'fi',
+#         'echo "Email notification script finished at $(date)"'
+#     ]
+#     email_logic = textwrap.dedent("\\n".join(email_logic_parts))
+#     email_script += email_logic
+#
+#     email_script_loc = os.path.join(commands_location, f"{time_now}_email_notify_script.sh")
+#     email_script.save(email_script_loc)
+#     pretty_print(f"Saving email notification script at {colours.yellow(email_script_loc)}")
+#     utils.make_executable(email_script_loc)
+#     
+#     return email_script_loc
 
 
 class SafePathScript(script_generator.AnalysisScript):
@@ -565,91 +642,93 @@ class SafePathScript(script_generator.AnalysisScript):
         full_script_addition = ""
 
         if phase == "staging":
-            # Stagger logic specific to staging phase
-            stagger_script_part = textwrap.dedent(
-                f'''
-                # --- BEGIN STAGGER DELAY for {{phase}} Task $SGE_TASK_ID ---
-                # SGE_TASK_ID is 1-based. For the first task (SGE_TASK_ID=1), delay is 0.
-                STAGGER_DELAY_SECONDS=$(echo "scale=2; ($SGE_TASK_ID - 1) * 0.1" | bc)
-                echo "[{{phase}}] $(date +\'%Y-%m-%d %H:%M:%S\') INFO: Task $SGE_TASK_ID: Stagger delay calculated: $STAGGER_DELAY_SECONDS seconds." >&2
-                # Ensure STAGGER_DELAY_SECONDS is not negative or empty, and sleep only if > 0
-                # Use bc -l for the comparison to handle floating point numbers correctly.
-                if [[ -n "$STAGGER_DELAY_SECONDS" && $(echo "$STAGGER_DELAY_SECONDS > 0" | bc -l) -eq 1 ]]; then
-                    echo "[{{phase}}] $(date +\'%Y-%m-%d %H:%M:%S\') INFO: Task $SGE_TASK_ID: Sleeping for $STAGGER_DELAY_SECONDS seconds before disk check." >&2
-                    sleep "$STAGGER_DELAY_SECONDS"
-                fi
-                echo "[{{phase}}] $(date +\'%Y-%m-%d %H:%M:%S\') INFO: Task $SGE_TASK_ID: Stagger delay complete. Proceeding to disk space check." >&2
-                # --- END STAGGER DELAY ---
+            # New dynamic scratch space management for staging phase
+            dynamic_space_management = textwrap.dedent(
                 '''
-            ).format(phase=phase) # Pass phase to format the {{phase}} placeholder in stagger_script_part
-
-            # Define the disk space check logic only for the "staging" phase
-            disk_check_logic_original = textwrap.dedent(
-                f"""
-                # --- BEGIN DISK SPACE CHECK for {{phase}} ---
-                # Logs will go to standard error, captured by SGE in the .e file
-
-                # Define parameters
+                # --- BEGIN DYNAMIC SCRATCH SPACE MANAGEMENT for {phase} ---
+                # Core configuration
                 SCRATCH_DIR="/exports/eddie/scratch/$USER"
-                MAX_USAGE=80        # Maximum allowed percentage (80%)
-                WAIT_INTERVAL=600   # Wait interval in seconds (10 minutes)
-                MAX_RETRIES=48      # Maximum number of retries (8 hours total wait time)
-
-                # Log function (redirects to stderr)
-                log_msg() {{
-                  echo "[{{phase}}] $(date +'%Y-%m-%d %H:%M:%S') $1" >&2
+                
+                # Get project directory from the commands location or use a default subdirectory
+                # This ensures control files are scoped to the specific project
+                if [[ -n "{input_file}" ]]; then
+                    PROJECT_DIR=$(dirname "{input_file}")
+                    PROJECT_NAME=$(basename "$PROJECT_DIR")
+                else
+                    PROJECT_NAME="cptools_project"
+                    PROJECT_DIR="$SCRATCH_DIR/$PROJECT_NAME"
+                fi
+                
+                CONTROL_DIR="$PROJECT_DIR/.{phase}_control"
+                mkdir -p "$CONTROL_DIR" 2>/dev/null || true
+                
+                echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Using control directory: $CONTROL_DIR" >&2
+                
+                # Dynamic scratch space management function
+                wait_for_safe_space() {{
+                    local usage
+                    local active_tasks
+                    local max_concurrent
+                    
+                    while true; do
+                        # Get disk usage percentage
+                        usage=$(df --output=pcent "$SCRATCH_DIR" 2>/dev/null | tail -1 | sed 's/%//' | tr -d ' ')
+                        
+                        # Count active tasks (files modified within last 60 minutes)
+                        active_tasks=$(find "$CONTROL_DIR" -name "active_*" -mmin -60 2>/dev/null | wc -l)
+                        
+                        # Dynamic concurrency based on space usage
+                        if [[ $usage -lt 60 ]]; then
+                            max_concurrent=20
+                        elif [[ $usage -lt 70 ]]; then
+                            max_concurrent=10
+                        elif [[ $usage -lt 80 ]]; then
+                            max_concurrent=5
+                        elif [[ $usage -lt 85 ]]; then
+                            max_concurrent=2
+                        else
+                            max_concurrent=0
+                        fi
+                        
+                        # Check if we can proceed
+                        if [[ $active_tasks -lt $max_concurrent ]]; then
+                            echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Space check passed (usage: ${{usage}}%, active: $active_tasks/$max_concurrent)" >&2
+                            break
+                        fi
+                        
+                        echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Waiting for safe space (usage: ${{usage}}%, active: $active_tasks/$max_concurrent)" >&2
+                        
+                        # Random delay to prevent thundering herd (30-60 seconds)
+                        sleep_time=$((30 + RANDOM % 30))
+                        sleep "$sleep_time"
+                    done
                 }}
-
-                # Function to validate integer (remains for script clarity)
-                is_integer() {{
-                  case $1 in
-                    ''|*[!0-9]*) return 1 ;; # Empty string or contains non-digits
-                    *) return 0 ;;            # All digits
-                  esac
+                
+                # Mark task as active
+                mark_active() {{
+                    touch "$CONTROL_DIR/active_$SGE_TASK_ID"
+                    echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Marked as active" >&2
                 }}
-
-                log_msg "INFO: Task ${{SGE_TASK_ID}}: Starting space check for $SCRATCH_DIR. Max usage: $MAX_USAGE%."
-
-                RETRY_COUNT=0
-                while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-                  # Get disk usage percentage using df -P for reliable parsing
-                  USAGE_PERCENT_RAW=$(df -P "$SCRATCH_DIR" 2>/dev/null | awk 'NR==2 {{print $5}}')
-                  USAGE_PERCENT=$(echo "$USAGE_PERCENT_RAW" | tr -d '%')
-
-                  # Get human-readable available space using df -h for logging
-                  AVAIL_FOR_LOG=$(df -h "$SCRATCH_DIR" 2>/dev/null | awk 'NR==2 {{print $4}}')
-                  
-                  if [ -z "$USAGE_PERCENT_RAW" ] || [ -z "$AVAIL_FOR_LOG" ]; then
-                    log_msg "ERROR: Task ${{SGE_TASK_ID}}: 'df -P' or 'df -h' produced unexpected or empty output."
-                  elif is_integer "$USAGE_PERCENT"; then
-                    if [ "$USAGE_PERCENT" -le "$MAX_USAGE" ]; then
-                      log_msg "INFO: Task ${{SGE_TASK_ID}}: Disk usage is $USAGE_PERCENT% ($AVAIL_FOR_LOG available). Proceeding with {{phase}}."
-                      break # Exit loop as space is sufficient
-                    else
-                      log_msg "INFO: Task ${{SGE_TASK_ID}}: Disk usage is $USAGE_PERCENT% ($AVAIL_FOR_LOG available). Exceeds limit of $MAX_USAGE%."
-                    fi
-                  else
-                    log_msg "ERROR: Task ${{SGE_TASK_ID}}: Could not parse disk usage percentage. Value obtained: '$USAGE_PERCENT_RAW'."
-                  fi
-                  
-                  RETRY_COUNT=$((RETRY_COUNT + 1))
-                  if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
-                    log_msg "WARNING: Task ${{SGE_TASK_ID}}: Maximum retries ($MAX_RETRIES) reached. Proceeding anyway."
-                    break # Exit loop
-                  fi
-                  
-                  log_msg "INFO: Task ${{SGE_TASK_ID}}: Waiting for $WAIT_INTERVAL seconds before re-checking (attempt $RETRY_COUNT/$MAX_RETRIES)."
-                  sleep "$WAIT_INTERVAL"
-                done
-                # --- END DISK SPACE CHECK ---
-
-                # This specific log message still goes to stderr for the main SGE log
-                echo "[{{phase}}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task ${{SGE_TASK_ID}}: Proceeding to execute {{phase}} command (after disk check)." >&2
-                """ # f-string handles phase formatting, no .format() needed here
-            )
-            # Combine stagger and disk check logic
-            disk_check_logic = stagger_script_part + "\n" + disk_check_logic_original
-            full_script_addition += disk_check_logic
+                
+                # Cleanup function
+                cleanup_control() {{
+                    rm -f "$CONTROL_DIR/active_$SGE_TASK_ID" 2>/dev/null || true
+                    echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Cleaned up control file" >&2
+                }}
+                
+                # Set up cleanup trap
+                trap cleanup_control EXIT
+                
+                # Execute space management
+                wait_for_safe_space
+                mark_active
+                
+                echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Proceeding to execute {phase} command (after dynamic space check)" >&2
+                # --- END DYNAMIC SCRATCH SPACE MANAGEMENT ---
+                '''
+            ).format(phase=phase, input_file=input_file)
+            
+            full_script_addition += dynamic_space_management
 
         # Always include the command execution logic
         # These main command execution logs go to stderr (SGE default error file)
@@ -662,9 +741,9 @@ class SafePathScript(script_generator.AnalysisScript):
             # Execute the decoded command directly
             eval "$SEED"
             # Log the command completion for debugging
-            echo "[{{phase}}] $(date +\'\%Y-\%m-\%d \%H:\%M:\%S\') INFO: Task $SGE_TASK_ID: Completed executing {{phase}} command." >&2
+            echo "[{phase}] $(date +\'%Y-%m-%d %H:%M:%S\') INFO: Task $SGE_TASK_ID: Completed executing {phase} command." >&2
             '''
-        ).format(phase=phase, input_file=input_file)  # No stagger_commands here
+        ).format(phase=phase, input_file=input_file)
         full_script_addition += command_execution_logic
 
         self.template += full_script_addition
