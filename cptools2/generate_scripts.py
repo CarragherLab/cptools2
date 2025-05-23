@@ -667,36 +667,40 @@ class SafePathScript(script_generator.AnalysisScript):
                 # Dynamic scratch space management function
                 wait_for_safe_space() {{
                     local usage
-                    local active_tasks
-                    local max_concurrent
+                    local total_active_tasks
+                    local new_tasks_allowed
+                    local current_new_tasks
                     
                     while true; do
                         # Get disk usage percentage
                         usage=$(df --output=pcent "$SCRATCH_DIR" 2>/dev/null | tail -1 | sed 's/%//' | tr -d ' ')
                         
-                        # Count active tasks (files modified within last 60 minutes)
-                        active_tasks=$(find "$CONTROL_DIR" -name "active_*" -mmin -60 2>/dev/null | wc -l)
+                        # Count all active tasks (files modified within last 60 minutes)
+                        total_active_tasks=$(find "$CONTROL_DIR" -name "active_*" -mmin -60 2>/dev/null | wc -l)
                         
-                        # Dynamic concurrency based on space usage
+                        # Aggressive concurrency limits for NEW tasks based on space usage
+                        # Allow existing tasks to finish, but control new task additions
                         if [[ $usage -lt 60 ]]; then
-                            max_concurrent=20
+                            new_tasks_allowed=1000    # Very aggressive when plenty of space
                         elif [[ $usage -lt 70 ]]; then
-                            max_concurrent=10
+                            new_tasks_allowed=100     # Moderate when space starts filling
                         elif [[ $usage -lt 80 ]]; then
-                            max_concurrent=5
-                        elif [[ $usage -lt 85 ]]; then
-                            max_concurrent=2
+                            new_tasks_allowed=10      # Conservative when space is limited
                         else
-                            max_concurrent=0
+                            new_tasks_allowed=0       # Stop new tasks when space is critical
                         fi
                         
-                        # Check if we can proceed
-                        if [[ $active_tasks -lt $max_concurrent ]]; then
-                            echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Space check passed (usage: ${{usage}}%, active: $active_tasks/$max_concurrent)" >&2
+                        # Count tasks that started recently (last 5 minutes) as "new tasks"
+                        # This gives us a proxy for recent task additions vs long-running tasks
+                        current_new_tasks=$(find "$CONTROL_DIR" -name "active_*" -mmin -5 2>/dev/null | wc -l)
+                        
+                        # Check if we can proceed with adding this new task
+                        if [[ $current_new_tasks -lt $new_tasks_allowed ]]; then
+                            echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Space check passed (usage: ${{usage}}%, total_active: $total_active_tasks, recent_new: $current_new_tasks/$new_tasks_allowed)" >&2
                             break
                         fi
                         
-                        echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Waiting for safe space (usage: ${{usage}}%, active: $active_tasks/$max_concurrent)" >&2
+                        echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Waiting for safe space (usage: ${{usage}}%, total_active: $total_active_tasks, recent_new: $current_new_tasks/$new_tasks_allowed allowed)" >&2
                         
                         # Random delay to prevent thundering herd (30-60 seconds)
                         sleep_time=$((30 + RANDOM % 30))
