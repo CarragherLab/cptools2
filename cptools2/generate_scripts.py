@@ -675,8 +675,8 @@ class SafePathScript(script_generator.AnalysisScript):
                         # Get disk usage percentage
                         usage=$(df --output=pcent "$SCRATCH_DIR" 2>/dev/null | tail -1 | sed 's/%//' | tr -d ' ')
                         
-                        # Count all active tasks (files modified within last 60 minutes)
-                        total_active_tasks=$(find "$CONTROL_DIR" -name "active_*" -mmin -60 2>/dev/null | wc -l)
+                        # Count all active tasks (no time limit - some analyses run for many hours)
+                        total_active_tasks=$(find "$CONTROL_DIR" -name "active_*" 2>/dev/null | wc -l)
                         
                         # Aggressive concurrency limits for NEW tasks based on space usage
                         # Allow existing tasks to finish, but control new task additions
@@ -690,9 +690,9 @@ class SafePathScript(script_generator.AnalysisScript):
                             new_tasks_allowed=0       # Stop new tasks when space is critical
                         fi
                         
-                        # Count tasks that started recently (last 5 minutes) as "new tasks"
+                        # Count tasks that started recently (last 15 minutes) as "new tasks"
                         # This gives us a proxy for recent task additions vs long-running tasks
-                        current_new_tasks=$(find "$CONTROL_DIR" -name "active_*" -mmin -5 2>/dev/null | wc -l)
+                        current_new_tasks=$(find "$CONTROL_DIR" -name "active_*" -mmin -15 2>/dev/null | wc -l)
                         
                         # Check if we can proceed with adding this new task
                         if [[ $current_new_tasks -lt $new_tasks_allowed ]]; then
