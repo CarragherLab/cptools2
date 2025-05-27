@@ -674,20 +674,49 @@ class SafePathScript(script_generator.AnalysisScript):
                     while true; do
                         # Get disk usage percentage
                         usage=$(df --output=pcent "$SCRATCH_DIR" 2>/dev/null | tail -1 | sed 's/%//' | tr -d ' ')
-                        
+
                         # Count all active tasks (no time limit - some analyses run for many hours)
                         total_active_tasks=$(find "$CONTROL_DIR" -name "active_*" 2>/dev/null | wc -l)
                         
-                        # Aggressive concurrency limits for NEW tasks based on space usage
-                        # Allow existing tasks to finish, but control new task additions
-                        if [[ $usage -lt 60 ]]; then
-                            new_tasks_allowed=1000    # Very aggressive when plenty of space
+                        # Conservative exponential scale-down for NEW tasks based on space usage
+                        # Much more conservative limits with finer granularity to prevent overflow
+                        if [[ $usage -lt 50 ]]; then
+                            new_tasks_allowed=200     # Conservative peak when plenty of space
+                        elif [[ $usage -lt 60 ]]; then
+                            new_tasks_allowed=50      # Start throttling earlier
                         elif [[ $usage -lt 70 ]]; then
-                            new_tasks_allowed=100     # Moderate when space starts filling
+                            new_tasks_allowed=20      # Moderate throttling
+                        elif [[ $usage -lt 75 ]]; then
+                            new_tasks_allowed=5       # Aggressive throttling
                         elif [[ $usage -lt 80 ]]; then
-                            new_tasks_allowed=10      # Conservative when space is limited
+                            new_tasks_allowed=2       # Very conservative
+                        elif [[ $usage -lt 85 ]]; then
+                            new_tasks_allowed=1       # Only 1 at a time
                         else
-                            new_tasks_allowed=0       # Stop new tasks when space is critical
+                            new_tasks_allowed=0       # Stop completely at 85%
+                        fi
+                        
+                        # Additional safety check: monitor available space trend
+                        SPACE_LOG="$CONTROL_DIR/space_check.log"
+                        available_gb=$(df -BG "$SCRATCH_DIR" 2>/dev/null | awk 'NR==2 {{print $4}}' | sed 's/G//')
+                        current_time=$(date +%s)
+                        echo "$current_time $available_gb" >> "$SPACE_LOG" 2>/dev/null || true
+                        
+                        # Keep only last 10 measurements and check consumption rate
+                        if [[ -f "$SPACE_LOG" ]]; then
+                            tail -10 "$SPACE_LOG" > "$SPACE_LOG.tmp" 2>/dev/null && mv "$SPACE_LOG.tmp" "$SPACE_LOG" 2>/dev/null || true
+                            
+                            # If we have enough data points, check consumption rate
+                            line_count=$(wc -l < "$SPACE_LOG" 2>/dev/null || echo "0")
+                            if [[ $line_count -ge 5 ]]; then
+                                # Check if space is dropping rapidly (more than 2GB in 5 minutes)
+                                space_change=$(tail -5 "$SPACE_LOG" | awk 'NR==1{{first=$2}} NR==5{{last=$2}} END{{print first-last}}' 2>/dev/null || echo "0")
+                                if [[ $(echo "$space_change > 2" | bc -l 2>/dev/null || echo "0") -eq 1 ]]; then
+                                    # Rapid consumption detected - reduce limits by half
+                                    new_tasks_allowed=$((new_tasks_allowed / 2))
+                                    echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') WARNING: Task $SGE_TASK_ID: Rapid space consumption detected (${{space_change}}GB in 5min), reducing new task limit to $new_tasks_allowed" >&2
+                                fi
+                            fi
                         fi
                         
                         # Count tasks that started recently (last 15 minutes) as "new tasks"
