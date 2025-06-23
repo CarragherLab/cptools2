@@ -1,6 +1,7 @@
 import sys
 import os
 import argparse
+from scissorhands import script_generator
 from cptools2 import generate_scripts
 from cptools2 import job
 from cptools2 import parse_yaml
@@ -37,7 +38,7 @@ def configure_job(config):
              jobber.add_plate(**plate_args_dict) # Call add_plate for each dictionary in the list
     if config.chunk_args is not None:
         jobber.chunk(**config.chunk_args)
-    jobber.create_commands(**config.create_command_args)
+    # jobber.create_commands(**config.create_command_args) # This is now handled by batch processing
     return jobber
 
 
@@ -71,29 +72,47 @@ def handle_generate(args):
     if not os.path.isfile(config_file):
         raise ValueError(f"'{config_file}' is not a file")
 
-    pretty_print(f"Parsing config file {colours.yellow(config_file)}")
+    # Parse config and create job as before
     config = parse_yaml.parse_config_file(config_file)
-    
-    # --- Determine and Create Required Directories ---
-    # Re-open yaml to get base location easily (could also get from config.create_command_args)
-    yaml_dict = parse_yaml.open_yaml(config_file) 
+    yaml_dict = parse_yaml.open_yaml(config_file)
     commands_location = os.path.expandvars(config.create_command_args["commands_location"])
+    location = os.path.expandvars(config.create_command_args["location"])
     logfile_location = os.path.expandvars(os.path.join(yaml_dict["location"], "logfiles"))
 
-    pretty_print(f"Ensuring commands directory exists: {colours.yellow(commands_location)}")
+    # Ensure directories exist
     os.makedirs(commands_location, exist_ok=True)
-    pretty_print(f"Ensuring logfile directory exists: {colours.yellow(logfile_location)}")
     os.makedirs(logfile_location, exist_ok=True)
-    # ------------------------------------------------
 
-    # configure_job now returns the jobber object, but we don't need it here directly
-    configure_job(config) 
+    # Configure job with ALL plates (this remains the same)
+    jobber = configure_job(config)
+
+    # NEW: PLATE BATCH PLANNING PHASE
+    from cptools2.generate_scripts import plan_plate_batches, generate_batch_workflows, generate_batch_scripts, create_sequential_submission_script
     
-    # Pass the whole config object to make_scripts, consistent with original design
-    # although make_scripts re-parses it internally currently.
-    # Consider refactoring make_scripts to accept the config object directly later.
-    make_scripts(config_file) 
-    pretty_print("Script generation DONE!")
+    # Analyze plates and create batching plan
+    batch_plan = plan_plate_batches(jobber, location, logfile_location)
+    
+    # Generate workflows for each plate batch
+    batch_workflows = generate_batch_workflows(
+        config, jobber, batch_plan, commands_location, logfile_location
+    )
+    
+    # Generate a single hex for the entire job run to manage dependencies
+    job_hex = script_generator.generate_random_hex()
+
+    # Generate scripts for each batch workflow
+    batch_scripts = []
+    for workflow in batch_workflows:
+        # Generate SGE scripts for this batch using existing logic
+        batch_script_info = generate_batch_scripts(
+            workflow, config, logfile_location, job_hex
+        )
+        batch_scripts.append(batch_script_info)
+    
+    # Create master submission script with dependencies
+    create_sequential_submission_script(batch_scripts, commands_location)
+    
+    print("Plate-based batch generation DONE!")
 
 
 def handle_join(args):

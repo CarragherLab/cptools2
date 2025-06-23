@@ -24,6 +24,9 @@ class Job(object):
         self.loaddata_store = dict()
         self.has_loaddata = False
         self.is_new_ix = is_new_ix
+        self.plate_space_requirements = dict()  # Space per plate
+        self.total_experiment_size = 0          # Total space for all plates
+        self.plate_batches = []                 # Batches of plates
 
     def add_experiment(self, exp_dir):
         """
@@ -281,3 +284,117 @@ class Job(object):
         
         raw_data_location = os.path.join(location, "raw_data")
         return join_plate_files(self.plate_store, raw_data_location, patterns)
+
+    def _get_directory_size(self, start_path='.'):
+        total_size = 0
+        for dirpath, dirnames, filenames in os.walk(start_path):
+            for f in filenames:
+                fp = os.path.join(dirpath, f)
+                # skip if it is symbolic link
+                if not os.path.islink(fp):
+                    total_size += os.path.getsize(fp)
+        return total_size
+
+    def calculate_plate_sizes(self):
+        """
+        Calculate space requirements for each plate individually
+        This is the foundation for plate-level batching decisions
+        """
+        total_size = 0
+        
+        for plate_name, plate_data in self.plate_store.items():
+            plate_path = plate_data[0]
+            
+            # Calculate space for this specific plate
+            plate_size = self._get_directory_size(plate_path)
+            self.plate_space_requirements[plate_name] = plate_size
+            total_size += plate_size
+        
+        self.total_experiment_size = total_size
+        return self.plate_space_requirements
+
+    def create_plate_batches(self, available_scratch_space):
+        """
+        Group plates into batches based on space constraints
+        Each batch will fit within 50% of available scratch space
+        """
+        # Use 50% of available space per batch
+        max_batch_size = available_scratch_space * 0.5
+        
+        # Account for processing overhead
+        overhead_factor = 1.5  # 50% overhead for temp files
+        
+        # Sort plates by size (largest first for better packing)
+        sorted_plates = sorted(
+            self.plate_space_requirements.items(), 
+            key=lambda x: x[1], 
+            reverse=True
+        )
+        
+        current_batch = []
+        current_batch_size = 0
+        batch_number = 1
+        
+        for plate_name, plate_size in sorted_plates:
+            effective_plate_size = plate_size * overhead_factor
+            
+            # Check if this plate fits in current batch
+            if current_batch_size + effective_plate_size <= max_batch_size:
+                current_batch.append(plate_name)
+                current_batch_size += effective_plate_size
+            else:
+                # Start new batch if current batch has plates
+                if current_batch:
+                    self.plate_batches.append({
+                        'batch_id': batch_number,
+                        'plates': current_batch.copy(),
+                        'total_size_gb': current_batch_size / (1024**3),
+                        'plate_count': len(current_batch)
+                    })
+                    batch_number += 1
+                
+                # Start new batch with current plate
+                current_batch = [plate_name]
+                current_batch_size = effective_plate_size
+        
+        # Add final batch if it has plates
+        if current_batch:
+            self.plate_batches.append({
+                'batch_id': batch_number,
+                'plates': current_batch.copy(),
+                'total_size_gb': current_batch_size / (1024**3),
+                'plate_count': len(current_batch)
+            })
+        
+        return self.plate_batches
+
+    def get_plates_for_batch(self, batch_id):
+        """
+        Get plate names for a specific batch
+        This allows creating Job objects for individual batches
+        """
+        for batch in self.plate_batches:
+            if batch['batch_id'] == batch_id:
+                return batch['plates']
+        return []
+
+    def create_batch_job(self, batch_id):
+        """
+        Create a new Job object containing only plates from specified batch
+        This allows existing command generation to work on plate subsets
+        """
+        batch_plates = self.get_plates_for_batch(batch_id)
+        
+        # Create new Job with same configuration
+        batch_job = Job(self.is_new_ix)
+        
+        # Copy only the plates for this batch
+        for plate_name in batch_plates:
+            if plate_name in self.plate_store:
+                batch_job.plate_store[plate_name] = self.plate_store[plate_name]
+        
+        # Apply chunking if it was used in original job
+        if self.chunked:
+            batch_job.chunk(job_size=96)  # Use same job_size as original
+        
+        return batch_job

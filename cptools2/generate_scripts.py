@@ -9,6 +9,7 @@ import textwrap
 from datetime import datetime
 import yaml
 import base64
+import shutil
 from scissorhands import script_generator
 from cptools2 import utils
 from cptools2 import colours
@@ -211,6 +212,115 @@ def make_qsub_scripts(config, commands_location, commands_count_dict, logfile_lo
     submit_script_path = make_submit_script(commands_location, time_now, join_script_loc, transfer_script_loc)
     pretty_print("saving master submission script at {}".format(colours.yellow(submit_script_path)))
     utils.make_executable(submit_script_path)
+
+
+def get_available_scratch_space(path):
+    """Returns available space in bytes on the drive of the given path."""
+    check_path = path
+    while not os.path.exists(check_path):
+        check_path = os.path.dirname(check_path)
+        if not check_path or check_path == os.path.dirname(check_path):
+            # we've reached the root and it doesn't exist, something is very wrong
+            raise FileNotFoundError(f"Could not find existing path from {path} to check disk space.")
+    total, used, free = shutil.disk_usage(check_path)
+    return free
+
+
+def plan_plate_batches(job_object, scratch_path, logfile_location):
+    """
+    Analyze plates and create batching plan
+    This runs before any script generation
+    """
+    # Calculate space for all plates
+    plate_sizes = job_object.calculate_plate_sizes()
+    
+    # Get current scratch space availability
+    available_space = get_available_scratch_space(scratch_path)
+    
+    # Create plate batches
+    plate_batches = job_object.create_plate_batches(available_space)
+    
+    # Log the batching plan
+    log_content = log_plate_batching_plan(plate_sizes, plate_batches, available_space)
+    log_file_path = os.path.join(logfile_location, "plate_batching_plan.log")
+    with open(log_file_path, "w") as f:
+        f.write("\n".join(log_content))
+    
+    return {
+        'plate_batches': plate_batches,
+        'total_plates': len(plate_sizes),
+        'available_space_gb': available_space / (1024**3),
+        'batch_count': len(plate_batches)
+    }
+
+def log_plate_batching_plan(plate_sizes, plate_batches, available_space):
+    """
+    Log plate batching decisions for audit and debugging
+    """
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    
+    # Create detailed log of batching decisions
+    log_content = []
+    log_content.append(f"Plate Batching Plan - {timestamp}")
+    log_content.append(f"Available scratch space: {available_space / (1024**3):.2f} GB")
+    log_content.append(f"Safety allocation per batch (50%): {(available_space * 0.5) / (1024**3):.2f} GB")
+    log_content.append(f"Processing overhead factor: 1.5x")
+    log_content.append("")
+    
+    log_content.append("Individual Plate Sizes:")
+    for plate_name, size in sorted(plate_sizes.items(), key=lambda x: x[1], reverse=True):
+        log_content.append(f"  {plate_name}: {size / (1024**3):.2f} GB")
+    log_content.append("")
+    
+    log_content.append("Plate Batch Configuration:")
+    for batch in plate_batches:
+        log_content.append(f"  Batch {batch['batch_id']}: {batch['plate_count']} plates, {batch['total_size_gb']:.2f} GB")
+        for plate in batch['plates']:
+            plate_size_gb = plate_sizes[plate] / (1024**3)
+            log_content.append(f"    - {plate}: {plate_size_gb:.2f} GB")
+        log_content.append("")
+    
+    return log_content
+
+def generate_batch_workflows(config, job_object, batch_plan, commands_location, logfile_location):
+    """
+    Generate complete workflows for each plate batch
+    Each batch gets its own commands and scripts
+    """
+    batch_workflows = []
+    
+    for batch_info in batch_plan['plate_batches']:
+        batch_id = batch_info['batch_id']
+        
+        # Create Job object for this batch only
+        batch_job = job_object.create_batch_job(batch_id)
+        
+        # Create batch-specific directories
+        batch_commands_location = os.path.join(commands_location, f"batch_{batch_id}")
+        os.makedirs(batch_commands_location, exist_ok=True)
+        
+        # Generate commands for this batch (using existing logic)
+        batch_job.create_commands(
+            pipeline=config.create_command_args['pipeline'],
+            location=config.create_command_args['location'],
+            commands_location=batch_commands_location,
+            job_size=config.chunk_args.get('job_size', 96) if config.chunk_args else 96
+        )
+        
+        # Generate scripts for this batch (using existing logic)
+        batch_commands_count = lines_in_commands(batch_commands_location)
+        
+        batch_workflow = {
+            'batch_id': batch_id,
+            'plates': batch_info['plates'],
+            'commands_location': batch_commands_location,
+            'commands_count': batch_commands_count,
+            'job_object': batch_job
+        }
+        
+        batch_workflows.append(batch_workflow)
+    
+    return batch_workflows
 
 
 def make_logfile_text(logfile_location, job_file, n_tasks):
@@ -477,138 +587,6 @@ def make_datastore_transfer_script(config, commands_location, logfile_location, 
     
     return transfer_loc
 
-
-# def make_email_notification_script(config, commands_location, logfile_location, job_hex, time_now, eddie_source_dir):
-#     """
-#     Creates a script to send an email notification after data transfer.
-#     This script will run on a login node or a node with mailx configured.
-#     It checks the transfer log to determine success or failure.
-#
-#     Parameters:
-#     -----------
-#     config: object
-#         Configuration object. Expected to have 'notification_email', 
-#         'data_destination_path', and 'create_command_args["location"]'.
-#     commands_location: string
-#         Path where scripts are being saved.
-#     logfile_location: string
-#         Path where logs for the main jobs are saved. This is where the transfer log is found.
-#     job_hex: string
-#         Unique identifier for this job set.
-#     time_now: string
-#         Timestamp for naming files.
-#     eddie_source_dir: string
-#         Source directory on Eddie for the rsync operation (used in email content).
-#
-#     Returns:
-#     --------
-#     string
-#         Path to the created email notification script, or None if not created.
-#     """
-#     if not hasattr(config, 'notification_email') or not config.notification_email:
-#         pretty_print("No notification_email specified in config, skipping email notification script generation.")
-#         return None
-#
-#     datastore_dest = config.data_destination_path
-#     if not datastore_dest: # Should ideally not happen if email is specified, but good check
-#         pretty_print("No datastore_destination specified, cannot generate meaningful email. Skipping email script.")
-#         return None
-#         
-#     email_address = config.notification_email
-#     
-#     # Standardized log file name, matching the one in make_datastore_transfer_script
-#     transfer_log_file = os.path.join(logfile_location, f"transfer_to_datastore_{job_hex}.log")
-#     
-#     # eddie_source_dir is config.create_command_args["location"] used by transfer script for its source.
-#     # For the email, we want to report the specific subdirectory that was meant to be transferred.
-#     specific_eddie_source_for_email = os.path.join(eddie_source_dir, "joined_files").replace("\\\\", "/")
-#
-#
-#     pretty_print(f"Generating email notification script. Will monitor: {colours.yellow(transfer_log_file)}")
-#
-#     email_script = script_generator.SGEScript(
-#         name=f"email_notify_{job_hex}",
-#         memory="1G", # Minimal memory for a simple script
-#         tasks=1,
-#         output=os.path.join(logfile_location, "email_notification") # Log for the email job itself
-#     )
-#     
-#     # SGE options for email
-#     email_script += f"#$ -m ea\\n" # Email on end or abort
-#     email_script += f"#$ -M {email_address}\\n"
-#     email_script += f"#$ -hold_jid transfer_{job_hex}\\n" # Wait for the transfer job
-#
-#     # Define paths and variables within the script
-#     email_script += f"TRANSFER_LOG_FILE=\\"{transfer_log_file}\\"\\n"
-#     email_script += f"EDDIE_SOURCE_DIR_REPORT=\\"{specific_eddie_source_for_email}\\"\\n"
-#     email_script += f"DATASTORE_DEST_DIR_REPORT=\\"{datastore_dest}\\"\\n"
-#     email_script += f"LOGFILE_LOCATION_REPORT=\\"{logfile_location}\\"\\n"
-#     email_script += f"JOB_HEX_REPORT=\\"{job_hex}\\"\\n" # For constructing specific log names if needed in email
-#
-#     # Script logic to parse log and send email
-#     # Constructing the script string carefully to avoid f-string escaping issues for shell syntax
-#     email_logic_parts = [
-#         f'echo "Email notification script started at $(date) for job hex: {job_hex}"',
-#         'sleep 10', # Wait a few seconds for log file
-#         'if [ ! -f "$TRANSFER_LOG_FILE" ]; then',
-#         f'    EMAIL_SUBJECT="cptools2 Alert - Job {job_hex} - Transfer Log NOT FOUND"',
-#         f'    EMAIL_BODY="The transfer log file $TRANSFER_LOG_FILE was not found.\\\\nPlease check the job status and logs in $LOGFILE_LOCATION_REPORT."',
-#         'else',
-#         '    if grep -q "Transfer completed successfully" "$TRANSFER_LOG_FILE"; then',
-#         '        FILE_COUNT_LINE=$(grep "Number of files transferred:" "$TRANSFER_LOG_FILE")',
-#         '        TOTAL_SIZE_LINE=$(grep "Total transferred file size:" "$TRANSFER_LOG_FILE")',
-#         '        FILE_COUNT=$(echo "$FILE_COUNT_LINE" | grep -o \'[0-9]*\' | head -n 1)',
-#         # Note: The sed command for TOTAL_SIZE needs careful escaping for backslashes and parentheses
-#         '        TOTAL_SIZE=$(echo "$TOTAL_SIZE_LINE" | sed -n \'s/.*Total transferred file size: \\\\([^ ]*\\\\).*/\\\\1/p\')',
-#         '        if [ -z "$FILE_COUNT" ]; then FILE_COUNT="unknown"; fi',
-#         '        if [ -z "$TOTAL_SIZE" ]; then TOTAL_SIZE="unknown"; fi',
-#         f'        EMAIL_SUBJECT="cptools2 Analysis Data Transfer Completed - Job {job_hex} - Success"',
-#         '        EMAIL_BODY="Your cptools2 analysis data transfer has completed successfully.\\\\n\\\\n"',
-#         '        EMAIL_BODY+="Data has been transferred from: $EDDIE_SOURCE_DIR_REPORT\\\\n"',
-#         '        EMAIL_BODY+="To DataStore destination: $DATASTORE_DEST_DIR_REPORT\\\\n\\\\n"',
-#         '        EMAIL_BODY+="Files transferred: $FILE_COUNT\\\\n"',
-#         '        EMAIL_BODY+="Total size: $TOTAL_SIZE\\\\n\\\\n"',
-#         '        EMAIL_BODY+="Thank you for using cptools2.\\\\n\\\\n"',
-#         '        EMAIL_BODY+="If you have any feedback or noticed any bugs then please let me know.\\\\n\\\\n"',
-#         '        EMAIL_BODY+="Best Wishes,\\\\n\\\\nMungo Harvey (he/him)\\\\nPostdoctoral Research Assistant\\\\n\\\\nE: mharvey2@ed.ac.uk"',
-#         '    elif grep -q "Transfer failed" "$TRANSFER_LOG_FILE"; then',
-#         f'        EMAIL_SUBJECT="cptools2 Analysis Data Transfer FAILED - Job {job_hex}"',
-#         '        EMAIL_BODY="Your cptools2 analysis data transfer has FAILED.\\\\n\\\\n"',
-#         '        EMAIL_BODY+="Attempted transfer from: $EDDIE_SOURCE_DIR_REPORT\\\\n"',
-#         '        EMAIL_BODY+="To DataStore destination: $DATASTORE_DEST_DIR_REPORT\\\\n\\\\n"',
-#         '        EMAIL_BODY+="Please check the transfer log: $TRANSFER_LOG_FILE\\\\n"',
-#         '        EMAIL_BODY+="And other job logs in: $LOGFILE_LOCATION_REPORT\\\\n\\\\n"',
-#         '        EMAIL_BODY+="Best Wishes,\\\\n\\\\nMungo Harvey (he/him)\\\\nPostdoctoral Research Assistant\\\\n\\\\nE: mharvey2@ed.ac.uk"',
-#         '    else',
-#         f'        EMAIL_SUBJECT="cptools2 Alert - Job {job_hex} - Transfer Status UNKNOWN"',
-#         '        EMAIL_BODY="The status of the data transfer for job {job_hex} could not be determined from the log file: $TRANSFER_LOG_FILE.\\\\n\\\\n"',
-#         '        EMAIL_BODY+="Please check the job status and logs in $LOGFILE_LOCATION_REPORT manually.\\\\n\\\\n"',
-#         '        EMAIL_BODY+="Transfer from: $EDDIE_SOURCE_DIR_REPORT\\\\n"',
-#         '        EMAIL_BODY+="To DataStore destination: $DATASTORE_DEST_DIR_REPORT"',
-#         '    fi',
-#         'fi',
-#         f'echo "Sending email notification to {email_address}..."',
-#         # Using -e with echo for newline interpretation in body, subject needs to be quoted for mail command
-#         f'echo -e "$EMAIL_BODY" | mail -s "$EMAIL_SUBJECT" "{email_address}"',
-#         'if [ $? -eq 0 ]; then',
-#         '    echo "Email command executed successfully."',
-#         'else',
-#         '    echo "Email command failed with exit code $?."',
-#         '    exit 1',
-#         'fi',
-#         'echo "Email notification script finished at $(date)"'
-#     ]
-#     email_logic = textwrap.dedent("\\n".join(email_logic_parts))
-#     email_script += email_logic
-#
-#     email_script_loc = os.path.join(commands_location, f"{time_now}_email_notify_script.sh")
-#     email_script.save(email_script_loc)
-#     pretty_print(f"Saving email notification script at {colours.yellow(email_script_loc)}")
-#     utils.make_executable(email_script_loc)
-#     
-#     return email_script_loc
-
-
 class SafePathScript(script_generator.AnalysisScript):
     """
     This class provides methods to handle rsync commands with filepaths containing spaces
@@ -780,5 +758,130 @@ class SafePathScript(script_generator.AnalysisScript):
         full_script_addition += command_execution_logic
 
         self.template += full_script_addition
+
+
+def generate_batch_scripts(workflow, config, logfile_location, job_hex):
+    """
+    Generate SGE scripts for a single plate batch
+    Uses existing script generation logic but for subset of plates
+    """
+    batch_id = workflow['batch_id']
+    commands_location = workflow['commands_location']
+    commands_count = workflow['commands_count']
+    
+    # Use existing make_qsub_scripts logic but with batch-specific parameters
+    time_now = datetime.now().replace(microsecond=0)
+    time_now = str(time_now).replace(" ", "-")
+    
+    # Create batch-specific job names
+    staging_job_name = f"staging_batch_{batch_id}_{job_hex}"
+    analysis_job_name = f"analysis_batch_{batch_id}_{job_hex}"
+    destaging_job_name = f"destaging_batch_{batch_id}_{job_hex}"
+    
+    # Set dependencies (batch 2+ waits for previous batch destaging)
+    if batch_id > 1:
+        staging_dependency = f"destaging_batch_{batch_id-1}_{job_hex}"
+    else:
+        staging_dependency = None
+    
+    # Generate scripts using existing patterns
+    cmd_path = make_command_paths(commands_location)
+    
+    # Create staging script
+    staging_script = SafePathScript(
+        name=staging_job_name,
+        memory="1G",
+        output=os.path.join(logfile_location, "staging"),
+        tasks=commands_count["staging"]
+    )
+    staging_script += "#$ -q staging\n"
+    staging_script += "#$ -p -500\n"
+    staging_script += "#$ -tc 20\n"
+    
+    if staging_dependency:
+        staging_script += f"#$ -hold_jid {staging_dependency}\n"
+    
+    # Use existing base64_safe_array_loop (no changes needed)
+    staging_script.base64_safe_array_loop(
+        phase="staging",
+        input_file=cmd_path["staging"]
+    )
+    
+    staging_loc = os.path.join(commands_location, f"{time_now}_staging_script.sh")
+    staging_script.save(staging_loc)
+
+    # Create analysis script
+    analysis_script = script_generator.AnalysisScript(
+        name=analysis_job_name,
+        tasks=commands_count["cp_commands"],
+        hold_jid_ad=staging_job_name,
+        pe="sharedmem 1",
+        memory="24G",
+        output=os.path.join(logfile_location, "analysis")
+    )
+    analysis_script += load_module_text(is_cellprofiler=True)
+    analysis_script.loop_through_file(cmd_path["cp_commands"])
+    analysis_script += make_logfile_text(logfile_location,
+                                         job_file=f"batch_{batch_id}_{job_hex}",
+                                         n_tasks=commands_count["cp_commands"])
+    analysis_loc = os.path.join(commands_location, f"{time_now}_analysis_script.sh")
+    analysis_script.save(analysis_loc)
+    
+    # Create destaging script
+    destaging_script = SafePathScript(
+        name=destaging_job_name,
+        memory="1G",
+        hold_jid_ad=analysis_job_name,
+        tasks=commands_count["destaging"],
+        output=os.path.join(logfile_location, "destaging")
+    )
+    destaging_script.base64_safe_array_loop(phase="destaging",
+                                          input_file=cmd_path["destaging"])
+    destage_loc = os.path.join(commands_location, f"{time_now}_destaging_script.sh")
+    destaging_script.save(destage_loc)
+    
+    return {
+        'batch_id': batch_id,
+        'plates': workflow['plates'],
+        'staging_script': staging_loc,
+        'analysis_script': analysis_loc,
+        'destaging_script': destage_loc,
+        'job_hex': job_hex
+    }
+
+def create_sequential_submission_script(batch_scripts, commands_location):
+    """
+    Create master submission script that submits all batches
+    Dependencies are already built into the individual scripts
+    """
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    script_content = []
+    
+    script_content.append("#!/bin/sh")
+    script_content.append("# Sequential plate batch submission script")
+    script_content.append(f"# Generated: {timestamp}")
+    script_content.append("# Batches run sequentially to prevent scratch space conflicts")
+    script_content.append("")
+    
+    for batch_info in batch_scripts:
+        batch_id = batch_info['batch_id']
+        plates = ", ".join(batch_info['plates'])
+        
+        script_content.append(f"# Batch {batch_id}: {plates}")
+        script_content.append(f"echo 'Submitting batch {batch_id} ({len(batch_info['plates'])} plates)...'")
+        script_content.append(f"qsub {batch_info['staging_script']}")
+        script_content.append(f"qsub {batch_info['analysis_script']}")
+        script_content.append(f"qsub {batch_info['destaging_script']}")
+        script_content.append("")
+    
+    script_content.append(f"echo 'Submitted {len(batch_scripts)} plate batches for sequential execution'")
+    
+    # Save submission script
+    submit_script_path = os.path.join(commands_location, f"{timestamp}_SUBMIT_PLATE_BATCHES.sh")
+    with open(submit_script_path, 'w') as f:
+        f.write('\\n'.join(script_content))
+    
+    utils.make_executable(submit_script_path)
+    return submit_script_path
 
 
