@@ -140,9 +140,9 @@ def make_qsub_scripts(config, commands_location, commands_count_dict, logfile_lo
     stage_script += "#$ -p -500\n"
     stage_script += "#$ -tc 20\n"
     
-    # Use the base64-safe method for staging commands
-    stage_script.base64_safe_array_loop(phase="staging",
-                                        input_file=cmd_path["staging"])
+    # Use the simplified method for staging commands
+    stage_script.simple_array_loop(phase="staging",
+                                   input_file=cmd_path["staging"])
     stage_loc = os.path.join(commands_location,
                              "{}_staging_script.sh".format(time_now))
     stage_script.save(stage_loc)
@@ -169,9 +169,9 @@ def make_qsub_scripts(config, commands_location, commands_count_dict, logfile_lo
         tasks=commands_count_dict["destaging"],
         output=os.path.join(logfile_location, "destaging")
     )
-    # Use the base64-safe method for destaging commands
-    destaging_script.base64_safe_array_loop(phase="destaging",
-                                          input_file=cmd_path["destaging"])
+    # Use the simplified method for destaging commands
+    destaging_script.simple_array_loop(phase="destaging",
+                                       input_file=cmd_path["destaging"])
     destage_loc = os.path.join(commands_location,
                                "{}_destaging_script.sh".format(time_now))
     destaging_script.save(destage_loc)
@@ -589,19 +589,20 @@ def make_datastore_transfer_script(config, commands_location, logfile_location, 
 
 class SafePathScript(script_generator.AnalysisScript):
     """
-    This class provides methods to handle rsync commands with filepaths containing spaces
-    or other special characters when running within Grid Engine array jobs.
+    Simplified GridEngine script generation with base64 command encoding for special character support.
     
-    It inherits from scissorhands.script_generator.AnalysisScript and adds
-    methods that properly handle special characters in command execution.
+    Provides straightforward command execution without dynamic space management complexity.
+    Preserves base64 encoding/decoding for paths with special characters.
+    
+    UPDATED: Removed complex runtime space monitoring (~150 lines) while preserving core functionality.
     """
 
     def __init__(self, *args, **kwargs):
         script_generator.AnalysisScript.__init__(self, *args, **kwargs)
 
-    def base64_safe_array_loop(self, phase, input_file):
+    def simple_array_loop(self, phase, input_file):
         """
-        Uses base64 encoding/decoding to preserve all special characters in commands.
+        Simplified command execution that preserves base64 decoding without dynamic space management.
         
         This method assumes the commands in input_file have been base64 encoded.
         See commands.py's write_commands() function for the encoding step.
@@ -617,133 +618,8 @@ class SafePathScript(script_generator.AnalysisScript):
         ---------
         nothing, adds text to template
         """
-        full_script_addition = ""
-
-        if phase == "staging":
-            # New dynamic scratch space management for staging phase
-            dynamic_space_management = textwrap.dedent(
-                '''
-                # --- BEGIN DYNAMIC SCRATCH SPACE MANAGEMENT for {phase} ---
-                # Core configuration
-                SCRATCH_DIR="/exports/eddie/scratch/$USER"
-                
-                # Get project directory from the commands location or use a default subdirectory
-                # This ensures control files are scoped to the specific project
-                if [[ -n "{input_file}" ]]; then
-                    PROJECT_DIR=$(dirname "{input_file}")
-                    PROJECT_NAME=$(basename "$PROJECT_DIR")
-                else
-                    PROJECT_NAME="cptools_project"
-                    PROJECT_DIR="$SCRATCH_DIR/$PROJECT_NAME"
-                fi
-                
-                CONTROL_DIR="$PROJECT_DIR/.{phase}_control"
-                mkdir -p "$CONTROL_DIR" 2>/dev/null || true
-                
-                echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Using control directory: $CONTROL_DIR" >&2
-                
-                # Dynamic scratch space management function
-                wait_for_safe_space() {{
-                    local usage
-                    local total_active_tasks
-                    local new_tasks_allowed
-                    local current_new_tasks
-                    
-                    while true; do
-                        # Get disk usage percentage
-                        usage=$(df --output=pcent "$SCRATCH_DIR" 2>/dev/null | tail -1 | sed 's/%//' | tr -d ' ')
-
-                        # Count all active tasks (no time limit - some analyses run for many hours)
-                        total_active_tasks=$(find "$CONTROL_DIR" -name "active_*" 2>/dev/null | wc -l)
-                        
-                        # Conservative exponential scale-down for NEW tasks based on space usage
-                        # Much more conservative limits with finer granularity to prevent overflow
-                        if [[ $usage -lt 50 ]]; then
-                            new_tasks_allowed=200     # Conservative peak when plenty of space
-                        elif [[ $usage -lt 60 ]]; then
-                            new_tasks_allowed=50      # Start throttling earlier
-                        elif [[ $usage -lt 70 ]]; then
-                            new_tasks_allowed=20      # Moderate throttling
-                        elif [[ $usage -lt 75 ]]; then
-                            new_tasks_allowed=5       # Aggressive throttling
-                        elif [[ $usage -lt 80 ]]; then
-                            new_tasks_allowed=2       # Very conservative
-                        elif [[ $usage -lt 85 ]]; then
-                            new_tasks_allowed=1       # Only 1 at a time
-                        else
-                            new_tasks_allowed=0       # Stop completely at 85%
-                        fi
-                        
-                        # Additional safety check: monitor available space trend
-                        SPACE_LOG="$CONTROL_DIR/space_check.log"
-                        available_gb=$(df -BG "$SCRATCH_DIR" 2>/dev/null | awk 'NR==2 {{print $4}}' | sed 's/G//')
-                        current_time=$(date +%s)
-                        echo "$current_time $available_gb" >> "$SPACE_LOG" 2>/dev/null || true
-                        
-                        # Keep only last 10 measurements and check consumption rate
-                        if [[ -f "$SPACE_LOG" ]]; then
-                            tail -10 "$SPACE_LOG" > "$SPACE_LOG.tmp" 2>/dev/null && mv "$SPACE_LOG.tmp" "$SPACE_LOG" 2>/dev/null || true
-                            
-                            # If we have enough data points, check consumption rate
-                            line_count=$(wc -l < "$SPACE_LOG" 2>/dev/null || echo "0")
-                            if [[ $line_count -ge 5 ]]; then
-                                # Check if space is dropping rapidly (more than 2GB in 5 minutes)
-                                space_change=$(tail -5 "$SPACE_LOG" | awk 'NR==1{{first=$2}} NR==5{{last=$2}} END{{print first-last}}' 2>/dev/null || echo "0")
-                                if [[ $(echo "$space_change > 2" | bc -l 2>/dev/null || echo "0") -eq 1 ]]; then
-                                    # Rapid consumption detected - reduce limits by half
-                                    new_tasks_allowed=$((new_tasks_allowed / 2))
-                                    echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') WARNING: Task $SGE_TASK_ID: Rapid space consumption detected (${{space_change}}GB in 5min), reducing new task limit to $new_tasks_allowed" >&2
-                                fi
-                            fi
-                        fi
-                        
-                        # Count tasks that started recently (last 15 minutes) as "new tasks"
-                        # This gives us a proxy for recent task additions vs long-running tasks
-                        current_new_tasks=$(find "$CONTROL_DIR" -name "active_*" -mmin -15 2>/dev/null | wc -l)
-                        
-                        # Check if we can proceed with adding this new task
-                        if [[ $current_new_tasks -lt $new_tasks_allowed ]]; then
-                            echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Space check passed (usage: ${{usage}}%, total_active: $total_active_tasks, recent_new: $current_new_tasks/$new_tasks_allowed)" >&2
-                            break
-                        fi
-                        
-                        echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Waiting for safe space (usage: ${{usage}}%, total_active: $total_active_tasks, recent_new: $current_new_tasks/$new_tasks_allowed allowed)" >&2
-                        
-                        # Random delay to prevent thundering herd (30-60 seconds)
-                        sleep_time=$((30 + RANDOM % 30))
-                        sleep "$sleep_time"
-                    done
-                }}
-                
-                # Mark task as active
-                mark_active() {{
-                    touch "$CONTROL_DIR/active_$SGE_TASK_ID"
-                    echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Marked as active" >&2
-                }}
-                
-                # Cleanup function
-                cleanup_control() {{
-                    rm -f "$CONTROL_DIR/active_$SGE_TASK_ID" 2>/dev/null || true
-                    echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Cleaned up control file" >&2
-                }}
-                
-                # Set up cleanup trap
-                trap cleanup_control EXIT
-                
-                # Execute space management
-                wait_for_safe_space
-                mark_active
-                
-                echo "[{phase}] $(date +'%Y-%m-%d %H:%M:%S') INFO: Task $SGE_TASK_ID: Proceeding to execute {phase} command (after dynamic space check)" >&2
-                # --- END DYNAMIC SCRATCH SPACE MANAGEMENT ---
-                '''
-            ).format(phase=phase, input_file=input_file)
-            
-            full_script_addition += dynamic_space_management
-
-        # Always include the command execution logic
-        # These main command execution logs go to stderr (SGE default error file)
-        command_execution_logic = textwrap.dedent(
+        # Simple command execution without dynamic space monitoring
+        command_execution = textwrap.dedent(
             '''
             SEEDFILE="{input_file}"
             ENCODED_SEED=$(awk "NR==$SGE_TASK_ID" "$SEEDFILE")
@@ -752,12 +628,13 @@ class SafePathScript(script_generator.AnalysisScript):
             # Execute the decoded command directly
             eval "$SEED"
             # Log the command completion for debugging
-            echo "[{phase}] $(date +\'%Y-%m-%d %H:%M:%S\') INFO: Task $SGE_TASK_ID: Completed executing {phase} command." >&2
+            echo "[{phase}] $(date +\'%Y-%m-%d %H:%M:%S\') INFO: Task $SGE_TASK_ID: Completed {phase} command." >&2
             '''
         ).format(phase=phase, input_file=input_file)
-        full_script_addition += command_execution_logic
+        
+        self.template += command_execution
 
-        self.template += full_script_addition
+
 
 
 def generate_batch_scripts(workflow, config, logfile_location, job_hex):
@@ -801,8 +678,8 @@ def generate_batch_scripts(workflow, config, logfile_location, job_hex):
     if staging_dependency:
         staging_script += f"#$ -hold_jid {staging_dependency}\n"
     
-    # Use existing base64_safe_array_loop (no changes needed)
-    staging_script.base64_safe_array_loop(
+    # Use simplified array loop for batch staging
+    staging_script.simple_array_loop(
         phase="staging",
         input_file=cmd_path["staging"]
     )
@@ -835,8 +712,8 @@ def generate_batch_scripts(workflow, config, logfile_location, job_hex):
         tasks=commands_count["destaging"],
         output=os.path.join(logfile_location, "destaging")
     )
-    destaging_script.base64_safe_array_loop(phase="destaging",
-                                          input_file=cmd_path["destaging"])
+    destaging_script.simple_array_loop(phase="destaging",
+                                       input_file=cmd_path["destaging"])
     destage_loc = os.path.join(commands_location, f"{time_now}_destaging_script.sh")
     destaging_script.save(destage_loc)
     

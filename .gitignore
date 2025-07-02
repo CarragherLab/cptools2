@@ -14,3 +14,5 @@ README_BASE64_UPDATE.md
 
 # Ignore directories related to specific projects/features
 yaml_generator/
+cptools_project_app/
+project_generator_gui/
