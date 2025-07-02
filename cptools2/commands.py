@@ -185,11 +185,10 @@ def make_rsync_cmnd(plate_loc, filelist_name, img_location):
     --------
     string: an rsync command
     """
-    # NOTE: setting permissions with o+ means others have read/write/execution
-    #       access, not very secure but it's a temporary file which is going
-    #       to be deleted afterwards anyway.
+    # Use more secure permissions appropriate for Eddie
+    # Only owner and group get write access, others get read-only
     # Use double quotes to properly handle paths with spaces
-    return "rsync -s --perms --chmod=a+rwx --files-from=\"{filelist}\" \"{source}\" \"{destination}\""\
+    return "rsync -s --perms --chmod=ug+rwx,o+rx --files-from=\"{filelist}\" \"{source}\" \"{destination}\""\
         .format(filelist=filelist_name,
                 source=plate_loc,
                 destination=img_location)
