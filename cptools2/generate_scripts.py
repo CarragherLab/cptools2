@@ -226,99 +226,7 @@ def get_available_scratch_space(path):
     return free
 
 
-def plan_plate_batches(job_object, scratch_path, logfile_location):
-    """
-    Analyze plates and create batching plan
-    This runs before any script generation
-    """
-    # Calculate space for all plates
-    plate_sizes = job_object.calculate_plate_sizes()
-    
-    # Get current scratch space availability
-    available_space = get_available_scratch_space(scratch_path)
-    
-    # Create plate batches
-    plate_batches = job_object.create_plate_batches(available_space)
-    
-    # Log the batching plan
-    log_content = log_plate_batching_plan(plate_sizes, plate_batches, available_space)
-    log_file_path = os.path.join(logfile_location, "plate_batching_plan.log")
-    with open(log_file_path, "w") as f:
-        f.write("\n".join(log_content))
-    
-    return {
-        'plate_batches': plate_batches,
-        'total_plates': len(plate_sizes),
-        'available_space_gb': available_space / (1024**3),
-        'batch_count': len(plate_batches)
-    }
 
-def log_plate_batching_plan(plate_sizes, plate_batches, available_space):
-    """
-    Log plate batching decisions for audit and debugging
-    """
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    
-    # Create detailed log of batching decisions
-    log_content = []
-    log_content.append(f"Plate Batching Plan - {timestamp}")
-    log_content.append(f"Available scratch space: {available_space / (1024**3):.2f} GB")
-    log_content.append(f"Safety allocation per batch (50%): {(available_space * 0.5) / (1024**3):.2f} GB")
-    log_content.append(f"Processing overhead factor: 1.5x")
-    log_content.append("")
-    
-    log_content.append("Individual Plate Sizes:")
-    for plate_name, size in sorted(plate_sizes.items(), key=lambda x: x[1], reverse=True):
-        log_content.append(f"  {plate_name}: {size / (1024**3):.2f} GB")
-    log_content.append("")
-    
-    log_content.append("Plate Batch Configuration:")
-    for batch in plate_batches:
-        log_content.append(f"  Batch {batch['batch_id']}: {batch['plate_count']} plates, {batch['total_size_gb']:.2f} GB")
-        for plate in batch['plates']:
-            plate_size_gb = plate_sizes[plate] / (1024**3)
-            log_content.append(f"    - {plate}: {plate_size_gb:.2f} GB")
-        log_content.append("")
-    
-    return log_content
-
-def generate_batch_workflows(config, job_object, batch_plan, commands_location, logfile_location):
-    """
-    Generate complete workflows for each plate batch
-    Each batch gets its own commands and scripts
-    """
-    batch_workflows = []
-    
-    for batch_info in batch_plan['plate_batches']:
-        batch_id = batch_info['batch_id']
-        
-        # Create Job object for this batch only
-        batch_job = job_object.create_batch_job(batch_id)
-        
-        # Create batch-specific directories
-        batch_commands_location = os.path.join(commands_location, f"batch_{batch_id}")
-        os.makedirs(batch_commands_location, exist_ok=True)
-        
-        # Generate commands for this batch (using existing logic)
-        # Use config args but override commands_location for batch-specific directory
-        batch_create_args = config.create_command_args.copy()
-        batch_create_args['commands_location'] = batch_commands_location
-        batch_job.create_commands(**batch_create_args)
-        
-        # Generate scripts for this batch (using existing logic)
-        batch_commands_count = lines_in_commands(batch_commands_location)
-        
-        batch_workflow = {
-            'batch_id': batch_id,
-            'plates': batch_info['plates'],
-            'commands_location': batch_commands_location,
-            'commands_count': batch_commands_count,
-            'job_object': batch_job
-        }
-        
-        batch_workflows.append(batch_workflow)
-    
-    return batch_workflows
 
 
 def make_logfile_text(logfile_location, job_file, n_tasks):
@@ -633,135 +541,77 @@ class SafePathScript(script_generator.AnalysisScript):
         self.template += command_execution
 
 
-
-
-def generate_batch_scripts(workflow, config, logfile_location, job_hex):
+def create_batch_planner_script(commands_location, logfile_location, config):
     """
-    Generate SGE scripts for a single plate batch
-    Uses existing script generation logic but for subset of plates
-    """
-    batch_id = workflow['batch_id']
-    commands_location = workflow['commands_location']
-    commands_count = workflow['commands_count']
+    Create a batch planner script that runs on Eddie's staging node
+    to analyze filelists and create runtime batches.
     
-    # Use existing make_qsub_scripts logic but with batch-specific parameters
-    time_now = datetime.now().replace(microsecond=0)
-    time_now = str(time_now).replace(" ", "-")
-    
-    # Create batch-specific job names
-    staging_job_name = f"staging_batch_{batch_id}_{job_hex}"
-    analysis_job_name = f"analysis_batch_{batch_id}_{job_hex}"
-    destaging_job_name = f"destaging_batch_{batch_id}_{job_hex}"
-    
-    # Set dependencies (batch 2+ waits for previous batch destaging)
-    if batch_id > 1:
-        staging_dependency = f"destaging_batch_{batch_id-1}_{job_hex}"
-    else:
-        staging_dependency = None
-    
-    # Generate scripts using existing patterns
-    cmd_path = make_command_paths(commands_location)
-    
-    # Create staging script
-    staging_script = SafePathScript(
-        name=staging_job_name,
-        memory="1G",
-        output=os.path.join(logfile_location, "staging"),
-        tasks=commands_count["staging"]
-    )
-    staging_script += "#$ -q staging\n"
-    staging_script += "#$ -p -500\n"
-    staging_script += "#$ -tc 20\n"
-    
-    if staging_dependency:
-        # CRITICAL: Use hold_jid_ad to wait for ALL array tasks to complete on Eddie
-        # This ensures batch N doesn't start until batch N-1 destaging is fully done
-        staging_script += f"#$ -hold_jid_ad {staging_dependency}\n"
-    
-    # Use simplified array loop for batch staging
-    staging_script.simple_array_loop(
-        phase="staging",
-        input_file=cmd_path["staging"]
-    )
-    
-    staging_loc = os.path.join(commands_location, f"{time_now}_staging_script.sh")
-    staging_script.save(staging_loc)
-
-    # Create analysis script with Eddie-optimized resources
-    analysis_script = script_generator.AnalysisScript(
-        name=analysis_job_name,
-        tasks=commands_count["cp_commands"],
-        hold_jid_ad=staging_job_name,
-        pe="sharedmem 1",
-        memory="24G",  # 24GB per core for CellProfiler on Eddie IGMM nodes
-        output=os.path.join(logfile_location, "analysis")
-    )
-    # Add Eddie-specific resource specifications
-    analysis_script += "#$ -l h_rt=12:00:00\n"  # 12 hour runtime limit
-    analysis_script += "#$ -cwd\n"  # Use current working directory
-    analysis_script += load_module_text(is_cellprofiler=True)
-    analysis_script.loop_through_file(cmd_path["cp_commands"])
-    analysis_script += make_logfile_text(logfile_location,
-                                         job_file=f"batch_{batch_id}_{job_hex}",
-                                         n_tasks=commands_count["cp_commands"])
-    analysis_loc = os.path.join(commands_location, f"{time_now}_analysis_script.sh")
-    analysis_script.save(analysis_loc)
-    
-    # Create destaging script
-    destaging_script = SafePathScript(
-        name=destaging_job_name,
-        memory="1G",
-        hold_jid_ad=analysis_job_name,
-        tasks=commands_count["destaging"],
-        output=os.path.join(logfile_location, "destaging")
-    )
-    destaging_script.simple_array_loop(phase="destaging",
-                                       input_file=cmd_path["destaging"])
-    destage_loc = os.path.join(commands_location, f"{time_now}_destaging_script.sh")
-    destaging_script.save(destage_loc)
-    
-    return {
-        'batch_id': batch_id,
-        'plates': workflow['plates'],
-        'staging_script': staging_loc,
-        'analysis_script': analysis_loc,
-        'destaging_script': destage_loc,
-        'job_hex': job_hex
-    }
-
-def create_sequential_submission_script(batch_scripts, commands_location):
-    """
-    Create master submission script that submits all batches
-    Dependencies are already built into the individual scripts
-    """
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    script_content = []
-    
-    script_content.append("#!/bin/sh")
-    script_content.append("# Sequential plate batch submission script")
-    script_content.append(f"# Generated: {timestamp}")
-    script_content.append("# Batches run sequentially to prevent scratch space conflicts")
-    script_content.append("")
-    
-    for batch_info in batch_scripts:
-        batch_id = batch_info['batch_id']
-        plates = ", ".join(batch_info['plates'])
+    Parameters:
+    -----------
+    commands_location: str
+        Path to commands directory
+    logfile_location: str
+        Path to logfiles directory  
+    config: object
+        Configuration object for additional context
         
-        script_content.append(f"# Batch {batch_id}: {plates}")
-        script_content.append(f"echo 'Submitting batch {batch_id} ({len(batch_info['plates'])} plates)...'")
-        script_content.append(f"qsub {batch_info['staging_script']}")
-        script_content.append(f"qsub {batch_info['analysis_script']}")
-        script_content.append(f"qsub {batch_info['destaging_script']}")
-        script_content.append("")
+    Returns:
+    --------
+    str: Path to created batch planner script
+    """
+    from cptools2 import utils
     
-    script_content.append(f"echo 'Submitted {len(batch_scripts)} plate batches for sequential execution'")
+    # Create batch planner script content
+    script_content = textwrap.dedent(f'''
+        #!/bin/sh
+        #$ -N batch_planner
+        #$ -q staging
+        #$ -pe sharedmem 1
+        #$ -l h_vmem=2G
+        #$ -o {logfile_location}/batch_planner.out
+        #$ -e {logfile_location}/batch_planner.err
+        
+        # Runtime Batch Planner for cptools2
+        # This script runs on Eddie's staging node to analyze filelists
+        # and create space-safe batches for sequential execution
+        
+        echo "=== cptools2 Runtime Batch Planner ==="
+        echo "Started at: $(date)"
+        echo "Commands location: {commands_location}"
+        echo "Logfiles location: {logfile_location}"
+        echo ""
+        
+        # Load Python environment
+        module load python/3.11.4
+        
+        # Run the batch analysis
+        python -m cptools2.batch_planner \\
+            --commands-dir "{commands_location}" \\
+            --logfiles-dir "{logfile_location}" \\
+            --sample-size 10
+        
+        echo ""
+        echo "Batch planner finished at: $(date)"
+        ''').strip()
     
-    # Save submission script
-    submit_script_path = os.path.join(commands_location, f"{timestamp}_SUBMIT_PLATE_BATCHES.sh")
-    with open(submit_script_path, 'w') as f:
-        f.write('\\n'.join(script_content))
+    # Save the batch planner script
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    script_path = os.path.join(commands_location, f"{timestamp}_batch_planner.sh")
     
-    utils.make_executable(submit_script_path)
-    return submit_script_path
+    with open(script_path, 'w') as f:
+        f.write(script_content)
+    
+    # Make executable
+    utils.make_executable(script_path)
+    
+    pretty_print(f"Created runtime batch planner script: {colours.yellow(script_path)}")
+    pretty_print("Submit with: qsub batch_planner.sh", colour='green')
+    
+    return script_path
+
+
+
+
+
 
 

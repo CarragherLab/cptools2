@@ -84,34 +84,21 @@ def handle_generate(args):
 
     # Configure job with ALL plates (this remains the same)
     jobber = configure_job(config)
-
-    # NEW: PLATE BATCH PLANNING PHASE
-    from cptools2.generate_scripts import plan_plate_batches, generate_batch_workflows, generate_batch_scripts, create_sequential_submission_script
     
-    # Analyze plates and create batching plan
-    batch_plan = plan_plate_batches(jobber, location, logfile_location)
+    # Create commands normally (no upfront batching)
+    jobber.create_commands(**config.create_command_args)
     
-    # Generate workflows for each plate batch
-    batch_workflows = generate_batch_workflows(
-        config, jobber, batch_plan, commands_location, logfile_location
-    )
+    # Generate simple scripts (staging, analysis, destaging)
+    commands_line_count = generate_scripts.lines_in_commands(commands_location)
+    generate_scripts.make_qsub_scripts(config=config,
+                                       commands_location=commands_location,
+                                       commands_count_dict=commands_line_count,
+                                       logfile_location=logfile_location)
     
-    # Generate a single hex for the entire job run to manage dependencies
-    job_hex = script_generator.generate_random_hex()
-
-    # Generate scripts for each batch workflow
-    batch_scripts = []
-    for workflow in batch_workflows:
-        # Generate SGE scripts for this batch using existing logic
-        batch_script_info = generate_batch_scripts(
-            workflow, config, logfile_location, job_hex
-        )
-        batch_scripts.append(batch_script_info)
+    # Create runtime batch planner script
+    generate_scripts.create_batch_planner_script(commands_location, logfile_location, config)
     
-    # Create master submission script with dependencies
-    create_sequential_submission_script(batch_scripts, commands_location)
-    
-    print("Plate-based batch generation DONE!")
+    print("Script generation DONE! Use batch_planner.sh for runtime batch planning on Eddie.")
 
 
 def handle_join(args):
@@ -153,13 +140,11 @@ def main():
 
     args = parser.parse_args()
 
-    # Basic environment check (can be adapted based on where 'join' might run)
-    # If 'join' might run off-node, this check needs refinement.
-    # For now, assume it runs where datastore access is possible if needed by underlying funcs.
-    # Note: utils.on_staging_node() might not be universally applicable.
-    # Consider if specific checks are needed only for 'generate'.
-    # if not utils.on_staging_node():
-    #     raise EddieNodeError("Environment check failed (e.g., not on staging node)")
+    # Environment check for generate command (requires staging node access)
+    if args.command == 'generate':
+        if not utils.on_staging_node():
+            raise EddieNodeError("Generate command must be run on a staging node for DataStore access")
+    # Join command can run on any node with access to the results
 
     # Call the function associated with the chosen subcommand
     args.func(args)
