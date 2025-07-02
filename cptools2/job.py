@@ -99,6 +99,9 @@ class Job(object):
         job_size : int (default=96)
             number of imagesets per job
         """
+        # Store job_size for later use in batch creation
+        self.job_size = job_size
+        
         # for each image_list in the platestore, split into chunks of job_size
         for key in self.plate_store:
             chunks = splitter.split(self.plate_store[key][1], job_size)
@@ -294,6 +297,45 @@ class Job(object):
                 if not os.path.islink(fp):
                     total_size += os.path.getsize(fp)
         return total_size
+    
+    def _estimate_plate_size_fast(self, plate_path):
+        """
+        Fast estimation of plate size by sampling files and extrapolating.
+        Much faster than full directory walk on network filesystems.
+        """
+        import glob
+        
+        # Sample image files to estimate average size
+        # Look for common ImageXpress file patterns
+        sample_patterns = [
+            os.path.join(plate_path, "**", "*.tiff"),
+            os.path.join(plate_path, "**", "*.tif"),
+            os.path.join(plate_path, "**", "*.png")
+        ]
+        
+        sample_files = []
+        for pattern in sample_patterns:
+            sample_files.extend(glob.glob(pattern, recursive=True)[:50])  # Sample max 50 files
+            if len(sample_files) >= 20:  # Enough for good estimation
+                break
+        
+        if len(sample_files) < 5:
+            raise ValueError("Not enough sample files for estimation")
+        
+        # Calculate average file size from samples
+        total_sample_size = sum(os.path.getsize(f) for f in sample_files if os.path.isfile(f))
+        avg_file_size = total_sample_size / len(sample_files)
+        
+        # Count total files in plate (faster than getting all sizes)
+        total_files = 0
+        for pattern in sample_patterns:
+            total_files += len(glob.glob(pattern, recursive=True))
+        
+        # Estimate total size
+        estimated_size = int(avg_file_size * total_files)
+        
+        # Add 20% safety margin for estimation error
+        return int(estimated_size * 1.2)
 
     def calculate_plate_sizes(self):
         """
@@ -305,8 +347,13 @@ class Job(object):
         for plate_name, plate_data in self.plate_store.items():
             plate_path = plate_data[0]
             
-            # Calculate space for this specific plate
-            plate_size = self._get_directory_size(plate_path)
+            # Try faster estimation first, fallback to full calculation
+            try:
+                plate_size = self._estimate_plate_size_fast(plate_path)
+            except (OSError, ValueError):
+                # Fallback to full directory walk if estimation fails
+                plate_size = self._get_directory_size(plate_path)
+            
             self.plate_space_requirements[plate_name] = plate_size
             total_size += plate_size
         
@@ -395,6 +442,6 @@ class Job(object):
         
         # Apply chunking if it was used in original job
         if self.chunked:
-            batch_job.chunk(job_size=96)  # Use same job_size as original
+            batch_job.chunk(job_size=self.job_size)  # Use same job_size as original
         
         return batch_job

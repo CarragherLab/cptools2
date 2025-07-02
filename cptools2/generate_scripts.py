@@ -300,12 +300,10 @@ def generate_batch_workflows(config, job_object, batch_plan, commands_location, 
         os.makedirs(batch_commands_location, exist_ok=True)
         
         # Generate commands for this batch (using existing logic)
-        batch_job.create_commands(
-            pipeline=config.create_command_args['pipeline'],
-            location=config.create_command_args['location'],
-            commands_location=batch_commands_location,
-            job_size=config.chunk_args.get('job_size', 96) if config.chunk_args else 96
-        )
+        # Use config args but override commands_location for batch-specific directory
+        batch_create_args = config.create_command_args.copy()
+        batch_create_args['commands_location'] = batch_commands_location
+        batch_job.create_commands(**batch_create_args)
         
         # Generate scripts for this batch (using existing logic)
         batch_commands_count = lines_in_commands(batch_commands_location)
@@ -676,7 +674,9 @@ def generate_batch_scripts(workflow, config, logfile_location, job_hex):
     staging_script += "#$ -tc 20\n"
     
     if staging_dependency:
-        staging_script += f"#$ -hold_jid {staging_dependency}\n"
+        # CRITICAL: Use hold_jid_ad to wait for ALL array tasks to complete on Eddie
+        # This ensures batch N doesn't start until batch N-1 destaging is fully done
+        staging_script += f"#$ -hold_jid_ad {staging_dependency}\n"
     
     # Use simplified array loop for batch staging
     staging_script.simple_array_loop(
@@ -687,15 +687,18 @@ def generate_batch_scripts(workflow, config, logfile_location, job_hex):
     staging_loc = os.path.join(commands_location, f"{time_now}_staging_script.sh")
     staging_script.save(staging_loc)
 
-    # Create analysis script
+    # Create analysis script with Eddie-optimized resources
     analysis_script = script_generator.AnalysisScript(
         name=analysis_job_name,
         tasks=commands_count["cp_commands"],
         hold_jid_ad=staging_job_name,
         pe="sharedmem 1",
-        memory="24G",
+        memory="24G",  # 24GB per core for CellProfiler on Eddie IGMM nodes
         output=os.path.join(logfile_location, "analysis")
     )
+    # Add Eddie-specific resource specifications
+    analysis_script += "#$ -l h_rt=12:00:00\n"  # 12 hour runtime limit
+    analysis_script += "#$ -cwd\n"  # Use current working directory
     analysis_script += load_module_text(is_cellprofiler=True)
     analysis_script.loop_through_file(cmd_path["cp_commands"])
     analysis_script += make_logfile_text(logfile_location,
