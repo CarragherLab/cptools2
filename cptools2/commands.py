@@ -228,10 +228,12 @@ def cp_command(pipeline, load_data, output_location):
     --------
     string: a cellprofiler command
     """
-    return "cellprofiler -r -c -p {pipeline} --data-file={load_data} -o {output_location}".format(
+    base_command = "cellprofiler -r -c -p {pipeline} --data-file={load_data} -o {output_location}".format(
         pipeline=pipeline,
         load_data=load_data,
         output_location=output_location)
+    
+    return f"export OPENBLAS_NUM_THREADS=4; {base_command}"
 
 
 def make_output_directories(location):
