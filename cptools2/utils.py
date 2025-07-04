@@ -3,7 +3,7 @@ import collections
 import random
 import subprocess
 import re
-from .colours import pretty_print, yellow
+from .colours import pretty_print, yellow, red
 
 def make_dir(directory):
     """
@@ -208,9 +208,8 @@ def check_pipeline_version(pipeline_path):
 
         if not match:
             pretty_print(
-                f"Could not determine version from pipeline file: {pipeline_path}. "
-                "Skipping version check.",
-                colour='yellow'
+                yellow(f"Could not determine version from pipeline file: {pipeline_path}. "
+                       "Skipping version check.")
             )
             return
 
@@ -234,9 +233,8 @@ def check_pipeline_version(pipeline_path):
         match = re.search(r'CellProfiler (\d+)', cp_output)
         if not match:
             pretty_print(
-                f"Could not parse CellProfiler version from output: '{cp_output}'. "
-                "Skipping version check.",
-                colour='yellow'
+                yellow(f"Could not parse CellProfiler version from output: '{cp_output}'. "
+                       "Skipping version check.")
             )
             return
             
@@ -249,16 +247,15 @@ def check_pipeline_version(pipeline_path):
                 f"installed CellProfiler version ({cp_major_version}). "
                 f"This may cause errors during analysis."
             )
-            pretty_print(warning_msg, colour='yellow')
+            pretty_print(yellow(warning_msg))
 
     except FileNotFoundError:
-        pretty_print(f"Pipeline file not found at: {pipeline_path}", colour='red')
+        pretty_print(red(f"Pipeline file not found at: {pipeline_path}"))
     except subprocess.CalledProcessError as e:
         pretty_print(
-            "Could not execute 'cellprofiler --version'. "
-            "Please ensure CellProfiler is installed and in your PATH.",
-            colour='red'
+            red("Could not execute 'cellprofiler --version'. "
+                "Please ensure CellProfiler is installed and in your PATH.")
         )
     except Exception as e:
-        pretty_print(f"An unexpected error occurred during version check: {e}", colour='red')
+        pretty_print(red(f"An unexpected error occurred during version check: {e}"))
 
