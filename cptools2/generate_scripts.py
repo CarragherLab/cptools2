@@ -13,7 +13,7 @@ import shutil
 from scissorhands import script_generator
 from cptools2 import utils
 from cptools2 import colours
-from cptools2.colours import pretty_print
+from cptools2.colours import pretty_print, red, green
 
 
 def make_command_paths(commands_location):
@@ -190,7 +190,9 @@ def make_qsub_scripts(config, commands_location, commands_count_dict, logfile_lo
         # This assumes joined results are in a subdirectory named 'joined_results' 
         # under the main 'location' specified in the config.
         if not hasattr(config, 'create_command_args') or "location" not in config.create_command_args:
-            pretty_print("Error: 'location' not found in config.create_command_args. Cannot determine source for transfer script.", colour='red')
+            pretty_print(
+                red("Error: 'location' not found in config.create_command_args. Cannot determine source for transfer script.")
+            )
         else:
             # Assuming 'location' is the base for results, and joined files are in a subfolder
             # We need to construct the full path to the *source* of the joined files on Eddie for rsync
@@ -345,7 +347,9 @@ def make_join_files_script(config, commands_location, logfile_location, job_hex,
     patterns = config.join_files_patterns
     # Ensure create_command_args and location exist before accessing
     if not hasattr(config, 'create_command_args') or "location" not in config.create_command_args:
-        pretty_print("Error: 'location' not found in config.create_command_args. Cannot generate join script.", colour='red')
+        pretty_print(
+            red("Error: 'location' not found in config.create_command_args. Cannot generate join script.")
+        )
         return None
     location = config.create_command_args["location"]
 
@@ -605,7 +609,7 @@ def create_batch_planner_script(commands_location, logfile_location, config):
     utils.make_executable(script_path)
     
     pretty_print(f"Created runtime batch planner script: {colours.yellow(script_path)}")
-    pretty_print("Submit with: qsub batch_planner.sh", colour='green')
+    pretty_print(green("Submit with: qsub batch_planner.sh"))
     
     return script_path
 

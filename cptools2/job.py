@@ -230,7 +230,8 @@ class Job(object):
         # --- Input Validation ---
         if not os.path.isfile(pipeline):
             raise FileNotFoundError(f"Pipeline file not found: {pipeline}")
-        # Potentially add more checks for location/commands_location if needed
+        
+        utils.check_pipeline_version(pipeline)
 
         # --- Processing Start ---
         pretty_print("creating image list")
