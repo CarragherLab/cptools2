@@ -233,7 +233,7 @@ def cp_command(pipeline, load_data, output_location):
         load_data=load_data,
         output_location=output_location)
     
-    return f"export OPENBLAS_NUM_THREADS=4; {base_command}"
+    return f"export OPENBLAS_NUM_THREADS=4\\n{base_command}"
 
 
 def make_output_directories(location):
