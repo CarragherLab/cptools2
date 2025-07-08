@@ -155,7 +155,7 @@ def make_qsub_scripts(config, commands_location, commands_count_dict, logfile_lo
         output=os.path.join(logfile_location, "analysis")
     )
     analysis_script += load_module_text(is_cellprofiler=True)
-    analysis_script += "export OPENBLAS_NUM_THREADS=4\\n"
+    analysis_script += "export OPENBLAS_NUM_THREADS=4"
     analysis_script.loop_through_file(cmd_path["cp_commands"])
     analysis_loc = os.path.join(commands_location,
                                 "{}_analysis_script.sh".format(time_now))
