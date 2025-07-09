@@ -231,6 +231,13 @@ class Job(object):
         if not os.path.isfile(pipeline):
             raise FileNotFoundError(f"Pipeline file not found: {pipeline}")
 
+        # DEBUG: Check the pipeline file content before use
+        with open(pipeline, 'r') as f:
+            header = [next(f) for _ in range(5)]
+            pretty_print("DEBUG: Pipeline header before command creation:")
+            for line in header:
+                print(line, end='')
+
         # --- Processing Start ---
         pretty_print("creating image list")
         if self.has_loaddata is False:
@@ -368,32 +375,36 @@ class Job(object):
         return self.plate_batches
 
     def get_plates_for_batch(self, batch_id):
-        """
-        Get plate names for a specific batch
-        This allows creating Job objects for individual batches
-        """
-        for batch in self.plate_batches:
-            if batch['batch_id'] == batch_id:
-                return batch['plates']
-        return []
+        """Returns the list of plates for a given batch ID."""
+        if not self.plate_batches:
+            raise ValueError("Plate batches have not been created yet. Call create_plate_batches() first.")
+        if not 0 <= batch_id < len(self.plate_batches):
+            raise ValueError(f"Invalid batch_id: {batch_id}. Must be between 0 and {len(self.plate_batches) - 1}.")
+        return self.plate_batches[batch_id]
 
-    def create_batch_job(self, batch_id):
-        """
-        Create a new Job object containing only plates from specified batch
-        This allows existing command generation to work on plate subsets
-        """
-        batch_plates = self.get_plates_for_batch(batch_id)
+    def create_batch_job(self, batch_id, pipeline, location, commands_location, job_size):
+        """Creates commands for a specific batch of plates."""
+        if not os.path.isfile(pipeline):
+            raise FileNotFoundError(f"Pipeline file not found: {pipeline}")
+
+        plates_in_batch = self.get_plates_for_batch(batch_id)
+        pretty_print(f"Creating commands for batch {batch_id} with plates: {', '.join(plates_in_batch)}")
+
+        if self.has_loaddata is False:
+            self._create_loaddata(job_size)
+
+        cp_commands, rsync_commands, rm_commands = [], [], []
         
-        # Create new Job with same configuration
-        batch_job = Job(self.is_new_ix)
-        
-        # Copy only the plates for this batch
-        for plate_name in batch_plates:
-            if plate_name in self.plate_store:
-                batch_job.plate_store[plate_name] = self.plate_store[plate_name]
-        
-        # Apply chunking if it was used in original job
-        if self.chunked:
-            batch_job.chunk(job_size=96)  # Use same job_size as original
-        
-        return batch_job
+        commands.make_output_directories(location=location)
+
+        for plate in plates_in_batch:
+            if plate not in self.plate_store:
+                pretty_print(f"Warning: Plate '{plate}' from batch {batch_id} not found in plate_store. Skipping.", colour=colours.yellow)
+                continue
+            
+            p_cp, p_rsync, p_rm = self._process_plate(plate, pipeline, location, job_size)
+            cp_commands.extend(p_cp)
+            rsync_commands.extend(p_rsync)
+            rm_commands.extend(p_rm)
+
+        self._write_and_check_commands(commands_location, rsync_commands, cp_commands, rm_commands)
