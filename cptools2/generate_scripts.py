@@ -90,7 +90,7 @@ def load_module_text(is_cellprofiler=False):
     if is_cellprofiler:
         script_text += textwrap.dedent(
             """
-            source activate cellprofiler
+            conda activate cellprofiler
             """
         )
     return script_text
