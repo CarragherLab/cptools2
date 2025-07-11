@@ -1,9 +1,6 @@
 import os
 import collections
-import random
-import subprocess
-import re
-from .colours import pretty_print, yellow, red
+
 
 def make_dir(directory):
     """
@@ -108,8 +105,8 @@ def count_lines_in_file(input_file):
     """
     total = 0
     with open(input_file) as f:
-        for l in f:
-            if l != "\n":
+        for line in f:
+            if line != "\n":
                 total += 1
     return total
 

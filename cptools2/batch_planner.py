@@ -12,9 +12,7 @@ import os
 import sys
 import glob
 import argparse
-import json
 import shutil
-import subprocess
 from datetime import datetime
 from collections import defaultdict
 
@@ -198,144 +196,117 @@ def create_plate_batches(plate_sizes, available_space_bytes, safety_factor=0.5, 
     return batches
 
 
-def create_batch_scripts(batches, commands_location, logfile_location):
+def create_batch_scripts(batches, commands_location, logfile_location, config):
     """
-    Create individual batch scripts and submission script.
-    
-    Parameters:
-    -----------
-    batches: list
-        List of batch dictionaries
-    commands_location: str
-        Path to commands directory
-    logfile_location: str
-        Path to logfiles directory
-        
-    Returns:
-    --------
-    str: Path to master submission script
+    Create individual batch scripts and a master submission script to run them sequentially.
+    Each batch is a full sequence: Stage -> Analyze -> Destage -> Join -> Transfer.
     """
-    from cptools2.generate_scripts import SafePathScript, load_module_text, make_logfile_text, make_command_paths
+    from cptools2.generate_scripts import SafePathScript, load_module_text, make_command_paths, make_join_files_script, make_datastore_transfer_script
     from scissorhands import script_generator
     
-    # Generate job hex for dependencies
-    job_hex = script_generator.generate_random_hex()
-    
-    # Get timestamp
-    time_now = datetime.now().replace(microsecond=0)
-    time_now = str(time_now).replace(" ", "-")
-    
-    # Load command paths
+    time_now = datetime.now().replace(microsecond=0).strftime("%Y-%m-%d_%H-%M-%S")
     cmd_path = make_command_paths(commands_location)
     
-    batch_script_paths = []
-    
+    all_scripts_to_submit = []
+    last_job_in_chain_name = None
+
     for batch in batches:
         batch_id = batch['batch_id']
+        plates_in_batch = batch['plates']
+        job_hex = script_generator.generate_random_hex()  # Unique hex per batch for unique job names
         
-        print(f"Creating scripts for Batch {batch_id}: {', '.join(batch['plates'])} ({batch['total_size_gb']:.2f} GB)")
+        print(f"Creating scripts for Batch {batch_id}: {', '.join(plates_in_batch)} ({batch['total_size_gb']:.2f} GB)")
         
-        # Create batch-specific job names
+        # --- Staging ---
         staging_job_name = f"staging_batch_{batch_id}_{job_hex}"
-        analysis_job_name = f"analysis_batch_{batch_id}_{job_hex}"
-        destaging_job_name = f"destaging_batch_{batch_id}_{job_hex}"
-        
-        # Set dependencies (batch 2+ waits for previous batch destaging)
-        if batch_id > 1:
-            staging_dependency = f"destaging_batch_{batch_id-1}_{job_hex}"
-        else:
-            staging_dependency = None
-        
-        # Create staging script
-        staging_script = SafePathScript(
-            name=staging_job_name,
-            memory="1G",
-            output=os.path.join(logfile_location, "staging"),
-            tasks=1  # We'll set this properly by counting commands
-        )
-        staging_script += "#$ -q staging\n"
-        staging_script += "#$ -p -500\n"
-        staging_script += "#$ -tc 20\n"
-        
-        if staging_dependency:
-            staging_script += f"#$ -hold_jid {staging_dependency}\n"
-        
-        staging_script.simple_array_loop(
-            phase="staging",
-            input_file=cmd_path["staging"]
-        )
-        
-        staging_loc = os.path.join(commands_location, f"{time_now}_staging_batch_{batch_id}_script.sh")
+        staging_commands = get_commands_for_plates(cmd_path["staging"], plates_in_batch)
+        staging_script = SafePathScript(name=staging_job_name, memory="1G", output=os.path.join(logfile_location, "staging"), tasks=len(staging_commands))
+        staging_script += "#$ -q staging\n#$ -p -500\n#$ -tc 20\n"
+        if last_job_in_chain_name:
+            staging_script += f"#$ -hold_jid {last_job_in_chain_name}\n"
+        batch_staging_cmd_file = os.path.join(commands_location, f"staging_batch_{batch_id}.txt")
+        with open(batch_staging_cmd_file, 'w') as f:
+            f.write('\n'.join(staging_commands))
+        staging_script.simple_array_loop(phase="staging", input_file=batch_staging_cmd_file)
+        staging_loc = os.path.join(commands_location, f"{time_now}_staging_b{batch_id}_script.sh")
         staging_script.save(staging_loc)
+        all_scripts_to_submit.append(staging_loc)
         
-        # Create analysis script
-        analysis_script = script_generator.AnalysisScript(
-            name=analysis_job_name,
-            tasks=1,  # We'll set this properly by counting commands
-            hold_jid_ad=staging_job_name,
-            pe="sharedmem 1",
-            memory="24G",
-            output=os.path.join(logfile_location, "analysis")
-        )
+        # --- Analysis ---
+        analysis_job_name = f"analysis_batch_{batch_id}_{job_hex}"
+        analysis_commands = get_commands_for_plates(cmd_path["cp_commands"], plates_in_batch)
+        analysis_script = script_generator.AnalysisScript(name=analysis_job_name, tasks=len(analysis_commands), hold_jid_ad=staging_job_name, pe="sharedmem 1", memory="24G", output=os.path.join(logfile_location, "analysis"))
+        batch_analysis_cmd_file = os.path.join(commands_location, f"cp_commands_batch_{batch_id}.txt")
+        with open(batch_analysis_cmd_file, 'w') as f:
+            f.write('\n'.join(analysis_commands))
         analysis_script += load_module_text(is_cellprofiler=True)
-        analysis_script.loop_through_file(cmd_path["cp_commands"])
-        analysis_script += make_logfile_text(logfile_location,
-                                             job_file=f"batch_{batch_id}_{job_hex}",
-                                             n_tasks=1)
-        analysis_loc = os.path.join(commands_location, f"{time_now}_analysis_batch_{batch_id}_script.sh")
+        analysis_script.loop_through_file(batch_analysis_cmd_file)
+        analysis_loc = os.path.join(commands_location, f"{time_now}_analysis_b{batch_id}_script.sh")
         analysis_script.save(analysis_loc)
-        
-        # Create destaging script
-        destaging_script = SafePathScript(
-            name=destaging_job_name,
-            memory="1G",
-            hold_jid_ad=analysis_job_name,
-            tasks=1,  # We'll set this properly by counting commands
-            output=os.path.join(logfile_location, "destaging")
-        )
-        destaging_script.simple_array_loop(phase="destaging",
-                                           input_file=cmd_path["destaging"])
-        destage_loc = os.path.join(commands_location, f"{time_now}_destaging_batch_{batch_id}_script.sh")
+        all_scripts_to_submit.append(analysis_loc)
+
+        # --- Destaging ---
+        destaging_job_name = f"destaging_batch_{batch_id}_{job_hex}"
+        destaging_commands = get_commands_for_plates(cmd_path["destaging"], plates_in_batch)
+        destaging_script = SafePathScript(name=destaging_job_name, memory="1G", hold_jid_ad=analysis_job_name, tasks=len(destaging_commands), output=os.path.join(logfile_location, "destaging"))
+        batch_destaging_cmd_file = os.path.join(commands_location, f"destaging_batch_{batch_id}.txt")
+        with open(batch_destaging_cmd_file, 'w') as f:
+            f.write('\n'.join(destaging_commands))
+        destaging_script.simple_array_loop(phase="destaging", input_file=batch_destaging_cmd_file)
+        destage_loc = os.path.join(commands_location, f"{time_now}_destaging_b{batch_id}_script.sh")
         destaging_script.save(destage_loc)
-        
-        batch_script_paths.append({
-            'batch_id': batch_id,
-            'plates': batch['plates'],
-            'staging_script': staging_loc,
-            'analysis_script': analysis_loc,
-            'destaging_script': destage_loc
-        })
-    
-    # Create master submission script
-    submit_script_content = []
-    submit_script_content.append("#!/bin/sh")
-    submit_script_content.append("# Runtime batch submission script")
-    submit_script_content.append(f"# Generated: {time_now}")
-    submit_script_content.append("# Batches run sequentially to prevent scratch space conflicts")
-    submit_script_content.append("")
-    
-    for batch_info in batch_script_paths:
-        batch_id = batch_info['batch_id']
-        plates = ", ".join(batch_info['plates'])
-        
-        submit_script_content.append(f"# Batch {batch_id}: {plates}")
-        submit_script_content.append(f"echo 'Submitting batch {batch_id} ({len(batch_info['plates'])} plates)...'")
-        submit_script_content.append(f"qsub {batch_info['staging_script']}")
-        submit_script_content.append(f"qsub {batch_info['analysis_script']}")
-        submit_script_content.append(f"qsub {batch_info['destaging_script']}")
-        submit_script_content.append("")
-    
-    submit_script_content.append(f"echo 'Submitted {len(batches)} plate batches for sequential execution'")
-    
-    # Save submission script
+        all_scripts_to_submit.append(destage_loc)
+        last_job_in_chain_name = destaging_job_name
+
+        # --- Join ---
+        join_script_loc = make_join_files_script(config=config, commands_location=commands_location, logfile_location=logfile_location, job_hex=f"batch_{batch_id}_{job_hex}", time_now=f"{time_now}_b{batch_id}", dependency_job_name=last_job_in_chain_name, plates_to_join=plates_in_batch)
+        if join_script_loc:
+            all_scripts_to_submit.append(join_script_loc)
+            last_job_in_chain_name = f"join_batch_{batch_id}_{job_hex}"
+
+        # --- Transfer ---
+        eddie_source_dir = config.create_command_args["location"]
+        transfer_script_loc = make_datastore_transfer_script(config=config, commands_location=commands_location, logfile_location=logfile_location, job_hex=f"batch_{batch_id}_{job_hex}", time_now=f"{time_now}_b{batch_id}", eddie_source_dir=eddie_source_dir, dependency_job_name=last_job_in_chain_name)
+        if transfer_script_loc:
+            all_scripts_to_submit.append(transfer_script_loc)
+            last_job_in_chain_name = f"transfer_batch_{batch_id}_{job_hex}"
+
+    # --- Master Submission Script ---
+    submit_script_content = [
+        "#!/bin/sh",
+        "# Auto-generated master submission script by cptools2.",
+        "# This script submits all jobs for all batches in the correct sequence.",
+        ""
+    ]
+    for script_path in all_scripts_to_submit:
+        submit_script_content.append(f"qsub {script_path}")
+
     submit_script_path = os.path.join(commands_location, f"{time_now}_SUBMIT_RUNTIME_BATCHES.sh")
     with open(submit_script_path, 'w') as f:
         f.write('\n'.join(submit_script_content))
-    
-    # Make executable
     os.chmod(submit_script_path, 0o755)
     
     return submit_script_path
+
+def get_commands_for_plates(command_file, plate_names):
+    """
+    Reads a command file (e.g., staging.txt) and returns only the lines
+    that are associated with the given plate names.
+    
+    A command is associated with a plate if the plate name is a substring
+    of the command line. This is based on the assumption that file paths
+    in commands will contain the plate name.
+    """
+    commands = []
+    try:
+        with open(command_file, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if any(plate_name in line for plate_name in plate_names):
+                    commands.append(line)
+    except IOError as e:
+        print(f"Warning: Could not read command file {command_file}: {e}")
+    return commands
 
 
 def main():
@@ -343,7 +314,10 @@ def main():
     parser = argparse.ArgumentParser(description="Runtime batch planner for cptools2")
     parser.add_argument("--commands-dir", required=True, help="Path to commands directory")
     parser.add_argument("--logfiles-dir", required=True, help="Path to logfiles directory")
+    parser.add_argument("--config-file", required=True, help="Path to the original YAML config file")
     parser.add_argument("--sample-size", type=int, default=10, help="Number of files to sample for size estimation")
+    parser.add_argument("--submit-jobs", action="store_true", help="Automatically submit the generated jobs to SGE.")
+
     
     args = parser.parse_args()
     
@@ -353,6 +327,10 @@ def main():
     print()
     
     try:
+        # Step 0: Load config
+        from cptools2.parse_yaml import parse_config_file
+        config = parse_config_file(args.config_file)
+
         # Step 1: Extract plate information from filelists
         print("Step 1: Analyzing filelist directory...")
         plates = extract_plates_from_filelists(args.commands_dir)
@@ -362,7 +340,7 @@ def main():
             sys.exit(1)
         
         # Step 2: Estimate plate sizes
-        print(f"\nStep 2: Estimating plate sizes (sampling {args.sample_size} files per filelist)...")
+        print("\nStep 2: Estimating plate sizes (sampling {} files per filelist)...".format(args.sample_size))
         plate_sizes = {}
         for plate_name, filelists in plates.items():
             size_bytes = estimate_plate_size(filelists, args.sample_size)
@@ -370,28 +348,47 @@ def main():
             print(f"  {plate_name}: {size_bytes / (1024**3):.2f} GB")
         
         # Step 3: Get available space
-        print(f"\nStep 3: Checking available scratch space...")
+        print("\nStep 3: Checking available scratch space...")
         available_space = get_available_scratch_space()
         
         # Step 4: Create batches
-        print(f"\nStep 4: Creating space-safe batches...")
+        print("\nStep 4: Creating space-safe batches...")
         batches = create_plate_batches(plate_sizes, available_space)
         
-        print(f"\nBatch Plan Summary:")
+        print("\nBatch Plan Summary:")
         for batch in batches:
             print(f"  Batch {batch['batch_id']}: {len(batch['plates'])} plates, {batch['total_size_gb']:.2f} GB")
             for plate in batch['plates']:
                 print(f"    - {plate}")
         
         # Step 5: Create batch scripts
-        print(f"\nStep 5: Creating batch scripts...")
-        submit_script = create_batch_scripts(batches, args.commands_dir, args.logfiles_dir)
+        print("\nStep 5: Creating all batch, join, and transfer scripts...")
+        submit_script = create_batch_scripts(batches, args.commands_dir, args.logfiles_dir, config)
         
-        print(f"\n🎉 Runtime batch planning complete!")
-        print(f"Execute: bash {submit_script}")
+        print("\n🎉 Runtime batch planning complete!")
+        print(f"Master submission script created at: {submit_script}")
+        
+        if args.submit_jobs:
+            print("\n--submit-jobs flag detected. Automatically submitting jobs...")
+            try:
+                # Execute the master submission script
+                import subprocess
+                result = subprocess.run(["bash", submit_script], check=True, capture_output=True, text=True)
+                print("--- Submission Output ---")
+                print(result.stdout)
+                print("-------------------------")
+                print("All jobs submitted successfully.")
+            except subprocess.CalledProcessError as e:
+                print("Error during automatic submission:")
+                print(e.stderr)
+                sys.exit(1)
+        else:
+            print(f"\nTo start the analysis, run: bash {submit_script}")
         
     except Exception as e:
         print(f"Error in runtime batch planning: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 

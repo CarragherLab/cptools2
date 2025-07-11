@@ -231,13 +231,6 @@ class Job(object):
         if not os.path.isfile(pipeline):
             raise FileNotFoundError(f"Pipeline file not found: {pipeline}")
 
-        # DEBUG: Check the pipeline file content before use
-        with open(pipeline, 'r') as f:
-            header = [next(f) for _ in range(5)]
-            pretty_print("DEBUG: Pipeline header before command creation:")
-            for line in header:
-                print(line, end='')
-
         # --- Processing Start ---
         pretty_print("creating image list")
         if self.has_loaddata is False:

@@ -1,10 +1,8 @@
 import os
 import argparse
-from scissorhands import script_generator
 from cptools2 import generate_scripts
 from cptools2 import job
 from cptools2 import parse_yaml
-from cptools2 import utils
 from cptools2 import colours
 from cptools2 import file_tools
 from cptools2.colours import pretty_print
@@ -66,51 +64,56 @@ def make_scripts(config_file):
 
 
 def handle_generate(args):
-    """Handles the 'generate' subcommand: creates job commands and scripts."""
+    """Handles the 'generate' subcommand: creates job commands and a single master submission script."""
     config_file = args.config_file
     if not os.path.isfile(config_file):
         raise ValueError(f"'{config_file}' is not a file")
 
-    # Parse config and create job as before
+    # 1. Parse Config
     config = parse_yaml.parse_config_file(config_file)
     yaml_dict = parse_yaml.open_yaml(config_file)
     commands_location = os.path.expandvars(config.create_command_args["commands_location"])
-    location = os.path.expandvars(config.create_command_args["location"])
     logfile_location = os.path.expandvars(os.path.join(yaml_dict["location"], "logfiles"))
 
-    # Ensure directories exist
+    # 2. Ensure Directories Exist
     os.makedirs(commands_location, exist_ok=True)
     os.makedirs(logfile_location, exist_ok=True)
 
-    # Configure job with ALL plates (this remains the same)
+    # 3. Configure Job and Create Command Files
+    # The batch planner needs the complete command files to work with.
+    pretty_print("Configuring job and creating base command files...")
     jobber = configure_job(config)
-    
-    # Create commands normally (no upfront batching)
     jobber.create_commands(**config.create_command_args)
+    pretty_print("✓ Base command files created.")
     
-    # Generate simple scripts (staging, analysis, destaging)
-    commands_line_count = generate_scripts.lines_in_commands(commands_location)
-    generate_scripts.make_qsub_scripts(config=config,
-                                       commands_location=commands_location,
-                                       commands_count_dict=commands_line_count,
-                                       logfile_location=logfile_location)
-    
-    # Create runtime batch planner script
-    generate_scripts.create_batch_planner_script(commands_location, logfile_location, config)
-    
-    print("Script generation DONE! Use batch_planner.sh for runtime batch planning on Eddie.")
+    # 4. Create the Single Master Submission Script
+    # This script will handle everything else on the cluster (planning, batching, submitting).
+    pretty_print("Creating master submission script...")
+    generate_scripts.create_master_submit_script(
+        commands_location=commands_location,
+        logfile_location=logfile_location,
+        config_file=os.path.abspath(config_file) # Pass absolute path for robustness
+    )
 
 
 def handle_join(args):
     """Handles the 'join' subcommand: joins result files."""
     pretty_print(f"Joining files in {colours.yellow(args.location)} for patterns: {colours.yellow(', '.join(args.patterns))}")
+    
     # Construct raw_data location from the base location provided
     raw_data_location = os.path.join(args.location, "raw_data")
     
-    # Call join_plate_files directly. Pass None for plate_store 
-    # as it will discover plates from the directory structure.
+    # If specific plates are provided, create a dummy plate_store to pass to the joiner.
+    # Otherwise, it will discover all plates in the raw_data directory.
+    plate_store = None
+    if args.plates:
+        pretty_print(f"Targeting specific plates: {colours.yellow(', '.join(args.plates))}")
+        # The value doesn't matter, only the keys (plate names) are used.
+        plate_store = {plate_name: None for plate_name in args.plates}
+
+    # Call join_plate_files directly.
     results = file_tools.join_plate_files(
-        plate_store=None, 
+        plate_store=plate_store, 
         raw_data_location=raw_data_location, 
         patterns=args.patterns
     )
@@ -128,7 +131,7 @@ def main():
     subparsers.required = True # Require a subcommand
 
     # Subparser for the original functionality: generating scripts from config
-    parser_generate = subparsers.add_parser('generate', help='Generate SGE scripts from a YAML config file.')
+    parser_generate = subparsers.add_parser('generate', help='Generate a master SGE submission script from a YAML config file.')
     parser_generate.add_argument('config_file', type=str, help='Path to the YAML configuration file.')
     parser_generate.set_defaults(func=handle_generate)
 
@@ -136,16 +139,16 @@ def main():
     parser_join = subparsers.add_parser('join', help='Join chunked result files (e.g., Image.csv).')
     parser_join.add_argument('--location', type=str, required=True, help='Base location directory containing the raw_data subdirectory.')
     parser_join.add_argument('--patterns', type=str, required=True, nargs='+', help='File name patterns to join (e.g., Image.csv Cells.csv).')
+    parser_join.add_argument('--plates', type=str, nargs='+', help='(Optional) Specific plate names to join. If not provided, all plates found will be joined.')
     parser_join.set_defaults(func=handle_join)
 
     args = parser.parse_args()
 
-    # Environment check for generate command (requires staging node access)
+    # Environment check for generate command (requires staging node access) - this check is no longer strictly necessary
+    # as the heavy lifting is done on the cluster, but we can leave it as a safeguard.
     if args.command == 'generate':
-        if not utils.on_staging_node():
-            raise EddieNodeError("Generate command must be run on a staging node for DataStore access")
-    # Join command can run on any node with access to the results
-
+        pass # The check for being on a staging node is deferred to the master script itself.
+    
     # Call the function associated with the chosen subcommand
     args.func(args)
 
