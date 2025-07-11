@@ -120,9 +120,9 @@ def make_logfile_text(logfile_location, job_file, n_tasks):
     return textwrap.dedent(text)
 
 
-class SafePathScript(script_generator.Script):
+class SafePathScript(script_generator.SGEScript):
     """
-    Overwrites the __add__ method of the script_generator.Script
+    Overwrites the __add__ method of the script_generator.SGEScript
     class to enable adding new lines which contain paths, without
     them being converted to absolute paths by the script_generator
     """
