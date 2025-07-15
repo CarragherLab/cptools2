@@ -128,35 +128,24 @@ def _write_single_base64(commands_location, commands, final_name):
             outfile.write(encoded_line + "\n")
 
 
-def write_commands(commands_location, rsync_commands, cp_commands, rm_commands):
-    """
-    writes all commands, for stage, cp and destage commands
-
-    Parameters:
-    -----------
-    commands_location:
-        directory where to store the commands
-    rsync_commands: list
-        list of rsync commands (will be base64 encoded)
-    cp_commands: list
-        list of cellprofiler commands (will NOT be base64 encoded)
-    rm_commands: list
-        list of destating/rm commands (will be base64 encoded)
-
-    Returns:
-    --------
-    nothing, writes three files to disk
-    """
-    commands = [rsync_commands, cp_commands, rm_commands]
-    names = ["staging", "cp_commands", "destaging"]
-    for command, name in zip(commands, names):
-        # Always use base64 encoding for rsync (staging) and rm (destaging) commands
-        # which might contain file paths with special characters.
-        # CellProfiler commands (cp_commands) are not encoded.
-        if name == "staging" or name == "destaging":
+def write_commands(commands_location, rsync_commands, cp_commands, rm_commands,
+                  staging_file=None, cp_commands_file=None, destaging_file=None):
+    """Enhanced to support custom filenames for batch processing."""
+    import os
+    # Use custom filenames if provided, otherwise use defaults
+    if staging_file and cp_commands_file and destaging_file:
+        names = [
+            os.path.splitext(os.path.basename(staging_file))[0],
+            os.path.splitext(os.path.basename(cp_commands_file))[0],
+            os.path.splitext(os.path.basename(destaging_file))[0]
+        ]
+    else:
+        names = ["staging", "cp_commands", "destaging"]
+    commands_list = [rsync_commands, cp_commands, rm_commands]
+    for command, name in zip(commands_list, names):
+        if name.startswith("staging") or name.startswith("destaging"):
             _write_single_base64(commands_location, command, name)
         else:
-            # For cp_commands, write directly without encoding
             _write_single(commands_location, command, name)
 
 

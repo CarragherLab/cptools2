@@ -64,36 +64,78 @@ def make_scripts(config_file):
 
 
 def handle_generate(args):
-    """Handles the 'generate' subcommand: creates job commands and a single master submission script."""
+    """Enhanced generate handler with integrated batch planning and progress reporting"""
     config_file = args.config_file
     if not os.path.isfile(config_file):
         raise ValueError(f"'{config_file}' is not a file")
 
     # 1. Parse Config
+    pretty_print("[cptools2] parsing configuration...")
     config = parse_yaml.parse_config_file(config_file)
     yaml_dict = parse_yaml.open_yaml(config_file)
     commands_location = os.path.expandvars(config.create_command_args["commands_location"])
     logfile_location = os.path.expandvars(os.path.join(yaml_dict["location"], "logfiles"))
 
     # 2. Ensure Directories Exist
+    pretty_print("[cptools2] creating output directories...")
     os.makedirs(commands_location, exist_ok=True)
     os.makedirs(logfile_location, exist_ok=True)
 
-    # 3. Configure Job and Create Command Files
-    # The batch planner needs the complete command files to work with.
-    pretty_print("Configuring job and creating base command files...")
+    # 3. Configure Job and Build Plate Store
+    pretty_print("[cptools2] configuring job...")
     jobber = configure_job(config)
-    jobber.create_commands(**config.create_command_args)
-    pretty_print("✓ Base command files created.")
-    
-    # 4. Create the Single Master Submission Script
-    # This script will handle everything else on the cluster (planning, batching, submitting).
-    pretty_print("Creating master submission script...")
-    generate_scripts.create_master_submit_script(
-        commands_location=commands_location,
-        logfile_location=logfile_location,
-        config_file=os.path.abspath(config_file) # Pass absolute path for robustness
+
+    # 4. Print Plate Detection Results (preserve existing format)
+    platenames = sorted(jobber.plate_store.keys())
+    pretty_print("[cptools2] creating image list")
+    pretty_print("detected {} {}".format(
+        colours.yellow(len(platenames)),
+        colours.purple("plates"))
     )
+    for plate in platenames:
+        pretty_print(f"\t {colours.purple(plate)}")
+
+    # 5. Batch Planning (Default Behavior)
+    disable_batching = getattr(args, 'disable_batching', False)
+
+    if disable_batching:
+        pretty_print("[cptools2] batch planning disabled - using single batch for all plates")
+        # Traditional single-batch workflow
+        jobber.create_commands(**config.create_command_args)
+        generate_scripts.create_master_submit_script(
+            commands_location=commands_location,
+            logfile_location=logfile_location,
+            enable_batching=False
+        )
+    else:
+        pretty_print("[cptools2] calculating plate sizes for batch planning...")
+        jobber.calculate_plate_sizes()
+        available_scratch = generate_scripts.get_available_scratch_space(commands_location)
+        pretty_print(f"[cptools2] available scratch space: {colours.yellow(f'{available_scratch/(1024**3):.1f}GB')}")
+        pretty_print("[cptools2] creating space-optimal batches...")
+        batches = jobber.create_plate_batches(available_scratch)
+        pretty_print(f"[cptools2] created {colours.yellow(len(batches))} optimized batches:")
+        for batch in batches:
+            plate_list = ", ".join(batch['plates'][:3])
+            if len(batch['plates']) > 3:
+                plate_list += f" (+ {len(batch['plates'])-3} more)"
+            pretty_print(f"\t batch {colours.yellow(batch['batch_id'])}: "
+                        f"{colours.purple(len(batch['plates']))} plates, "
+                        f"{colours.green(f'{batch['total_size_gb']:.1f}GB')} - {plate_list}")
+        pretty_print("[cptools2] generating batch-specific command files...")
+        jobber.create_commands(
+            **config.create_command_args,
+            enable_batching=True,
+            available_scratch_space=available_scratch
+        )
+        pretty_print("[cptools2] creating batch submission scripts...")
+        generate_scripts.create_master_submit_script(
+            commands_location=commands_location,
+            logfile_location=logfile_location,
+            enable_batching=True,
+            batches=batches
+        )
+    pretty_print(colours.green("[cptools2] workflow generation complete!"))
 
 
 def handle_join(args):
@@ -133,6 +175,7 @@ def main():
     # Subparser for the original functionality: generating scripts from config
     parser_generate = subparsers.add_parser('generate', help='Generate a master SGE submission script from a YAML config file.')
     parser_generate.add_argument('config_file', type=str, help='Path to the YAML configuration file.')
+    parser_generate.add_argument('--disable-batching', action='store_true', help='Disable batch planning (default: batching enabled).')
     parser_generate.set_defaults(func=handle_generate)
 
     # Subparser for the new join functionality
@@ -148,7 +191,7 @@ def main():
     # as the heavy lifting is done on the cluster, but we can leave it as a safeguard.
     if args.command == 'generate':
         pass # The check for being on a staging node is deferred to the master script itself.
-    
+
     # Call the function associated with the chosen subcommand
     args.func(args)
 

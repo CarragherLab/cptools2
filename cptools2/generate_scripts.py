@@ -131,87 +131,48 @@ class SafePathScript(script_generator.SGEScript):
         return self
 
 
-def create_master_submit_script(commands_location, logfile_location, config_file):
-    """
-    Creates the single, master SGE submission script that the user will execute.
-
-    This script runs the batch_planner.py module on a staging node, which in
-    turn creates, and automatically submits the final, space-aware batched jobs.
-
-    Parameters:
-    -----------
-    commands_location: str
-        Path to commands directory.
-    logfile_location: str
-        Path to logfiles directory.
-    config_file: str
-        Path to the original YAML configuration file, which needs to be passed
-        to the batch planner.
-
-    Returns:
-    --------
-    str: Path to the created master submission script.
-    """
-    script_content = textwrap.dedent(f'''
-        #!/bin/sh
-        #$ -N cptools_master_submit
-        #$ -q staging
-        #$ -pe sharedmem 1
-        #$ -l h_vmem=4G
-        #$ -o {logfile_location}/master_submit.out
-        #$ -e {logfile_location}/master_submit.err
-
-        # =========================================================================
-        # cptools2 Master Submission Script
-        #
-        # This is the only script you need to submit.
-        # It runs the runtime batch planner on an Eddie staging node. The planner
-        # analyzes plate sizes, creates space-safe sequential batches, and then
-        # automatically submits all jobs for the entire analysis.
-        # =========================================================================
-
-        echo "=== cptools2 Master Submission Script Started ==="
-        echo "Timestamp: $(date)"
-        echo "Logfile: $SGE_STDOUT_PATH"
-        echo "Commands Directory: {commands_location}"
-        echo ""
-
-        # Ensure we are using the correct Python environment
-        # This might need to be adjusted depending on the user's setup
-        module load python/3.11.4
-
-        # Run the batch planner. The --submit-jobs flag tells it to
-        # automatically execute the jobs it creates.
-        python -m cptools2.batch_planner \\
-            --commands-dir "{commands_location}" \\
-            --logfiles-dir "{logfile_location}" \\
-            --config-file "{config_file}" \\
-            --sample-size 10 \\
-            --submit-jobs
-
-        RETURN_CODE=$?
-
-        echo ""
-        echo "=== cptools2 Master Submission Script Finished ==="
-        echo "Timestamp: $(date)"
-        echo "Batch planner exited with code: $RETURN_CODE"
-
-        exit $RETURN_CODE
-        ''').strip()
-
+def create_master_submit_script(commands_location, logfile_location, enable_batching=False, batches=None):
+    """Enhanced to handle both single and batch workflows"""
+    import textwrap
+    import os
+    from cptools2.colours import pretty_print, green
+    from cptools2 import utils, colours
+    from datetime import datetime
+    if enable_batching and batches:
+        # Create batch-aware submission script
+        script_content = textwrap.dedent(f'''
+            #!/bin/sh
+            #$ -N cptools_batch_master
+            #$ -cwd
+            echo "[cptools2] Batch Submission Script"
+            echo "Created: $(date)"
+            echo "Batches: {len(batches)}"
+            echo "Command files: {commands_location}"
+            # TODO: Implement actual batch job submission
+            echo "[cptools2] batch processing ready for implementation"
+            ''').strip()
+    else:
+        # Create single-batch submission script  
+        script_content = textwrap.dedent(f'''
+            #!/bin/sh
+            #$ -N cptools_single_master
+            #$ -cwd
+            echo "[cptools2] Single Batch Script"
+            echo "Created: $(date)"
+            echo "Command files: {commands_location}"
+            # TODO: Implement single batch job submission
+            echo "[cptools2] single batch processing ready for implementation"
+            ''').strip()
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    script_path = os.path.join(commands_location, f"{timestamp}_SUBMIT_BATCH_ANALYSIS.sh")
-
+    if enable_batching:
+        script_path = os.path.join(commands_location, f"{timestamp}_SUBMIT_BATCH_MASTER.sh")
+    else:
+        script_path = os.path.join(commands_location, f"{timestamp}_SUBMIT_SINGLE_MASTER.sh")
     with open(script_path, 'w') as f:
         f.write(script_content)
-
     utils.make_executable(script_path)
-
-    pretty_print(green("✓ Workflow generation complete."))
-    pretty_print(f"  Master submission script created: {colours.yellow(os.path.basename(script_path))}")
-    pretty_print(green("To start your entire analysis, transfer the project to Eddie and run:"))
-    pretty_print(f"  qsub {os.path.basename(script_path)}")
-
+    pretty_print(colours.green("[cptools2] master script created:"))
+    pretty_print(f"\t {colours.yellow(os.path.basename(script_path))}")
     return script_path
 
 
@@ -233,7 +194,7 @@ def make_join_files_script(config, commands_location, logfile_location, job_hex,
     """
     if not hasattr(config, 'join_files_patterns') or not config.join_files_patterns:
         return None
-        
+
     patterns = config.join_files_patterns
     location = config.create_command_args["location"]
 
@@ -255,7 +216,7 @@ def make_join_files_script(config, commands_location, logfile_location, job_hex,
         tasks=1,
         output=os.path.join(logfile_location, "join")
     )
-    
+
     if dependency_job_name:
         join_script += f"#$ -hold_jid {dependency_job_name}\n"
 

@@ -206,109 +206,103 @@ class Job(object):
         for cmnd_file in cmnds_files:
             commands.check_commands(cmnd_file)
 
-    def create_commands(self, pipeline, location, commands_location, job_size):
+    def _estimate_directory_size(self, start_path, sample_size=30, verbose=False):
         """
-        Orchestrates the creation of staging, analysis, and destaging commands.
-
-        Ensures LoadData is generated, creates output directories,
-        processes each plate and job via helper methods, and writes
-        the final command files.
-
-        Parameters:
-        ------------
-        pipeline : string
-            Path to the CellProfiler pipeline file.
-        location : string
-            Base directory for storing LoadData CSVs, intermediate image
-            data, and final results.
-        commands_location: string
-            Directory where the staging, cp_commands, and destaging
-            command files will be written.
-        job_size : int
-            Used for LoadData generation and validation if chunking occurred.
+        Estimate directory size using statistical sampling of image types.
+        Imaging datasets typically contain:
+        - Regular images (large files)
+        - Thumbnail images (small files with '_thumb' in filename)
+        Sample each type separately, calculate statistics, and extrapolate
+        using conservative upper bounds (mean + 2*std).
         """
-        # --- Input Validation ---
-        if not os.path.isfile(pipeline):
-            raise FileNotFoundError(f"Pipeline file not found: {pipeline}")
-
-        # --- Processing Start ---
-        pretty_print("creating image list")
-        if self.has_loaddata is False:
-            self._create_loaddata(job_size)
-        cp_commands, rsync_commands, rm_commands = [], [], []
-        pretty_print("creating output directories at {}".format(colours.yellow(location)))
-        commands.make_output_directories(location=location)
-        # for each job per plate, create loaddata and commands
-        platenames = sorted(self.plate_store.keys())
-        pretty_print("detected {} {}".format(
-            colours.yellow(len(platenames)),
-            colours.purple("plates"))
+        import os
+        import random
+        import statistics
+        # Collect file lists by type
+        thumb_files = []
+        regular_files = []
+        try:
+            for root, dirs, files in os.walk(start_path):
+                for filename in files:
+                    filepath = os.path.join(root, filename)
+                    if '_thumb' in filename.lower():
+                        thumb_files.append(filepath)
+                    else:
+                        regular_files.append(filepath)
+        except Exception as e:
+            if verbose:
+                print(f"Warning: Could not analyze directory {start_path}: {e}")
+            return 100 * 1024**3  # 100GB fallback
+        thumb_stats = self._calculate_file_type_stats(thumb_files, sample_size, "thumbnail")
+        regular_stats = self._calculate_file_type_stats(regular_files, sample_size, "regular")
+        total_estimated_size = (
+            thumb_stats['count'] * thumb_stats['upper_bound'] +
+            regular_stats['count'] * regular_stats['upper_bound']
         )
-        # Process each plate using the helper method
-        for plate in platenames:
-            # Collect commands for the current plate
-            p_cp, p_rsync, p_rm = self._process_plate(
-                plate, pipeline, location, job_size
-            )
-            # Extend the main command lists
-            cp_commands.extend(p_cp)
-            rsync_commands.extend(p_rsync)
-            rm_commands.extend(p_rm)
+        if verbose:
+            print(f"Size estimation for {start_path}:")
+            print(f"  Thumbnail files: {thumb_stats['count']} files, "
+                  f"{thumb_stats['upper_bound']/1024:.1f}KB upper bound each")
+            print(f"  Regular files: {regular_stats['count']} files, "
+                  f"{regular_stats['upper_bound']/(1024**2):.1f}MB upper bound each")
+            print(f"  Total estimated: {total_estimated_size/(1024**3):.2f}GB")
+        return int(total_estimated_size)
 
-        # --- Write and Check Commands ---
-        self._write_and_check_commands(
-            commands_location=commands_location,
-            rsync_commands=rsync_commands,
-            cp_commands=cp_commands,
-            rm_commands=rm_commands,
-        )
-
-    def join_results(self, location, patterns=None):
+    def _calculate_file_type_stats(self, file_list, sample_size, file_type_name):
         """
-        Join result files for each plate based on specified patterns.
-        
-        Parameters:
-        -----------
-        location : string
-            Path to where the results are stored
-        patterns : list or None
-            List of file patterns to join (e.g., ["Image.csv", "Cells.csv"])
-            If None, no files will be joined
-            
+        Calculate statistics for a specific file type.
         Returns:
-        --------
-        Dictionary with joined file information
+        dict : {
+            'count': total_file_count,
+            'mean': mean_size,
+            'std': standard_deviation,
+            'upper_bound': mean + 2*std
+        }
         """
-        from cptools2.file_tools import join_plate_files
-        
-        raw_data_location = os.path.join(location, "raw_data")
-        return join_plate_files(self.plate_store, raw_data_location, patterns)
-
-    def _get_directory_size(self, start_path='.'):
-        total_size = 0
-        for dirpath, dirnames, filenames in os.walk(start_path):
-            for f in filenames:
-                fp = os.path.join(dirpath, f)
-                # skip if it is symbolic link
-                if not os.path.islink(fp):
-                    total_size += os.path.getsize(fp)
-        return total_size
+        import statistics
+        import random
+        if not file_list:
+            return {
+                'count': 0,
+                'mean': 0,
+                'std': 0,
+                'upper_bound': 0
+            }
+        sample_files = random.sample(file_list, min(sample_size, len(file_list)))
+        sample_sizes = []
+        for filepath in sample_files:
+            try:
+                size = os.path.getsize(filepath)
+                sample_sizes.append(size)
+            except (OSError, IOError):
+                continue
+        if not sample_sizes:
+            default_size = 50 * 1024**2 if file_type_name == "regular" else 100 * 1024  # 50MB or 100KB
+            return {
+                'count': len(file_list),
+                'mean': default_size,
+                'std': default_size * 0.5,
+                'upper_bound': default_size * 1.5
+            }
+        mean_size = statistics.mean(sample_sizes)
+        std_size = statistics.stdev(sample_sizes) if len(sample_sizes) > 1 else mean_size * 0.3
+        upper_bound = mean_size + (2 * std_size)
+        return {
+            'count': len(file_list),
+            'mean': mean_size,
+            'std': std_size,
+            'upper_bound': upper_bound
+        }
 
     def calculate_plate_sizes(self):
-        """
-        Calculate space requirements for each plate individually
-        This is the foundation for plate-level batching decisions
-        """
+        """Calculate space requirements with minimal output (progress handled in main workflow)"""
         total_size = 0
-        
         for plate_name, plate_data in self.plate_store.items():
             plate_path = plate_data[0]
-            
-            # Calculate space for this specific plate
-            plate_size = self._get_directory_size(plate_path)
+            plate_size = self._estimate_directory_size(plate_path, verbose=False)
             self.plate_space_requirements[plate_name] = plate_size
             total_size += plate_size
-        
+            print(f"\t {plate_name}: {plate_size/(1024**3):.2f}GB")
         self.total_experiment_size = total_size
         return self.plate_space_requirements
 
@@ -375,29 +369,91 @@ class Job(object):
             raise ValueError(f"Invalid batch_id: {batch_id}. Must be between 0 and {len(self.plate_batches) - 1}.")
         return self.plate_batches[batch_id]
 
-    def create_batch_job(self, batch_id, pipeline, location, commands_location, job_size):
-        """Creates commands for a specific batch of plates."""
+    def create_commands(self, pipeline, location, commands_location, job_size, enable_batching=False, available_scratch_space=None):
+        """
+        Enhanced to support batch-aware command generation.
+        """
         if not os.path.isfile(pipeline):
             raise FileNotFoundError(f"Pipeline file not found: {pipeline}")
+        if enable_batching and available_scratch_space:
+            self.create_plate_batches(available_scratch_space)
+            self._create_batch_command_files(pipeline, location, commands_location, job_size)
+        else:
+            # Original single-batch workflow
+            pretty_print("creating image list")
+            if self.has_loaddata is False:
+                self._create_loaddata(job_size)
+            cp_commands, rsync_commands, rm_commands = [], [], []
+            pretty_print("creating output directories at {}".format(colours.yellow(location)))
+            commands.make_output_directories(location=location)
+            platenames = sorted(self.plate_store.keys())
+            pretty_print("detected {} {}".format(colours.yellow(len(platenames)), colours.purple("plates")))
+            for plate in platenames:
+                p_cp, p_rsync, p_rm = self._process_plate(plate, pipeline, location, job_size)
+                cp_commands.extend(p_cp)
+                rsync_commands.extend(p_rsync)
+                rm_commands.extend(p_rm)
+            self._write_and_check_commands(
+                commands_location=commands_location,
+                rsync_commands=rsync_commands,
+                cp_commands=cp_commands,
+                rm_commands=rm_commands,
+            )
 
-        plates_in_batch = self.get_plates_for_batch(batch_id)
-        pretty_print(f"Creating commands for batch {batch_id} with plates: {', '.join(plates_in_batch)}")
+    def _create_batch_command_files(self, pipeline, location, commands_location, job_size):
+        """
+        Generate separate command files for each batch.
+        Creates: staging_batch_1.txt, cp_commands_batch_1.txt, etc.
+        """
+        for batch in self.plate_batches:
+            batch_id = batch['batch_id']
+            plates_in_batch = batch['plates']
+            batch_plate_store = {k: v for k, v in self.plate_store.items() if k in plates_in_batch}
+            # Temporarily replace plate_store for batch processing
+            original_plate_store = self.plate_store
+            self.plate_store = batch_plate_store
+            if self.has_loaddata is False:
+                self._create_loaddata(job_size)
+            cp_commands, rsync_commands, rm_commands = [], [], []
+            commands.make_output_directories(location=location)
+            platenames = sorted(self.plate_store.keys())
+            for plate in platenames:
+                p_cp, p_rsync, p_rm = self._process_plate(plate, pipeline, location, job_size)
+                cp_commands.extend(p_cp)
+                rsync_commands.extend(p_rsync)
+                rm_commands.extend(p_rm)
+            # Write batch-specific command files
+            def batch_file(name):
+                return os.path.join(commands_location, f"{name}_batch_{batch_id}.txt")
+            commands.write_commands(
+                commands_location=commands_location,
+                rsync_commands=rsync_commands,
+                cp_commands=cp_commands,
+                rm_commands=rm_commands,
+                staging_file=batch_file("staging"),
+                cp_commands_file=batch_file("cp_commands"),
+                destaging_file=batch_file("destaging")
+            )
+            # Restore original plate_store
+            self.plate_store = original_plate_store
 
-        if self.has_loaddata is False:
-            self._create_loaddata(job_size)
-
-        cp_commands, rsync_commands, rm_commands = [], [], []
+    def join_results(self, location, patterns=None):
+        """
+        Join result files for each plate based on specified patterns.
         
-        commands.make_output_directories(location=location)
-
-        for plate in plates_in_batch:
-            if plate not in self.plate_store:
-                pretty_print(f"Warning: Plate '{plate}' from batch {batch_id} not found in plate_store. Skipping.", colour=colours.yellow)
-                continue
+        Parameters:
+        -----------
+        location : string
+            Path to where the results are stored
+        patterns : list or None
+            List of file patterns to join (e.g., ["Image.csv", "Cells.csv"])
+            If None, no files will be joined
             
-            p_cp, p_rsync, p_rm = self._process_plate(plate, pipeline, location, job_size)
-            cp_commands.extend(p_cp)
-            rsync_commands.extend(p_rsync)
-            rm_commands.extend(p_rm)
-
-        self._write_and_check_commands(commands_location, rsync_commands, cp_commands, rm_commands)
+        Returns:
+        --------
+        Dictionary with joined file information
+        """
+        from cptools2.file_tools import join_plate_files
+        
+        raw_data_location = os.path.join(location, "raw_data")
+        return join_plate_files(self.plate_store, raw_data_location, patterns)
