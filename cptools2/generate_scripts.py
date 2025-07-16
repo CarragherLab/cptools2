@@ -138,31 +138,17 @@ def create_master_submit_script(commands_location, logfile_location, enable_batc
     from cptools2.colours import pretty_print, green
     from cptools2 import utils, colours
     from datetime import datetime
-    if enable_batching and batches:
-        # Create batch-aware submission script
-        script_content = textwrap.dedent(f'''
-            #!/bin/sh
-            #$ -N cptools_batch_master
-            #$ -cwd
-            echo "[cptools2] Batch Submission Script"
-            echo "Created: $(date)"
-            echo "Batches: {len(batches)}"
-            echo "Command files: {commands_location}"
-            # TODO: Implement actual batch job submission
-            echo "[cptools2] batch processing ready for implementation"
-            ''').strip()
-    else:
-        # Create single-batch submission script  
-        script_content = textwrap.dedent(f'''
-            #!/bin/sh
-            #$ -N cptools_single_master
-            #$ -cwd
-            echo "[cptools2] Single Batch Script"
-            echo "Created: $(date)"
-            echo "Command files: {commands_location}"
-            # TODO: Implement single batch job submission
-            echo "[cptools2] single batch processing ready for implementation"
-            ''').strip()
+    batch_count = len(batches) if (enable_batching and batches) else 1
+    script_content = textwrap.dedent(f'''
+        #!/bin/sh
+        #$ -N cptools_batch_master
+        #$ -cwd
+        echo "[cptools2] Batch Submission Script"
+        echo "Created: $(date)"
+        echo "Batches: {batch_count}"
+        echo "Command files: {commands_location}"
+        echo "[cptools2] batch processing ready for implementation"
+        ''').strip()
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     script_path = os.path.join(commands_location, f"{timestamp}_SUBMIT_MASTER.sh")
     with open(script_path, 'w') as f:
