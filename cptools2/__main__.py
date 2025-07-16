@@ -119,9 +119,10 @@ def handle_generate(args):
             plate_list = ", ".join(batch['plates'][:3])
             if len(batch['plates']) > 3:
                 plate_list += f" (+ {len(batch['plates'])-3} more)"
+            size_str = f"{batch['total_size_gb']:.1f}GB"
             pretty_print(f"\t batch {colours.yellow(batch['batch_id'])}: "
-                        f"{colours.purple(len(batch['plates']))} plates, "
-                        f"{colours.green(f"{batch['total_size_gb']:.1f}GB")} - {plate_list}")
+                         f"{colours.purple(len(batch['plates']))} plates, "
+                         f"{colours.green(size_str)} - {plate_list}")
         pretty_print("[cptools2] generating batch-specific command files...")
         jobber.create_commands(
             **config.create_command_args,
