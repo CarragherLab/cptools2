@@ -132,7 +132,7 @@ class SafePathScript(script_generator.SGEScript):
 
 
 def create_master_submit_script(commands_location, logfile_location, enable_batching=False, batches=None):
-    """Enhanced to handle both single and batch workflows"""
+    """Enhanced to handle both single and batch workflows with unified script naming."""
     import textwrap
     import os
     from cptools2.colours import pretty_print, green
@@ -164,10 +164,7 @@ def create_master_submit_script(commands_location, logfile_location, enable_batc
             echo "[cptools2] single batch processing ready for implementation"
             ''').strip()
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    if enable_batching:
-        script_path = os.path.join(commands_location, f"{timestamp}_SUBMIT_BATCH_MASTER.sh")
-    else:
-        script_path = os.path.join(commands_location, f"{timestamp}_SUBMIT_SINGLE_MASTER.sh")
+    script_path = os.path.join(commands_location, f"{timestamp}_SUBMIT_MASTER.sh")
     with open(script_path, 'w') as f:
         f.write(script_content)
     utils.make_executable(script_path)
