@@ -206,7 +206,7 @@ class Job(object):
         for cmnd_file in cmnds_files:
             commands.check_commands(cmnd_file)
 
-    def _estimate_directory_size(self, start_path, sample_size=30, verbose=False):
+    def _estimate_directory_size(self, start_path, sample_size=10, verbose=False):
         """
         Estimate directory size using statistical sampling of image types.
         Imaging datasets typically contain:
@@ -302,7 +302,8 @@ class Job(object):
             plate_size = self._estimate_directory_size(plate_path, verbose=False)
             self.plate_space_requirements[plate_name] = plate_size
             total_size += plate_size
-            print(f"\t {plate_name}: {plate_size/(1024**3):.2f}GB")
+            # Print plate name and size in yellow
+            pretty_print(f"\t {colours.yellow(plate_name)}: {colours.yellow(f'{plate_size/(1024**3):.2f}GB')}")
         self.total_experiment_size = total_size
         return self.plate_space_requirements
 
