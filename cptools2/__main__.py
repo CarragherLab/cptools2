@@ -105,7 +105,8 @@ def handle_generate(args):
         generate_scripts.create_master_submit_script(
             commands_location=commands_location,
             logfile_location=logfile_location,
-            enable_batching=False
+            enable_batching=False,
+            config=config  # Add config parameter
         )
     else:
         # Use new quota-based scratch space detection
@@ -136,7 +137,8 @@ def handle_generate(args):
             commands_location=commands_location,
             logfile_location=logfile_location,
             enable_batching=True,
-            batches=batches
+            batches=batches,
+            config=config  # Pass config for join/transfer functionality
         )
     pretty_print(colours.green("[cptools2] workflow generation complete!"))
 
