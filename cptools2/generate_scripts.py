@@ -9,6 +9,8 @@ import sys
 import textwrap
 from datetime import datetime
 import shutil
+import subprocess
+import re
 
 try:
     from scissorhands import script_generator
@@ -169,6 +171,32 @@ def get_available_scratch_space(path):
             raise FileNotFoundError(f"Could not find existing path from {path} to check disk space.")
     total, used, free = shutil.disk_usage(check_path)
     return free
+
+
+def get_user_scratch_quota(user=None):
+    """
+    Returns available scratch space for the user on Eddie by parsing 'quota $USER'.
+    Returns value in bytes. Falls back to 2TB if parsing fails.
+    """
+    try:
+        if user is None:
+            import getpass
+            user = getpass.getuser()
+        result = subprocess.run(["quota", user], capture_output=True, text=True, check=True)
+        lines = result.stdout.splitlines()
+        for line in lines:
+            if "/exports/eddie/scratch" in line:
+                # Example line: '/exports/eddie/scratch/mharvey2:  82.22 GB of 2048.00 GB (4.01%) used'
+                match = re.search(r"([\d.]+) GB of ([\d.]+) GB", line)
+                if match:
+                    used_gb = float(match.group(1))
+                    quota_gb = float(match.group(2))
+                    available_gb = max(0, quota_gb - used_gb)
+                    return int(available_gb * 1024**3)
+        print("[cptools2] Warning: Could not parse scratch quota from 'quota' output. Falling back to 2TB.")
+    except Exception as e:
+        print(f"[cptools2] Warning: Failed to get scratch quota: {e}. Falling back to 2TB.")
+    return 2 * 1024**4  # 2TB fallback
 
 
 def make_join_files_script(config, commands_location, logfile_location, job_hex, time_now, dependency_job_name=None, plates_to_join=None):

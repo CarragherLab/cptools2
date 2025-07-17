@@ -6,6 +6,7 @@ from cptools2 import parse_yaml
 from cptools2 import colours
 from cptools2 import file_tools
 from cptools2.colours import pretty_print
+from cptools2.generate_scripts import get_user_scratch_quota
 
 
 def configure_job(config):
@@ -100,7 +101,6 @@ def handle_generate(args):
 
     if disable_batching:
         pretty_print("[cptools2] batch planning disabled - using single batch for all plates")
-        # Traditional single-batch workflow
         jobber.create_commands(**config.create_command_args)
         generate_scripts.create_master_submit_script(
             commands_location=commands_location,
@@ -108,10 +108,11 @@ def handle_generate(args):
             enable_batching=False
         )
     else:
+        # Use new quota-based scratch space detection
+        available_scratch = get_user_scratch_quota()
+        pretty_print(f"[cptools2] detected user scratch quota: {colours.yellow(f'{available_scratch/(1024**3):.1f}GB')}")
         pretty_print("[cptools2] calculating plate sizes for batch planning...")
         jobber.calculate_plate_sizes()
-        available_scratch = generate_scripts.get_available_scratch_space(commands_location)
-        pretty_print(f"[cptools2] available scratch space: {colours.yellow(f'{available_scratch/(1024**3):.1f}GB')}")
         pretty_print("[cptools2] creating space-optimal batches...")
         batches = jobber.create_plate_batches(available_scratch)
         pretty_print(f"[cptools2] created {colours.yellow(len(batches))} optimized batches:")
@@ -123,6 +124,7 @@ def handle_generate(args):
             pretty_print(f"\t batch {colours.yellow(batch['batch_id'])}: "
                          f"{colours.purple(len(batch['plates']))} plates, "
                          f"{colours.green(size_str)} - {plate_list}")
+        pretty_print("[cptools2] batch planning complete. Ready to generate command files.")
         pretty_print("[cptools2] generating batch-specific command files...")
         jobber.create_commands(
             **config.create_command_args,
