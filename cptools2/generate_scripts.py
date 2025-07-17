@@ -11,6 +11,7 @@ from datetime import datetime
 import shutil
 import subprocess
 import re
+import getpass
 
 try:
     from scissorhands import script_generator
@@ -133,32 +134,109 @@ class SafePathScript(script_generator.SGEScript):
         return self
 
 
-def create_master_submit_script(commands_location, logfile_location, enable_batching=False, batches=None):
-    """Enhanced to handle both single and batch workflows with unified script naming."""
-    import textwrap
-    import os
-    from cptools2.colours import pretty_print, green
-    from cptools2 import utils, colours
-    from datetime import datetime
-    batch_count = len(batches) if (enable_batching and batches) else 1
-    script_content = textwrap.dedent(f'''
-        #!/bin/sh
-        #$ -N cptools_batch_master
-        #$ -cwd
-        echo "[cptools2] Batch Submission Script"
-        echo "Created: $(date)"
-        echo "Batches: {batch_count}"
-        echo "Command files: {commands_location}"
-        echo "[cptools2] batch processing ready for implementation"
-        ''').strip()
+def create_master_submit_script(commands_location, logfile_location, enable_batching=False, batches=None, config=None):
+    """
+    Create master script that generates and submits all SGE jobs with proper dependencies.
+    
+    Parameters:
+    -----------
+    commands_location : str
+        Directory containing command files
+    logfile_location : str
+        Directory for SGE logs
+    enable_batching : bool
+        Whether batching is enabled
+    batches : list or None
+        List of batch dictionaries if batching enabled
+    config : namedtuple
+        Configuration needed for join/transfer scripts
+        
+    Returns:
+    --------
+    str : Path to created master submission script
+    """
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    script_path = os.path.join(commands_location, f"{timestamp}_SUBMIT_MASTER.sh")
+    
+    if enable_batching and batches:
+        # Generate all batch scripts
+        all_scripts = make_qsub_scripts(config, commands_location, logfile_location, batches)
+        
+        # Create submission commands
+        script_content = _create_batch_submission_content(all_scripts, batches)
+        script_name = f"{timestamp}_SUBMIT_BATCH_MASTER.sh"
+        
+    else:
+        # Generate single-batch scripts
+        all_scripts = make_qsub_scripts(config, commands_location, logfile_location)
+        
+        # Create submission commands
+        script_content = _create_single_submission_content(all_scripts)
+        script_name = f"{timestamp}_SUBMIT_SINGLE_MASTER.sh"
+    
+    # Write master script
+    script_path = os.path.join(commands_location, script_name)
     with open(script_path, 'w') as f:
         f.write(script_content)
     utils.make_executable(script_path)
+    
     pretty_print(colours.green("[cptools2] master script created:"))
-    pretty_print(f"\t {colours.yellow(os.path.basename(script_path))}")
+    pretty_print(f"\t {colours.yellow(script_name)}")
+    
     return script_path
+
+
+def _create_batch_submission_content(all_scripts, batches):
+    """Generate the actual qsub commands for batch workflow."""
+    
+    lines = [
+        "#!/bin/sh",
+        "echo '[cptools2] Batch Analysis Workflow Submission'",
+        "echo 'Timestamp: $(date)'",
+        f"echo 'Total batches: {len(batches)}'",
+        f"echo 'Total scripts: {len(all_scripts)}'",
+        "echo ''"
+    ]
+    
+    # Submit each script in order
+    for script_path in all_scripts:
+        script_name = os.path.basename(script_path)
+        lines.append(f"echo 'Submitting: {script_name}'")
+        lines.append(f"qsub {script_path}")
+        lines.append("")
+    
+    lines.extend([
+        "echo '[cptools2] All batch jobs submitted successfully!'",
+        "echo 'Monitor progress with: qstat -u $USER'",
+        "echo 'Check logs in the logfiles directory for job status'"
+    ])
+    
+    return '\n'.join(lines)
+
+
+def _create_single_submission_content(all_scripts):
+    """Generate the actual qsub commands for single-batch workflow."""
+    
+    lines = [
+        "#!/bin/sh", 
+        "echo '[cptools2] Single Batch Analysis Workflow Submission'",
+        "echo 'Timestamp: $(date)'",
+        f"echo 'Scripts to submit: {len(all_scripts)}'",
+        "echo ''"
+    ]
+    
+    # Submit each script
+    for script_path in all_scripts:
+        script_name = os.path.basename(script_path)
+        lines.append(f"echo 'Submitting: {script_name}'")
+        lines.append(f"qsub {script_path}")
+        lines.append("")
+    
+    lines.extend([
+        "echo '[cptools2] All jobs submitted successfully!'",
+        "echo 'Monitor progress with: qstat -u $USER'"
+    ])
+    
+    return '\n'.join(lines)
 
 
 def get_available_scratch_space(path):
@@ -175,27 +253,21 @@ def get_available_scratch_space(path):
 
 def get_user_scratch_quota(user=None):
     """
-    Returns available scratch space for the user on Eddie by parsing 'quota $USER'.
-    Returns value in bytes. Falls back to 2TB if parsing fails.
+    Returns available scratch space for the user on Eddie by checking /exports/eddie/scratch/$USER.
+    Uses 75% of the free space for batch planning. Falls back to 2TB if detection fails.
     """
     try:
         if user is None:
-            import getpass
             user = getpass.getuser()
-        result = subprocess.run(["quota", user], capture_output=True, text=True, check=True)
-        lines = result.stdout.splitlines()
-        for line in lines:
-            if "/exports/eddie/scratch" in line:
-                # Example line: '/exports/eddie/scratch/mharvey2:  82.22 GB of 2048.00 GB (4.01%) used'
-                match = re.search(r"([\d.]+) GB of ([\d.]+) GB", line)
-                if match:
-                    used_gb = float(match.group(1))
-                    quota_gb = float(match.group(2))
-                    available_gb = max(0, quota_gb - used_gb)
-                    return int(available_gb * 1024**3)
-        print("[cptools2] Warning: Could not parse scratch quota from 'quota' output. Falling back to 2TB.")
+        scratch_dir = f"/exports/eddie/scratch/{user}"
+        if not os.path.exists(scratch_dir):
+            raise FileNotFoundError(f"Scratch directory not found: {scratch_dir}")
+        total, used, free = shutil.disk_usage(scratch_dir)
+        available = int(free * 0.75)
+        print(f"[cptools2] Using shutil.disk_usage for scratch space: {available/(1024**3):.1f}GB (75% of free space in {scratch_dir})")
+        return available
     except Exception as e:
-        print(f"[cptools2] Warning: Failed to get scratch quota: {e}. Falling back to 2TB.")
+        print(f"[cptools2] Warning: Failed to get scratch space with shutil: {e}. Falling back to 2TB.")
     return 2 * 1024**4  # 2TB fallback
 
 
@@ -283,6 +355,328 @@ def make_datastore_transfer_script(config, commands_location, logfile_location, 
     utils.make_executable(transfer_loc)
     
     return transfer_loc
+
+
+def generate_job_names(batch_id, job_hex):
+    """Generate consistent job names for dependency management"""
+    return {
+        'staging': f"staging_b{batch_id}_{job_hex}",
+        'analysis': f"analysis_b{batch_id}_{job_hex}",
+        'destaging': f"destaging_b{batch_id}_{job_hex}",
+        'join': f"join_b{batch_id}_{job_hex}",
+        'transfer': f"transfer_b{batch_id}_{job_hex}"
+    }
+
+
+def make_qsub_scripts(config, commands_location, logfile_location, batches=None):
+    """Create SGE submission scripts with sequential batch dependencies."""
+    if batches:
+        pretty_print(f"[cptools2] creating SGE scripts for {len(batches)} sequential batches...")
+        all_script_paths = []
+        previous_destaging_job = None  # No dependency for first batch
+        for batch in batches:
+            batch_scripts, destaging_job_name = _create_batch_scripts(
+                batch, config, commands_location, logfile_location,
+                previous_batch_destaging_job=previous_destaging_job
+            )
+            all_script_paths.extend(batch_scripts)
+            previous_destaging_job = destaging_job_name  # Chain for next batch
+        pretty_print(f"[cptools2] created {len(all_script_paths)} scripts with sequential dependencies")
+        return all_script_paths
+    else:
+        # Single batch workflow unchanged
+        return _create_single_batch_scripts(config, commands_location, logfile_location)
+
+
+def _create_batch_scripts(batch, config, commands_location, logfile_location, previous_batch_destaging_job=None):
+    """
+    Create staging → analysis → destaging → join → transfer chain for a single batch.
+    previous_batch_destaging_job: job name of previous batch's destaging job (for sequential processing)
+    Returns (scripts_created, this_batch_destaging_job_name)
+    """
+    from scissorhands import script_generator
+    batch_id = batch['batch_id']
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    job_hex = f"b{batch_id}_{timestamp[-6:]}"
+    job_names = generate_job_names(batch_id, job_hex)
+    scripts_created = []
+
+    # 1. Staging (waits for previous batch's destaging)
+    staging_script_path = _create_staging_script(
+        batch_id, commands_location, logfile_location, job_hex,
+        dependency_job_name=previous_batch_destaging_job
+    )
+    scripts_created.append(staging_script_path)
+
+    # 2. Analysis (waits for this batch's staging)
+    analysis_script_path = _create_analysis_script(
+        batch_id, commands_location, logfile_location, job_hex,
+        dependency_job_name=job_names['staging']
+    )
+    scripts_created.append(analysis_script_path)
+
+    # 3. Destaging (waits for this batch's analysis)
+    destaging_script_path = _create_destaging_script(
+        batch_id, commands_location, logfile_location, job_hex,
+        dependency_job_name=job_names['analysis']
+    )
+    scripts_created.append(destaging_script_path)
+
+    # 4. Join (optional, waits for destaging)
+    join_script_path = None
+    if hasattr(config, 'join_files_patterns') and config.join_files_patterns:
+        join_script_path = make_join_files_script(
+            config, commands_location, logfile_location, job_hex, timestamp,
+            dependency_job_name=job_names['destaging'],
+            plates_to_join=batch['plates']
+        )
+        if join_script_path:
+            scripts_created.append(join_script_path)
+
+    # 5. Transfer (optional, waits for join OR destaging)
+    transfer_dependency = job_names['join'] if join_script_path else job_names['destaging']
+    if hasattr(config, 'data_destination_path') and config.data_destination_path:
+        transfer_script_path = make_datastore_transfer_script(
+            config, commands_location, logfile_location, job_hex, timestamp,
+            eddie_source_dir=config.create_command_args["location"],
+            dependency_job_name=transfer_dependency
+        )
+        if transfer_script_path:
+            scripts_created.append(transfer_script_path)
+
+    return scripts_created, job_names['destaging']  # Return destaging job name for next batch
+
+
+def _create_staging_script(batch_id, commands_location, logfile_location, job_hex, dependency_job_name=None):
+    """
+    Create SGE array job script for staging (rsync) operations.
+    If dependency_job_name is provided, use hold_jid_ad for robust sequential dependency.
+    """
+    staging_file = os.path.join(commands_location, f"staging_batch_{batch_id}.txt")
+    if not os.path.exists(staging_file):
+        raise FileNotFoundError(f"Staging command file not found: {staging_file}")
+    n_tasks = utils.count_lines_in_file(staging_file)
+    staging_script = SafePathScript(
+        name=f"staging_b{batch_id}_{job_hex}",
+        memory="1G",
+        tasks=n_tasks,
+        output=os.path.join(logfile_location, "staging")
+    )
+    # Add dependency if provided
+    if dependency_job_name:
+        staging_script += f"#$ -hold_jid_ad {dependency_job_name}\n"
+    staging_script += "#$ -q staging\n"
+    staging_script += "#$ -p -500\n"
+    staging_script += "#$ -tc 20\n"
+    staging_script += f'COMMAND=$(sed -n "${{SGE_TASK_ID}}p" "{staging_file}")\n'
+    staging_script += 'DECODED_COMMAND=$(echo "$COMMAND" | base64 -d)\n'
+    staging_script += 'eval "$DECODED_COMMAND"\n'
+    script_path = os.path.join(commands_location, f"staging_batch_{batch_id}_{job_hex}.sh")
+    staging_script.save(script_path)
+    utils.make_executable(script_path)
+    return script_path
+
+
+def _create_analysis_script(batch_id, commands_location, logfile_location, job_hex, dependency_job_name=None):
+    """
+    Create SGE array job script for CellProfiler analysis.
+    
+    Parameters:
+    -----------
+    batch_id : int
+        Batch identifier
+    commands_location : str
+        Directory containing command files
+    logfile_location : str
+        Directory for SGE logs
+    job_hex : str
+        Unique job identifier
+    dependency_job_name : str
+        Name of job this depends on (staging job)
+        
+    Returns:
+    --------
+    str : Path to created analysis script
+    """
+    from scissorhands import script_generator
+    
+    # Reference the batch-specific analysis command file
+    analysis_file = os.path.join(commands_location, f"cp_commands_batch_{batch_id}.txt")
+    
+    if not os.path.exists(analysis_file):
+        raise FileNotFoundError(f"Analysis command file not found: {analysis_file}")
+    
+    # Count tasks
+    n_tasks = utils.count_lines_in_file(analysis_file)
+    
+    # Create analysis script (use script_generator.AnalysisScript for proper CellProfiler setup)
+    analysis_script = script_generator.AnalysisScript(
+        name=f"analysis_{job_hex}",
+        tasks=n_tasks,
+        hold_jid_ad=dependency_job_name,
+        pe="sharedmem 1",
+        memory="24G",
+        output=os.path.join(logfile_location, "analysis")
+    )
+    
+    # Add module loading
+    analysis_script += load_module_text(is_cellprofiler=True)
+    
+    # Add command execution
+    analysis_script.loop_through_file(analysis_file)
+    
+    # Save script
+    script_path = os.path.join(commands_location, f"analysis_batch_{batch_id}_{job_hex}.sh")
+    analysis_script.save(script_path)
+    utils.make_executable(script_path)
+    
+    return script_path
+
+
+def _create_destaging_script(batch_id, commands_location, logfile_location, job_hex, dependency_job_name=None):
+    """
+    Create SGE array job script for destaging (cleanup) operations.
+    
+    Parameters:
+    -----------
+    batch_id : int
+        Batch identifier
+    commands_location : str
+        Directory containing command files
+    logfile_location : str
+        Directory for SGE logs
+    job_hex : str
+        Unique job identifier
+    dependency_job_name : str
+        Name of job this depends on (analysis job)
+        
+    Returns:
+    --------
+    str : Path to created destaging script
+    """
+    # Reference the batch-specific destaging command file
+    destaging_file = os.path.join(commands_location, f"destaging_batch_{batch_id}.txt")
+    
+    if not os.path.exists(destaging_file):
+        raise FileNotFoundError(f"Destaging command file not found: {destaging_file}")
+    
+    # Count tasks
+    n_tasks = utils.count_lines_in_file(destaging_file)
+    
+    # Create SGE script
+    destaging_script = SafePathScript(
+        name=f"destaging_{job_hex}",
+        memory="1G",
+        tasks=n_tasks,
+        output=os.path.join(logfile_location, "destaging")
+    )
+    
+    # Add dependency
+    if dependency_job_name:
+        destaging_script += f"#$ -hold_jid {dependency_job_name}\n"
+    
+    # Add command execution logic
+    destaging_script += f'COMMAND=$(sed -n "${{SGE_TASK_ID}}p" "{destaging_file}")\n'
+    destaging_script += 'DECODED_COMMAND=$(echo "$COMMAND" | base64 -d)\n'
+    destaging_script += 'eval "$DECODED_COMMAND"\n'
+    
+    # Save script
+    script_path = os.path.join(commands_location, f"destaging_batch_{batch_id}_{job_hex}.sh")
+    destaging_script.save(script_path)
+    utils.make_executable(script_path)
+    
+    return script_path
+
+
+def _create_single_batch_scripts(config, commands_location, logfile_location):
+    """
+    Create SGE scripts for traditional single-batch workflow (--disable-batching).
+    
+    Parameters:
+    -----------
+    config : namedtuple
+        Configuration from parse_yaml
+    commands_location : str
+        Directory containing command files
+    logfile_location : str
+        Directory for SGE logs
+        
+    Returns:
+    --------
+    list : Paths to created SGE scripts
+    """
+    from scissorhands import script_generator
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    job_hex = f"single_{timestamp[-6:]}"
+    
+    scripts_created = []
+    
+    # Use traditional command files (staging.txt, cp_commands.txt, destaging.txt)
+    staging_file = os.path.join(commands_location, "staging.txt")
+    analysis_file = os.path.join(commands_location, "cp_commands.txt")
+    destaging_file = os.path.join(commands_location, "destaging.txt")
+    
+    # Check files exist
+    for cmd_file in [staging_file, analysis_file, destaging_file]:
+        if not os.path.exists(cmd_file):
+            raise FileNotFoundError(f"Command file not found: {cmd_file}")
+    
+    # Count tasks (should be same for all files)
+    n_tasks = utils.count_lines_in_file(analysis_file)
+    
+    # 1. Staging Script
+    staging_script = SafePathScript(
+        name=f"staging_{job_hex}",
+        memory="1G",
+        tasks=n_tasks,
+        output=os.path.join(logfile_location, "staging")
+    )
+    staging_script += "#$ -q staging\n#$ -p -500\n#$ -tc 20\n"
+    staging_script += f'COMMAND=$(sed -n "${{SGE_TASK_ID}}p" "{staging_file}")\n'
+    staging_script += 'DECODED_COMMAND=$(echo "$COMMAND" | base64 -d)\n'
+    staging_script += 'eval "$DECODED_COMMAND"\n'
+    
+    staging_path = os.path.join(commands_location, f"staging_{job_hex}.sh")
+    staging_script.save(staging_path)
+    utils.make_executable(staging_path)
+    scripts_created.append(staging_path)
+    
+    # 2. Analysis Script
+    analysis_script = script_generator.AnalysisScript(
+        name=f"analysis_{job_hex}",
+        tasks=n_tasks,
+        hold_jid_ad=f"staging_{job_hex}",
+        pe="sharedmem 1",
+        memory="24G",
+        output=os.path.join(logfile_location, "analysis")
+    )
+    analysis_script += load_module_text(is_cellprofiler=True)
+    analysis_script.loop_through_file(analysis_file)
+    
+    analysis_path = os.path.join(commands_location, f"analysis_{job_hex}.sh")
+    analysis_script.save(analysis_path)
+    utils.make_executable(analysis_path)
+    scripts_created.append(analysis_path)
+    
+    # 3. Destaging Script
+    destaging_script = SafePathScript(
+        name=f"destaging_{job_hex}",
+        memory="1G",
+        tasks=n_tasks,
+        output=os.path.join(logfile_location, "destaging")
+    )
+    destaging_script += f"#$ -hold_jid analysis_{job_hex}\n"
+    destaging_script += f'COMMAND=$(sed -n "${{SGE_TASK_ID}}p" "{destaging_file}")\n'
+    destaging_script += 'DECODED_COMMAND=$(echo "$COMMAND" | base64 -d)\n'
+    destaging_script += 'eval "$DECODED_COMMAND"\n'
+    
+    destaging_path = os.path.join(commands_location, f"destaging_{job_hex}.sh")
+    destaging_script.save(destaging_path)
+    utils.make_executable(destaging_path)
+    scripts_created.append(destaging_path)
+    
+    return scripts_created
 
 
 
