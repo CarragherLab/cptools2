@@ -260,14 +260,40 @@ def get_user_scratch_quota(user=None):
         if user is None:
             user = getpass.getuser()
         scratch_dir = f"/exports/eddie/scratch/{user}"
+        
+        print(f"[cptools2] DEBUG: Checking scratch directory: {scratch_dir}")
+        
         if not os.path.exists(scratch_dir):
             raise FileNotFoundError(f"Scratch directory not found: {scratch_dir}")
-        total, used, free = shutil.disk_usage(scratch_dir)
-        available = int(free * 0.75)
-        print(f"[cptools2] Using shutil.disk_usage for scratch space: {available/(1024**3):.1f}GB (75% of free space in {scratch_dir})")
-        return available
+        
+        # Eddie-specific quota-aware approach
+        # Known quota limit (update this if your quota changes)
+        quota_total_gb = 2048  # 2TB quota on Eddie scratch
+        
+        # Calculate current usage using du command (faster and more accurate)
+        try:
+            import subprocess
+            result = subprocess.run(['du', '-sb', scratch_dir], 
+                                  capture_output=True, text=True, timeout=30)
+            if result.returncode == 0:
+                used_bytes = int(result.stdout.split()[0])
+                used_gb = used_bytes / (1024**3)
+                available_gb = max(0, quota_total_gb - used_gb)
+                available_75pct_bytes = int(available_gb * 0.75 * (1024**3))
+                
+                print(f"[cptools2] DEBUG: Quota: {quota_total_gb}GB, Used: {used_gb:.1f}GB, Available: {available_gb:.1f}GB")
+                print(f"[cptools2] Using quota-aware calculation: {available_75pct_bytes/(1024**3):.1f}GB (75% of {available_gb:.1f}GB available)")
+                return available_75pct_bytes
+        except Exception as du_error:
+            print(f"[cptools2] DEBUG: du command failed: {du_error}")
+        
+        # Fallback: Conservative estimate (75% of total quota)
+        fallback_bytes = int(quota_total_gb * 0.75 * (1024**3))
+        print(f"[cptools2] Using conservative fallback: {fallback_bytes/(1024**3):.1f}GB (75% of {quota_total_gb}GB quota)")
+        return fallback_bytes
+        
     except Exception as e:
-        print(f"[cptools2] Warning: Failed to get scratch space with shutil: {e}. Falling back to 2TB.")
+        print(f"[cptools2] Warning: Failed to calculate scratch space: {e}. Falling back to 2TB.")
     return 2 * 1024**4  # 2TB fallback
 
 
