@@ -413,8 +413,10 @@ class Job(object):
             # Temporarily replace plate_store for batch processing
             original_plate_store = self.plate_store
             self.plate_store = batch_plate_store
-            if self.has_loaddata is False:
-                self._create_loaddata(job_size)
+            # Always rebuild loaddata_store for the current batch
+            self.loaddata_store = {}
+            self.has_loaddata = False
+            self._create_loaddata(job_size)
             cp_commands, rsync_commands, rm_commands = [], [], []
             commands.make_output_directories(location=location)
             platenames = sorted(self.plate_store.keys())
