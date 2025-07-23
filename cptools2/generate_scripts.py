@@ -157,19 +157,13 @@ def create_master_submit_script(commands_location, logfile_location, enable_batc
     """
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     
-    if enable_batching and batches:
-        # Generate all batch scripts
-        all_scripts = make_qsub_scripts(config, commands_location, logfile_location, batches)
-        
-        # Create submission commands
+    # This call now returns all scripts, including join/transfer
+    all_scripts = make_qsub_scripts(config, commands_location, logfile_location, batches if enable_batching else None)
+
+    if enable_batching:
         script_content = _create_chained_submission_content(all_scripts)
         script_name = f"{timestamp}_SUBMIT_BATCH_MASTER.sh"
-        
     else:
-        # Generate single-batch scripts
-        all_scripts = make_qsub_scripts(config, commands_location, logfile_location)
-        
-        # Create submission commands
         script_content = _create_single_submission_content(all_scripts)
         script_name = f"{timestamp}_SUBMIT_SINGLE_MASTER.sh"
     
@@ -400,7 +394,7 @@ def make_qsub_scripts(config, commands_location, logfile_location, batches=None)
         pretty_print(f"[cptools2] created {len(all_script_paths)} scripts with sequential dependencies")
         return all_script_paths
     else:
-        # Single batch workflow unchanged
+        # Single batch workflow now also handles optional join/transfer
         return _create_single_batch_scripts(config, commands_location, logfile_location)
 
 
@@ -605,6 +599,7 @@ def _create_destaging_script(batch_id, commands_location, logfile_location, job_
 def _create_single_batch_scripts(config, commands_location, logfile_location):
     """
     Create SGE scripts for traditional single-batch workflow (--disable-batching).
+    Now includes optional join and transfer script generation.
     
     Parameters:
     -----------
@@ -689,6 +684,27 @@ def _create_single_batch_scripts(config, commands_location, logfile_location):
     destaging_script.save(destaging_path)
     utils.make_executable(destaging_path)
     scripts_created.append(destaging_path)
+
+    # 4. Join Script (Optional)
+    join_script_path = None
+    if hasattr(config, 'join_files_patterns') and config.join_files_patterns:
+        join_script_path = make_join_files_script(
+            config, commands_location, logfile_location, job_hex, timestamp,
+            dependency_job_name=f"destaging_{job_hex}"
+        )
+        if join_script_path:
+            scripts_created.append(join_script_path)
+
+    # 5. Transfer Script (Optional)
+    transfer_dependency = f"join_{job_hex}" if join_script_path else f"destaging_{job_hex}"
+    if hasattr(config, 'data_destination_path') and config.data_destination_path:
+        transfer_script_path = make_datastore_transfer_script(
+            config, commands_location, logfile_location, job_hex, timestamp,
+            eddie_source_dir=config.create_command_args["location"],
+            dependency_job_name=transfer_dependency
+        )
+        if transfer_script_path:
+            scripts_created.append(transfer_script_path)
     
     return scripts_created
 
