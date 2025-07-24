@@ -21,15 +21,3 @@ def test_make_command_paths():
     # i.e {"staging": "/directory/staging.txt"}
     for name, path in paths.items():
         assert name in path
-
-
-def test_lines_in_commnads():
-    """cptools2.generate_scripts.lines_in_commands(commnads_location)"""
-    output = generate_scripts.lines_in_commands(TEST_DIR_PATH)
-    expected_count = 5
-    expected_names = ["staging", "cp_commands", "destaging"]
-    for count in output.values():
-        assert count == expected_count
-    for name in expected_names:
-        assert name in output
-    assert len(output.values()) == 3

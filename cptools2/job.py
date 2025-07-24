@@ -218,21 +218,33 @@ class Job(object):
         import os
         import random
         import statistics
-        # Collect file lists by type
+        
         thumb_files = []
         regular_files = []
         try:
-            for root, dirs, files in os.walk(start_path):
-                for filename in files:
-                    filepath = os.path.join(root, filename)
-                    if '_thumb' in filename.lower():
-                        thumb_files.append(filepath)
-                    else:
-                        regular_files.append(filepath)
+            # Use a recursive generator function with the faster os.scandir()
+            def _fast_scandir(path):
+                try:
+                    for entry in os.scandir(path):
+                        if entry.is_dir(follow_symlinks=False):
+                            yield from _fast_scandir(entry.path)
+                        elif entry.is_file(follow_symlinks=False):
+                            yield entry
+                except OSError:
+                    # Suppress errors from permission issues on subdirectories
+                    pass
+
+            for entry in _fast_scandir(start_path):
+                if '_thumb' in entry.name.lower():
+                    thumb_files.append(entry.path)
+                else:
+                    regular_files.append(entry.path)
+
         except Exception as e:
             if verbose:
                 print(f"Warning: Could not analyze directory {start_path}: {e}")
             return 100 * 1024**3  # 100GB fallback
+
         thumb_stats = self._calculate_file_type_stats(thumb_files, sample_size, "thumbnail")
         regular_stats = self._calculate_file_type_stats(regular_files, sample_size, "regular")
         total_estimated_size = (

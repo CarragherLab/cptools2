@@ -33,62 +33,6 @@ def make_command_paths(commands_location):
     return {name: os.path.join(commands_location, name+".txt") for name in names}
 
 
-def _lines_in_commands(staging, cp_commands, destaging):
-    """
-    Number of lines in each of the commands file.
-    While the number of lines in each of the files *should* be the same,
-    it's worth checking.
-
-    Parameters:
-    -----------
-    staging: string
-        path to staging commands
-
-    cp_commands: string
-        path to cellprofiler commands
-
-    destaging: string
-        path to destaging commands
-
-    Returns:
-    --------
-    Dictionary, e.g:
-        {staging: 128, cp_commands: 128, destaging: 128}
-    """
-    names = ["staging", "cp_commands", "destaging"]
-    paths = [staging, cp_commands, destaging]
-    counts = [utils.count_lines_in_file(i) for i in paths]
-    # check if the counts differ
-    if len(set(counts)) > 1:
-        raise RuntimeWarning("command files contain differing number of lines")
-    return {name: count for name, count in zip(names, counts)}
-
-
-def lines_in_commands(commands_location):
-    """
-    Given a path to a directory which contains the commands:
-        1. staging
-        2. cellprofiler commands
-        3. destaging
-    This will return the number of lines in each of these text files.
-
-    Parameters:
-    -----------
-    commands_location: string
-        path to directory containing commands
-
-    Returns:
-    ---------
-    Dictionary
-
-        {"staging":     int,
-         "cp_commands": int,
-         "destaging":   int}
-    """
-    command_paths = make_command_paths(commands_location)
-    return _lines_in_commands(**command_paths)
-
-
 def load_module_text(is_cellprofiler=False):
     """returns load module commands, optionally activating cellprofiler env"""
     script_text = textwrap.dedent(
@@ -367,14 +311,14 @@ def make_datastore_transfer_script(config, commands_location, logfile_location, 
     return transfer_loc
 
 
-def generate_job_names(batch_id, job_hex):
+def generate_job_names(job_hex):
     """Generate consistent job names for dependency management"""
     return {
-        'staging': f"staging_b{batch_id}_{job_hex}",
-        'analysis': f"analysis_b{batch_id}_{job_hex}",
-        'destaging': f"destaging_b{batch_id}_{job_hex}",
-        'join': f"join_b{batch_id}_{job_hex}",
-        'transfer': f"transfer_b{batch_id}_{job_hex}"
+        'staging': f"staging_{job_hex}",
+        'analysis': f"analysis_{job_hex}",
+        'destaging': f"destaging_{job_hex}",
+        'join': f"join_{job_hex}",
+        'transfer': f"transfer_{job_hex}"
     }
 
 
@@ -408,7 +352,7 @@ def _create_batch_scripts(batch, config, commands_location, logfile_location, pr
     batch_id = batch['batch_id']
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     job_hex = f"b{batch_id}_{timestamp[-6:]}"
-    job_names = generate_job_names(batch_id, job_hex)
+    job_names = generate_job_names(job_hex)
     scripts_created = []
 
     # 1. Staging (waits for previous batch's destaging)
@@ -467,7 +411,7 @@ def _create_staging_script(batch_id, commands_location, logfile_location, job_he
         raise FileNotFoundError(f"Staging command file not found: {staging_file}")
     n_tasks = utils.count_lines_in_file(staging_file)
     staging_script = SafePathScript(
-        name=f"staging_b{batch_id}_{job_hex}",
+        name=f"staging_{job_hex}",
         memory="1G",
         tasks=n_tasks,
         output=os.path.join(logfile_location, "staging")

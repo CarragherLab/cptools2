@@ -40,30 +40,6 @@ def configure_job(config):
     return jobber
 
 
-def make_scripts(config_file):
-    """
-    creates the qsub scripts
-
-    Parameters:
-    -----------
-    config_file: string
-        path to configuration file
-
-    Returns:
-    ---------
-    nothing
-    """
-    yaml_dict = parse_yaml.open_yaml(config_file)
-    config = parse_yaml.parse_config_file(config_file)
-    commands_location = config.create_command_args["commands_location"]
-    commands_line_count = generate_scripts.lines_in_commands(commands_location)
-    logfile_location = os.path.join(yaml_dict["location"], "logfiles")
-    generate_scripts.make_qsub_scripts(config=config,
-                                       commands_location=commands_location,
-                                       commands_count_dict=commands_line_count,
-                                       logfile_location=logfile_location)
-
-
 def handle_generate(args):
     """Enhanced generate handler with integrated batch planning and progress reporting"""
     config_file = args.config_file
