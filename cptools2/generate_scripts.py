@@ -485,8 +485,10 @@ def _create_analysis_script(batch_id, commands_location, logfile_location, job_h
     # Add module loading
     analysis_script += load_module_text(is_cellprofiler=True)
     
-    # Add command execution
-    analysis_script.loop_through_file(analysis_file)
+    # Add command execution (with base64 decoding)
+    analysis_script += f'COMMAND=$(sed -n "${{SGE_TASK_ID}}p" "{analysis_file}")\n'
+    analysis_script += 'DECODED_COMMAND=$(echo "$COMMAND" | base64 -d)\n'
+    analysis_script += 'eval "$DECODED_COMMAND"\n'
     
     # Save script
     script_path = os.path.join(commands_location, f"analysis_{job_hex}.sh")
@@ -616,7 +618,10 @@ def _create_single_batch_scripts(config, commands_location, logfile_location):
         output=os.path.join(logfile_location, "analysis")
     )
     analysis_script += load_module_text(is_cellprofiler=True)
-    analysis_script.loop_through_file(analysis_file)
+    # Add command execution (with base64 decoding)
+    analysis_script += f'COMMAND=$(sed -n "${{SGE_TASK_ID}}p" "{analysis_file}")\n'
+    analysis_script += 'DECODED_COMMAND=$(echo "$COMMAND" | base64 -d)\n'
+    analysis_script += 'eval "$DECODED_COMMAND"\n'
     
     analysis_path = os.path.join(commands_location, f"analysis_{job_hex}.sh")
     analysis_script.save(analysis_path)

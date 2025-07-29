@@ -143,10 +143,8 @@ def write_commands(commands_location, rsync_commands, cp_commands, rm_commands,
         names = ["staging", "cp_commands", "destaging"]
     commands_list = [rsync_commands, cp_commands, rm_commands]
     for command, name in zip(commands_list, names):
-        if name.startswith("staging") or name.startswith("destaging"):
-            _write_single_base64(commands_location, command, name)
-        else:
-            _write_single(commands_location, command, name)
+        # Always encode commands to be safe, especially with file paths
+        _write_single_base64(commands_location, command, name)
 
 
 def make_rsync_cmnd(plate_loc, filelist_name, img_location):
