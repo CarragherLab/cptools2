@@ -266,7 +266,7 @@ def make_join_files_script(config, commands_location, logfile_location, job_name
     join_script += "export PATH=\"$HOME/.local/bin:$PATH\"\n"
     join_script += join_command + "\n"
 
-    join_loc = os.path.join(commands_location, f"{job_name}_script.sh")
+    join_loc = os.path.join(commands_location, f"{job_name}.sh")
     join_script.save(join_loc)
     utils.make_executable(join_loc)
 
@@ -313,7 +313,7 @@ def make_datastore_transfer_script(config, commands_location, logfile_location, 
     transfer_script += "mkdir -p \"$DATASTORE_DEST_DIR\"\n"
     transfer_script += "rsync -av --stats \"$EDDIE_SOURCE_DIR/\" \"$DATASTORE_DEST_DIR/\" >> \"$RSYNC_LOG_FILE\" 2>&1\n"
     
-    transfer_loc = os.path.join(commands_location, f"{job_name}_script.sh")
+    transfer_loc = os.path.join(commands_location, f"{job_name}.sh")
     transfer_script.save(transfer_loc)
     utils.make_executable(transfer_loc)
     
@@ -434,7 +434,7 @@ def _create_staging_script(batch_id, commands_location, logfile_location, job_he
     staging_script += f'COMMAND=$(sed -n "${{SGE_TASK_ID}}p" "{staging_file}")\n'
     staging_script += 'DECODED_COMMAND=$(echo "$COMMAND" | base64 -d)\n'
     staging_script += 'eval "$DECODED_COMMAND"\n'
-    script_path = os.path.join(commands_location, f"staging_batch_{batch_id}_{job_hex}.sh")
+    script_path = os.path.join(commands_location, f"staging_{job_hex}.sh")
     staging_script.save(script_path)
     utils.make_executable(script_path)
     return script_path
@@ -489,7 +489,7 @@ def _create_analysis_script(batch_id, commands_location, logfile_location, job_h
     analysis_script.loop_through_file(analysis_file)
     
     # Save script
-    script_path = os.path.join(commands_location, f"analysis_batch_{batch_id}_{job_hex}.sh")
+    script_path = os.path.join(commands_location, f"analysis_{job_hex}.sh")
     analysis_script.save(script_path)
     utils.make_executable(script_path)
     
@@ -544,7 +544,7 @@ def _create_destaging_script(batch_id, commands_location, logfile_location, job_
     destaging_script += 'eval "$DECODED_COMMAND"\n'
     
     # Save script
-    script_path = os.path.join(commands_location, f"destaging_batch_{batch_id}_{job_hex}.sh")
+    script_path = os.path.join(commands_location, f"destaging_{job_hex}.sh")
     destaging_script.save(script_path)
     utils.make_executable(script_path)
     
