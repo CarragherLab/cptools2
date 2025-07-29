@@ -389,7 +389,7 @@ def _create_batch_scripts(batch, config, commands_location, logfile_location, pr
     join_script_path = None
     if hasattr(config, 'join_files_patterns') and config.join_files_patterns:
         join_script_path = make_join_files_script(
-            config, commands_location, logfile_location, job_names['join'], timestamp,
+            config, commands_location, logfile_location, job_names['join'],
             dependency_job_name=job_names['destaging'],
             plates_to_join=batch['plates'],
             batch_id=batch_id
@@ -401,7 +401,7 @@ def _create_batch_scripts(batch, config, commands_location, logfile_location, pr
     transfer_dependency = job_names['join'] if join_script_path else job_names['destaging']
     if hasattr(config, 'data_destination_path') and config.data_destination_path:
         transfer_script_path = make_datastore_transfer_script(
-            config, commands_location, logfile_location, job_names['transfer'], timestamp,
+            config, commands_location, logfile_location, job_names['transfer'],
             eddie_source_dir=config.create_command_args["location"],
             dependency_job_name=transfer_dependency,
             batch_id=batch_id
@@ -649,7 +649,7 @@ def _create_single_batch_scripts(config, commands_location, logfile_location):
     join_script_path = None
     if hasattr(config, 'join_files_patterns') and config.join_files_patterns:
         join_script_path = make_join_files_script(
-            config, commands_location, logfile_location, f"join_{job_hex}", timestamp,
+            config, commands_location, logfile_location, f"join_{job_hex}",
             dependency_job_name=f"destaging_{job_hex}"
         )
         if join_script_path:
@@ -659,7 +659,7 @@ def _create_single_batch_scripts(config, commands_location, logfile_location):
     transfer_dependency = f"join_{job_hex}" if join_script_path else f"destaging_{job_hex}"
     if hasattr(config, 'data_destination_path') and config.data_destination_path:
         transfer_script_path = make_datastore_transfer_script(
-            config, commands_location, logfile_location, f"transfer_{job_hex}", timestamp,
+            config, commands_location, logfile_location, f"transfer_{job_hex}",
             eddie_source_dir=config.create_command_args["location"],
             dependency_job_name=transfer_dependency
         )
