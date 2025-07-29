@@ -225,7 +225,7 @@ def get_user_scratch_quota(user=None):
     return 2 * 1024**4  # 2TB fallback
 
 
-def make_join_files_script(config, commands_location, logfile_location, job_name, time_now, dependency_job_name=None, plates_to_join=None, batch_id=None):
+def make_join_files_script(config, commands_location, logfile_location, job_name, dependency_job_name=None, plates_to_join=None, batch_id=None):
     """
     Create a qsub submission script for joining result files based on patterns.
     """
@@ -266,14 +266,14 @@ def make_join_files_script(config, commands_location, logfile_location, job_name
     join_script += "export PATH=\"$HOME/.local/bin:$PATH\"\n"
     join_script += join_command + "\n"
 
-    join_loc = os.path.join(commands_location, f"{time_now}_join_script.sh")
+    join_loc = os.path.join(commands_location, f"{job_name}_script.sh")
     join_script.save(join_loc)
     utils.make_executable(join_loc)
 
     return join_loc
 
 
-def make_datastore_transfer_script(config, commands_location, logfile_location, job_name, time_now, eddie_source_dir, dependency_job_name=None, batch_id=None):
+def make_datastore_transfer_script(config, commands_location, logfile_location, job_name, eddie_source_dir, dependency_job_name=None, batch_id=None):
     """
     Create a script to transfer joined data to DataStore.
     """
@@ -313,7 +313,7 @@ def make_datastore_transfer_script(config, commands_location, logfile_location, 
     transfer_script += "mkdir -p \"$DATASTORE_DEST_DIR\"\n"
     transfer_script += "rsync -av --stats \"$EDDIE_SOURCE_DIR/\" \"$DATASTORE_DEST_DIR/\" >> \"$RSYNC_LOG_FILE\" 2>&1\n"
     
-    transfer_loc = os.path.join(commands_location, f"{time_now}_transfer_script.sh")
+    transfer_loc = os.path.join(commands_location, f"{job_name}_script.sh")
     transfer_script.save(transfer_loc)
     utils.make_executable(transfer_loc)
     
