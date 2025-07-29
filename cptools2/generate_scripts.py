@@ -225,7 +225,7 @@ def get_user_scratch_quota(user=None):
     return 2 * 1024**4  # 2TB fallback
 
 
-def make_join_files_script(config, commands_location, logfile_location, job_name, dependency_job_name=None, plates_to_join=None, batch_id=None):
+def make_join_files_script(config, commands_location, logfile_location, job_name, timestamp, dependency_job_name=None, plates_to_join=None, batch_id=None):
     """
     Create a qsub submission script for joining result files based on patterns.
     """
@@ -266,14 +266,14 @@ def make_join_files_script(config, commands_location, logfile_location, job_name
     join_script += "export PATH=\"$HOME/.local/bin:$PATH\"\n"
     join_script += join_command + "\n"
 
-    join_loc = os.path.join(commands_location, f"{job_name}.sh")
+    join_loc = os.path.join(commands_location, f"{timestamp}_{job_name}.sh")
     join_script.save(join_loc)
     utils.make_executable(join_loc)
 
     return join_loc
 
 
-def make_datastore_transfer_script(config, commands_location, logfile_location, job_name, eddie_source_dir, dependency_job_name=None, batch_id=None):
+def make_datastore_transfer_script(config, commands_location, logfile_location, job_name, timestamp, eddie_source_dir, dependency_job_name=None, batch_id=None):
     """
     Create a script to transfer joined data to DataStore.
     """
@@ -313,7 +313,7 @@ def make_datastore_transfer_script(config, commands_location, logfile_location, 
     transfer_script += "mkdir -p \"$DATASTORE_DEST_DIR\"\n"
     transfer_script += "rsync -av --stats \"$EDDIE_SOURCE_DIR/\" \"$DATASTORE_DEST_DIR/\" >> \"$RSYNC_LOG_FILE\" 2>&1\n"
     
-    transfer_loc = os.path.join(commands_location, f"{job_name}.sh")
+    transfer_loc = os.path.join(commands_location, f"{timestamp}_{job_name}.sh")
     transfer_script.save(transfer_loc)
     utils.make_executable(transfer_loc)
     
@@ -389,7 +389,7 @@ def _create_batch_scripts(batch, config, commands_location, logfile_location, pr
     join_script_path = None
     if hasattr(config, 'join_files_patterns') and config.join_files_patterns:
         join_script_path = make_join_files_script(
-            config, commands_location, logfile_location, job_names['join'],
+            config, commands_location, logfile_location, job_names['join'], timestamp,
             dependency_job_name=job_names['destaging'],
             plates_to_join=batch['plates'],
             batch_id=batch_id
@@ -401,7 +401,7 @@ def _create_batch_scripts(batch, config, commands_location, logfile_location, pr
     transfer_dependency = job_names['join'] if join_script_path else job_names['destaging']
     if hasattr(config, 'data_destination_path') and config.data_destination_path:
         transfer_script_path = make_datastore_transfer_script(
-            config, commands_location, logfile_location, job_names['transfer'],
+            config, commands_location, logfile_location, job_names['transfer'], timestamp,
             eddie_source_dir=config.create_command_args["location"],
             dependency_job_name=transfer_dependency,
             batch_id=batch_id
@@ -429,11 +429,10 @@ def _create_staging_script(batch_id, commands_location, logfile_location, job_he
     )
     # Add dependency if provided
     if dependency_job_name:
-        staging_script += f"#$ -hold_jid {dependency_job_name}\n"
-    staging_script += "#$ -q staging\n"
-    staging_script += f'COMMAND=$(sed -n "${{SGE_TASK_ID}}p" "{staging_file}")\n'
-    staging_script += 'DECODED_COMMAND=$(echo "$COMMAND" | base64 -d)\n'
-    staging_script += 'eval "$DECODED_COMMAND"\n'
+        staging_script += f"#$ -hold_jid {dependency_job_name}\\n"
+    staging_script += "#$ -q staging\\n"
+    staging_script += f'COMMAND=$(sed -n "${{SGE_TASK_ID}}p" "{staging_file}")\\n'
+    staging_script += 'echo "$COMMAND" | base64 -d | /bin/bash\n'
     script_path = os.path.join(commands_location, f"staging_{job_hex}.sh")
     staging_script.save(script_path)
     utils.make_executable(script_path)
@@ -486,9 +485,8 @@ def _create_analysis_script(batch_id, commands_location, logfile_location, job_h
     analysis_script += load_module_text(is_cellprofiler=True)
     
     # Add command execution (with base64 decoding)
-    analysis_script += f'COMMAND=$(sed -n "${{SGE_TASK_ID}}p" "{analysis_file}")\n'
-    analysis_script += 'DECODED_COMMAND=$(echo "$COMMAND" | base64 -d)\n'
-    analysis_script += 'eval "$DECODED_COMMAND"\n'
+    analysis_script += f'COMMAND=$(sed -n "${{SGE_TASK_ID}}p" "{analysis_file}")\\n'
+    analysis_script += 'echo "$COMMAND" | base64 -d | /bin/bash\n'
     
     # Save script
     script_path = os.path.join(commands_location, f"analysis_{job_hex}.sh")
@@ -541,9 +539,8 @@ def _create_destaging_script(batch_id, commands_location, logfile_location, job_
         destaging_script += f"#$ -hold_jid {dependency_job_name}\n"
     
     # Add command execution logic
-    destaging_script += f'COMMAND=$(sed -n "${{SGE_TASK_ID}}p" "{destaging_file}")\n'
-    destaging_script += 'DECODED_COMMAND=$(echo "$COMMAND" | base64 -d)\n'
-    destaging_script += 'eval "$DECODED_COMMAND"\n'
+    destaging_script += f'COMMAND=$(sed -n "${{SGE_TASK_ID}}p" "{destaging_file}")\\n'
+    destaging_script += 'echo "$COMMAND" | base64 -d | /bin/bash\n'
     
     # Save script
     script_path = os.path.join(commands_location, f"destaging_{job_hex}.sh")
@@ -649,7 +646,7 @@ def _create_single_batch_scripts(config, commands_location, logfile_location):
     join_script_path = None
     if hasattr(config, 'join_files_patterns') and config.join_files_patterns:
         join_script_path = make_join_files_script(
-            config, commands_location, logfile_location, f"join_{job_hex}",
+            config, commands_location, logfile_location, f"join_{job_hex}", timestamp,
             dependency_job_name=f"destaging_{job_hex}"
         )
         if join_script_path:
@@ -659,7 +656,7 @@ def _create_single_batch_scripts(config, commands_location, logfile_location):
     transfer_dependency = f"join_{job_hex}" if join_script_path else f"destaging_{job_hex}"
     if hasattr(config, 'data_destination_path') and config.data_destination_path:
         transfer_script_path = make_datastore_transfer_script(
-            config, commands_location, logfile_location, f"transfer_{job_hex}",
+            config, commands_location, logfile_location, f"transfer_{job_hex}", timestamp,
             eddie_source_dir=config.create_command_args["location"],
             dependency_job_name=transfer_dependency
         )
