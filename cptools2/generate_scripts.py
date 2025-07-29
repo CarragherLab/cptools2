@@ -225,7 +225,7 @@ def get_user_scratch_quota(user=None):
     return 2 * 1024**4  # 2TB fallback
 
 
-def make_join_files_script(config, commands_location, logfile_location, job_hex, time_now, dependency_job_name=None, plates_to_join=None):
+def make_join_files_script(config, commands_location, logfile_location, job_name, time_now, dependency_job_name=None, plates_to_join=None, batch_id=None):
     """
     Create a qsub submission script for joining result files based on patterns.
     """
@@ -240,6 +240,10 @@ def make_join_files_script(config, commands_location, logfile_location, job_hex,
     # Base command
     join_command = f'cptools2 join --location "{location}" --patterns {" ".join(patterns)}'
     
+    # Add batch ID if provided
+    if batch_id is not None:
+        join_command += f" --batch-id {batch_id}"
+
     # Add specific plates if provided
     if plates_to_join:
         pretty_print(f"  -> Generating join script for plates: {', '.join(plates_to_join)}")
@@ -248,7 +252,7 @@ def make_join_files_script(config, commands_location, logfile_location, job_hex,
         pretty_print(f"  -> Generating join script for all plates with patterns: {patterns_str}")
 
     join_script = SafePathScript(
-        name=f"join_{job_hex}",
+        name=job_name,
         memory="2G",
         tasks=1,
         output=os.path.join(logfile_location, "join")
@@ -269,7 +273,7 @@ def make_join_files_script(config, commands_location, logfile_location, job_hex,
     return join_loc
 
 
-def make_datastore_transfer_script(config, commands_location, logfile_location, job_hex, time_now, eddie_source_dir, dependency_job_name=None):
+def make_datastore_transfer_script(config, commands_location, logfile_location, job_name, time_now, eddie_source_dir, dependency_job_name=None, batch_id=None):
     """
     Create a script to transfer joined data to DataStore.
     """
@@ -277,11 +281,16 @@ def make_datastore_transfer_script(config, commands_location, logfile_location, 
     if not datastore_dest:
         return None
 
-    specific_eddie_source_for_transfer = os.path.join(eddie_source_dir, "joined_files").replace("\\", "/")
+    # Modify source directory to be batch-specific if a batch_id is provided
+    if batch_id is not None:
+        joined_dir_name = f"joined_files_batch_{batch_id}"
+    else:
+        joined_dir_name = "joined_files"
+    specific_eddie_source_for_transfer = os.path.join(eddie_source_dir, joined_dir_name).replace("\\", "/")
     pretty_print(f"  -> Generating datastore transfer script to: {colours.yellow(datastore_dest)}")
 
     transfer_script = SafePathScript(
-        name=f"transfer_{job_hex}",
+        name=job_name,
         memory="1G",
         tasks=1,
         output=os.path.join(logfile_location, "transfer")
@@ -297,7 +306,7 @@ def make_datastore_transfer_script(config, commands_location, logfile_location, 
     transfer_script += f"EDDIE_SOURCE_DIR=\"{specific_eddie_source_for_transfer}\"\n"
     transfer_script += f"DATASTORE_DEST_DIR=\"{datastore_dest}\"\n"
     
-    rsync_log_file = os.path.join(logfile_location, f"transfer_to_datastore_{job_hex}.log")
+    rsync_log_file = os.path.join(logfile_location, f"transfer_to_datastore_{job_name}.log")
     transfer_script += f"RSYNC_LOG_FILE=\"{rsync_log_file}\"\n"
     
     transfer_script += "echo \"Starting data transfer at $(date)\" > \"$RSYNC_LOG_FILE\"\n"
@@ -380,9 +389,10 @@ def _create_batch_scripts(batch, config, commands_location, logfile_location, pr
     join_script_path = None
     if hasattr(config, 'join_files_patterns') and config.join_files_patterns:
         join_script_path = make_join_files_script(
-            config, commands_location, logfile_location, job_hex, timestamp,
+            config, commands_location, logfile_location, job_names['join'], timestamp,
             dependency_job_name=job_names['destaging'],
-            plates_to_join=batch['plates']
+            plates_to_join=batch['plates'],
+            batch_id=batch_id
         )
         if join_script_path:
             scripts_created.append(join_script_path)
@@ -391,9 +401,10 @@ def _create_batch_scripts(batch, config, commands_location, logfile_location, pr
     transfer_dependency = job_names['join'] if join_script_path else job_names['destaging']
     if hasattr(config, 'data_destination_path') and config.data_destination_path:
         transfer_script_path = make_datastore_transfer_script(
-            config, commands_location, logfile_location, job_hex, timestamp,
+            config, commands_location, logfile_location, job_names['transfer'], timestamp,
             eddie_source_dir=config.create_command_args["location"],
-            dependency_job_name=transfer_dependency
+            dependency_job_name=transfer_dependency,
+            batch_id=batch_id
         )
         if transfer_script_path:
             scripts_created.append(transfer_script_path)
@@ -418,7 +429,7 @@ def _create_staging_script(batch_id, commands_location, logfile_location, job_he
     )
     # Add dependency if provided
     if dependency_job_name:
-        staging_script += f"#$ -hold_jid_ad {dependency_job_name}\n"
+        staging_script += f"#$ -hold_jid {dependency_job_name}\n"
     staging_script += "#$ -q staging\n"
     staging_script += f'COMMAND=$(sed -n "${{SGE_TASK_ID}}p" "{staging_file}")\n'
     staging_script += 'DECODED_COMMAND=$(echo "$COMMAND" | base64 -d)\n'
@@ -633,7 +644,7 @@ def _create_single_batch_scripts(config, commands_location, logfile_location):
     join_script_path = None
     if hasattr(config, 'join_files_patterns') and config.join_files_patterns:
         join_script_path = make_join_files_script(
-            config, commands_location, logfile_location, job_hex, timestamp,
+            config, commands_location, logfile_location, f"join_{job_hex}", timestamp,
             dependency_job_name=f"destaging_{job_hex}"
         )
         if join_script_path:
@@ -643,7 +654,7 @@ def _create_single_batch_scripts(config, commands_location, logfile_location):
     transfer_dependency = f"join_{job_hex}" if join_script_path else f"destaging_{job_hex}"
     if hasattr(config, 'data_destination_path') and config.data_destination_path:
         transfer_script_path = make_datastore_transfer_script(
-            config, commands_location, logfile_location, job_hex, timestamp,
+            config, commands_location, logfile_location, f"transfer_{job_hex}", timestamp,
             eddie_source_dir=config.create_command_args["location"],
             dependency_job_name=transfer_dependency
         )

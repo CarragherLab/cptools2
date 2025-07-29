@@ -324,6 +324,9 @@ class Job(object):
         Group plates into batches based on space constraints
         Each batch will fit within 50% of available scratch space
         """
+        # Reset plate batches to prevent duplication if called multiple times
+        self.plate_batches = []
+        
         # Use 50% of available space per batch
         max_batch_size = available_scratch_space * 0.5
         

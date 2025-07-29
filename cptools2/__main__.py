@@ -138,7 +138,8 @@ def handle_join(args):
     results = file_tools.join_plate_files(
         plate_store=plate_store, 
         raw_data_location=raw_data_location, 
-        patterns=args.patterns
+        patterns=args.patterns,
+        batch_id=args.batch_id
     )
     
     if results:
@@ -164,6 +165,7 @@ def main():
     parser_join.add_argument('--location', type=str, required=True, help='Base location directory containing the raw_data subdirectory.')
     parser_join.add_argument('--patterns', type=str, required=True, nargs='+', help='File name patterns to join (e.g., Image.csv Cells.csv).')
     parser_join.add_argument('--plates', type=str, nargs='+', help='(Optional) Specific plate names to join. If not provided, all plates found will be joined.')
+    parser_join.add_argument('--batch-id', type=int, help='(Optional) Batch ID for creating batch-specific output directories.')
     parser_join.set_defaults(func=handle_join)
 
     args = parser.parse_args()

@@ -52,7 +52,7 @@ def _discover_plates_from_raw_data(raw_data_location):
         pretty_print(f"Warning: No plate directories found in {raw_data_location}. Cannot join files.", colour='yellow')
     return sorted(list(plate_names))
 
-def join_plate_files(plate_store, raw_data_location, patterns=None):
+def join_plate_files(plate_store, raw_data_location, patterns=None, batch_id=None):
     """
     Join result files for each plate based on specified patterns.
     
@@ -68,6 +68,8 @@ def join_plate_files(plate_store, raw_data_location, patterns=None):
     patterns : list or None
         List of file patterns to join (e.g., ["Image.csv", "Cells.csv"])
         If None, no files will be joined.
+    batch_id : int or None
+        Optional identifier for the batch, used to create a unique output directory.
         
     Returns:
     --------
@@ -111,10 +113,14 @@ def join_plate_files(plate_store, raw_data_location, patterns=None):
                 # Combine files
                 combined_csv = pd.concat([pd.read_csv(f, low_memory=False) for f in matched_files])
                 
-                # Save to output location
-                # Place joined_files adjacent to raw_data_location
+                # Determine output directory (batch-specific if batch_id is provided)
                 parent_dir = os.path.dirname(raw_data_location)
-                output_dir = os.path.join(parent_dir, "joined_files")
+                if batch_id is not None:
+                    output_dir_name = f"joined_files_batch_{batch_id}"
+                else:
+                    output_dir_name = "joined_files"
+                
+                output_dir = os.path.join(parent_dir, output_dir_name)
                 os.makedirs(output_dir, exist_ok=True)
                 output_file = os.path.join(output_dir, f"{plate_name}_{pattern}")
                 

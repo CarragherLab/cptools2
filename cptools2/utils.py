@@ -69,7 +69,7 @@ def prefix_filepaths(dataframe, name, location):
     # Updated from deprecated .applymap() to pandas 2.0+ compatible approach
     for col in path_cols:
         dataframe[col] = dataframe[col].map(
-            lambda x: os.path.join(location, "img_data", name, x)
+            lambda x: os.path.join(location, "img_data", name)
         )
     return dataframe
 
