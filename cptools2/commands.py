@@ -119,13 +119,36 @@ def _write_single_base64(commands_location, commands, final_name):
     Returns:
     --------
     nothing, writes base64-encoded commands to disk
+    
+    Raises:
+    -------
+    ValueError: if command encoding fails
+    IOError: if file writing fails
     """
     cmnd_loc = os.path.join(commands_location, final_name + ".txt")
-    with open(cmnd_loc, "w") as outfile:
-        for line in commands:
-            # Encode each command to bypass shell interpretation issues
-            encoded_line = base64.b64encode(line.encode()).decode()
-            outfile.write(encoded_line + "\n")
+    
+    # Validate inputs
+    if not commands:
+        raise ValueError(f"Empty command list provided for {final_name}")
+    
+    try:
+        with open(cmnd_loc, "w", encoding='utf-8') as outfile:
+            for i, line in enumerate(commands):
+                try:
+                    # Encode each command to bypass shell interpretation issues
+                    # Explicitly specify utf-8 for clarity and error handling
+                    encoded_line = base64.b64encode(line.encode('utf-8')).decode('utf-8')
+                    outfile.write(encoded_line + "\n")
+                except (UnicodeEncodeError, UnicodeDecodeError) as e:
+                    raise ValueError(f"Failed to encode command {i+1} in {final_name}: {line[:100]}... Error: {e}")
+                except Exception as e:
+                    raise ValueError(f"Unexpected error encoding command {i+1} in {final_name}: {e}")
+    except IOError as e:
+        raise IOError(f"Failed to write command file {cmnd_loc}: {e}")
+    
+    # Verify file was created and is non-empty
+    if not os.path.exists(cmnd_loc) or os.path.getsize(cmnd_loc) == 0:
+        raise IOError(f"Command file {cmnd_loc} was not created properly or is empty")
 
 
 def write_commands(commands_location, rsync_commands, cp_commands, rm_commands,
