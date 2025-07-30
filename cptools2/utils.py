@@ -57,7 +57,7 @@ def prefix_filepaths(dataframe, name, location):
     dataframe: pandas.DataFrame
         a loaddata dataframe
     name: string
-        name of individual job
+        name of individual job (e.g., "14202-D-30_0")
     location: string
         path prefix to where the images will be stored after staging
 
@@ -69,7 +69,7 @@ def prefix_filepaths(dataframe, name, location):
     # Updated from deprecated .applymap() to pandas 2.0+ compatible approach
     for col in path_cols:
         dataframe[col] = dataframe[col].map(
-            lambda x: os.path.join(location, "img_data", name, os.path.basename(str(x)))
+            lambda x: os.path.join(location, "img_data", name, x)
         )
     return dataframe
 
