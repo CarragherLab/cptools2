@@ -72,50 +72,37 @@ def handle_generate(args):
     for plate in platenames:
         pretty_print(f"\t {colours.purple(plate)}")
 
-    # 5. Batch Planning (Default Behavior)
-    disable_batching = getattr(args, 'disable_batching', False)
-
-    if disable_batching:
-        pretty_print("[cptools2] batch planning disabled - using single batch for all plates")
-        jobber.create_commands(**config.create_command_args)
-        generate_scripts.create_master_submit_script(
-            commands_location=commands_location,
-            logfile_location=logfile_location,
-            enable_batching=False,
-            config=config  # Add config parameter
-        )
-    else:
-        # Use new quota-based scratch space detection
-        available_scratch = get_user_scratch_quota()
-        pretty_print(f"[cptools2] detected user scratch quota: {colours.yellow(f'{available_scratch/(1024**3):.1f}GB')}")
-        pretty_print("[cptools2] calculating plate sizes for batch planning...")
-        jobber.calculate_plate_sizes()
-        pretty_print("[cptools2] creating space-optimal batches...")
-        batches = jobber.create_plate_batches(available_scratch)
-        pretty_print(f"[cptools2] created {colours.yellow(len(batches))} optimized batches:")
-        for batch in batches:
-            plate_list = ", ".join(batch['plates'][:3])
-            if len(batch['plates']) > 3:
-                plate_list += f" (+ {len(batch['plates'])-3} more)"
-            size_str = f"{batch['total_size_gb']:.1f}GB"
-            pretty_print(f"\t batch {colours.yellow(batch['batch_id'])}: "
-                         f"{colours.purple(len(batch['plates']))} plates, "
-                         f"{colours.green(size_str)} - {plate_list}")
-        pretty_print("[cptools2] batch planning complete. Ready to generate command files.")
-        pretty_print("[cptools2] generating batch-specific command files...")
-        jobber.create_commands(
-            **config.create_command_args,
-            enable_batching=True,
-            available_scratch_space=available_scratch
-        )
-        pretty_print("[cptools2] creating batch submission scripts...")
-        generate_scripts.create_master_submit_script(
-            commands_location=commands_location,
-            logfile_location=logfile_location,
-            enable_batching=True,
-            batches=batches,
-            config=config  # Pass config for join/transfer functionality
-        )
+    # 5. Batch Planning (Always enabled for consistency)
+    # Use new quota-based scratch space detection
+    available_scratch = get_user_scratch_quota()
+    pretty_print(f"[cptools2] detected user scratch quota: {colours.yellow(f'{available_scratch/(1024**3):.1f}GB')}")
+    pretty_print("[cptools2] calculating plate sizes for batch planning...")
+    jobber.calculate_plate_sizes()
+    pretty_print("[cptools2] creating space-optimal batches...")
+    batches = jobber.create_plate_batches(available_scratch)
+    pretty_print(f"[cptools2] created {colours.yellow(len(batches))} optimized batches:")
+    for batch in batches:
+        plate_list = ", ".join(batch['plates'][:3])
+        if len(batch['plates']) > 3:
+            plate_list += f" (+ {len(batch['plates'])-3} more)"
+        size_str = f"{batch['total_size_gb']:.1f}GB"
+        pretty_print(f"\t batch {colours.yellow(batch['batch_id'])}: "
+                     f"{colours.purple(len(batch['plates']))} plates, "
+                     f"{colours.green(size_str)} - {plate_list}")
+    pretty_print("[cptools2] batch planning complete. Ready to generate command files.")
+    pretty_print("[cptools2] generating batch-specific command files...")
+    jobber.create_commands(
+        **config.create_command_args,
+        enable_batching=True,
+        available_scratch_space=available_scratch
+    )
+    pretty_print("[cptools2] creating batch submission scripts...")
+    generate_scripts.create_master_submit_script(
+        commands_location=commands_location,
+        logfile_location=logfile_location,
+        batches=batches,
+        config=config  # Pass config for join/transfer functionality
+    )
     pretty_print(colours.green("[cptools2] workflow generation complete!"))
 
 

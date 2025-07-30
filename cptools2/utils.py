@@ -69,7 +69,7 @@ def prefix_filepaths(dataframe, name, location):
     # Updated from deprecated .applymap() to pandas 2.0+ compatible approach
     for col in path_cols:
         dataframe[col] = dataframe[col].map(
-            lambda x: os.path.join(location, "img_data", name)
+            lambda x: os.path.join(location, "img_data", name, os.path.basename(str(x)))
         )
     return dataframe
 
@@ -131,7 +131,7 @@ def sanitise_filename(filename):
         Filename with spaces properly escaped
     """
     # Escape spaces with backslash
-    return filename.replace(" ", "\ ")
+    return filename.replace(" ", "\\ ")
 
 
 def sanitise_paths_in_dataframe(dataframe):

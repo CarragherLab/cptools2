@@ -385,36 +385,18 @@ class Job(object):
             raise ValueError(f"Invalid batch_id: {batch_id}. Must be between 0 and {len(self.plate_batches) - 1}.")
         return self.plate_batches[batch_id]
 
-    def create_commands(self, pipeline, location, commands_location, job_size, enable_batching=False, available_scratch_space=None):
+    def create_commands(self, pipeline, location, commands_location, job_size, enable_batching=True, available_scratch_space=None):
         """
         Enhanced to support batch-aware command generation.
+        Always uses batching workflow for consistency.
         """
         if not os.path.isfile(pipeline):
             raise FileNotFoundError(f"Pipeline file not found: {pipeline}")
-        if enable_batching and available_scratch_space:
-            self.create_plate_batches(available_scratch_space)
-            self._create_batch_command_files(pipeline, location, commands_location, job_size)
-        else:
-            # Original single-batch workflow
-            pretty_print("creating image list")
-            if self.has_loaddata is False:
-                self._create_loaddata(job_size)
-            cp_commands, rsync_commands, rm_commands = [], [], []
-            pretty_print("creating output directories at {}".format(colours.yellow(location)))
-            commands.make_output_directories(location=location)
-            platenames = sorted(self.plate_store.keys())
-            pretty_print("detected {} {}".format(colours.yellow(len(platenames)), colours.purple("plates")))
-            for plate in platenames:
-                p_cp, p_rsync, p_rm = self._process_plate(plate, pipeline, location, job_size)
-                cp_commands.extend(p_cp)
-                rsync_commands.extend(p_rsync)
-                rm_commands.extend(p_rm)
-            self._write_and_check_commands(
-                commands_location=commands_location,
-                rsync_commands=rsync_commands,
-                cp_commands=cp_commands,
-                rm_commands=rm_commands,
-            )
+        if not available_scratch_space:
+            raise ValueError("available_scratch_space is required for batch workflow")
+        
+        self.create_plate_batches(available_scratch_space)
+        self._create_batch_command_files(pipeline, location, commands_location, job_size)
 
     def _create_batch_command_files(self, pipeline, location, commands_location, job_size):
         """
