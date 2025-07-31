@@ -134,43 +134,47 @@ def sanitise_filename(filename):
     return filename.replace(" ", "\\ ")
 
 
-def sanitise_paths_in_dataframe(dataframe):
-    """
-    Apply sanitise_filename to all paths in a dataframe
-    
-    This is useful for LoadData dataframes that contain file paths
-    which might contain spaces or special characters.
-    
-    Parameters:
-    ------------
-    dataframe: pandas.DataFrame
-        DataFrame containing PathName columns to sanitize
-    
-    Returns:
-    --------
-    pandas.DataFrame
-        DataFrame with sanitized paths
-    """
-    path_cols = [col for col in dataframe.columns if col.startswith("PathName")]
-    for col in path_cols:
-        dataframe[col] = dataframe[col].map(sanitise_filename)
-    return dataframe
+# COMMENTED OUT: Function appears unused in current codebase (as of 2025-01-30)
+# May be useful for future LoadData processing where base64 encoding is not used
+# def sanitise_paths_in_dataframe(dataframe):
+#     """
+#     Apply sanitise_filename to all paths in a dataframe
+#     
+#     This is useful for LoadData dataframes that contain file paths
+#     which might contain spaces or special characters.
+#     
+#     Parameters:
+#     ------------
+#     dataframe: pandas.DataFrame
+#         DataFrame containing PathName columns to sanitize
+#     
+#     Returns:
+#     --------
+#     pandas.DataFrame
+#         DataFrame with sanitized paths
+#     """
+#     path_cols = [col for col in dataframe.columns if col.startswith("PathName")]
+#     for col in path_cols:
+#         dataframe[col] = dataframe[col].map(sanitise_filename)
+#     return dataframe
 
 
-def on_staging_node():
-    """
-    Determine if this is being run on a staging node or not.
-    Checks whether it can access IGMM's datastore
-
-    Returns:
-    ---------
-    Boolean
-    """
-    try:
-        _ = os.listdir("/exports/igmm/datastore")
-        return True
-    except OSError:
-        return False
+# COMMENTED OUT: Function appears unused in current codebase (as of 2025-01-30)
+# May be useful for future environment detection or conditional logic based on node type
+# def on_staging_node():
+#     """
+#     Determine if this is being run on a staging node or not.
+#     Checks whether it can access IGMM's datastore
+# 
+#     Returns:
+#     ---------
+#     Boolean
+#     """
+#     try:
+#         _ = os.listdir("/exports/igmm/datastore")
+#         return True
+#     except OSError:
+#         return False
 
 
 def make_executable(filepath):
