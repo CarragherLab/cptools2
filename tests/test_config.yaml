@@ -1,4 +1,4 @@
-experiment : tests/example_dir
+experiment : /path/to/experiment
 remove plate:
   - plate_1
   - plate_2
@@ -10,4 +10,4 @@ add plate:
 chunk: 46
 pipeline: tests/example_pipeline.cppipe
 location: /example/location
-commands location: tests/commands
+commands location: /home/user

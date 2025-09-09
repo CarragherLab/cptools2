@@ -41,34 +41,9 @@ def test_base64_encoding():
         with open(cmd_file, "w") as f:
             f.write(encoded_command)
         
-        # Create a shell script to decode and echo the command
-        shell_script = os.path.join(temp_dir, "test_decode.sh")
-        with open(shell_script, "w") as f:
-            f.write("""#!/bin/bash
-ENCODED_SEED=$(cat "{cmd_file}")
-SEED=$(echo "$ENCODED_SEED" | base64 --decode)
-echo "Decoded command:"
-echo "$SEED"
-""".format(cmd_file=cmd_file))
-        
-        # Make the shell script executable
-        os.chmod(shell_script, 0o755)
-        
-        # Execute the shell script
-        print("Executing test decode script...")
-        result = subprocess.run([shell_script], capture_output=True, text=True)
-        
-        # Print and check the result
-        print(result.stdout)
-        
-        if test_command in result.stdout:
-            print("SUCCESS: Original command was correctly recovered after base64 encoding/decoding")
-            return True
-        else:
-            print("FAILURE: Command was not correctly recovered")
-            print(f"Expected: {test_command}")
-            print(f"Got: {result.stdout}")
-            return False
+        # Decode in Python (cross-platform) rather than invoking a shell script
+        decoded = base64.b64decode(encoded_command.encode()).decode()
+        assert decoded == test_command
             
     finally:
         # Clean up

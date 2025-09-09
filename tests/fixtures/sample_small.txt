@@ -1,0 +1,3 @@
+Sample fixture content for unit tests
+line1
+line2

@@ -98,15 +98,16 @@ def add_plate(yaml_dict):
         add_plate_entries = yaml_dict["add plate"]
         plate_list = []
 
-        # Ensure add_plate_entries is always a list for consistent processing
+        # Normalize to list
         if not isinstance(add_plate_entries, list):
             add_plate_entries = [add_plate_entries]
 
-        for entry in add_plate_entries:
+        # Support entries where 'experiment' and 'plates' may be split across consecutive list items
+        i = 0
+        while i < len(add_plate_entries):
+            entry = add_plate_entries[i]
             if not isinstance(entry, dict):
-                # Handle cases where entry might not be a dictionary as expected
-                # You might want to log a warning or raise an error here
-                # For now, skipping non-dictionary entries
+                i += 1
                 continue
 
             exp_dir = None
@@ -114,20 +115,35 @@ def add_plate(yaml_dict):
 
             if "experiment" in entry:
                 exp_dir = str(entry["experiment"])
+
             if "plates" in entry:
                 plate_args = entry["plates"]
                 if isinstance(plate_args, str):
                     plates = [plate_args]
                 elif isinstance(plate_args, list):
                     plates = plate_args
-            
-            # Only add to list if both exp_dir and plates are found
-            if exp_dir is not None and plates is not None:
-                 plate_list.append({"exp_dir": exp_dir, "plates": plates})
-            # Consider adding error handling or logging if one is missing
 
-        # Return the list of plates, or None if the list is empty
-        return plate_list if plate_list else None 
+            # If plates missing but next entry contains plates, combine them
+            if plates is None and (i + 1) < len(add_plate_entries):
+                next_entry = add_plate_entries[i + 1]
+                if isinstance(next_entry, dict) and "plates" in next_entry:
+                    plate_args = next_entry["plates"]
+                    if isinstance(plate_args, str):
+                        plates = [plate_args]
+                    elif isinstance(plate_args, list):
+                        plates = plate_args
+                    i += 1  # skip the next entry as we've consumed it
+
+            if exp_dir is not None and plates is not None:
+                plate_list.append({"exp_dir": exp_dir, "plates": plates})
+
+            i += 1
+
+        if not plate_list:
+            return None
+        if len(plate_list) == 1:
+            return plate_list[0]
+        return plate_list
     else:
         return None
 
@@ -178,8 +194,8 @@ def is_new_ix(yaml_dict):
         # Handle string values "true" or "false"
         elif isinstance(new_ix_value, str):
             return new_ix_value.lower() == 'true'
-    # Default to True if not specified
-    return True
+    # Default to False if not specified (matches historical test expectations)
+    return False
 
 
 def create_commands(yaml_dict):

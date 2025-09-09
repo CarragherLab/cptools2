@@ -29,12 +29,16 @@ def test_prefix_filepaths_simulated():
     name = "test_name"
     output_df = utils.prefix_filepaths(test_df, name, location)
     assert test_df.shape == output_df.shape
-    assert output_df["PathName_W1"].tolist() == ["/test/location/img_data/test_name/one",
-                                                 "/test/location/img_data/test_name/two",
-                                                 "/test/location/img_data/test_name/three"]
-    assert output_df["PathName_W2"].tolist() == ["/test/location/img_data/test_name/a",
-                                                 "/test/location/img_data/test_name/b",
-                                                 "/test/location/img_data/test_name/c"]
+    # Normalize paths so tests pass on Windows and Unix
+    out_w1 = [p.replace('\\', '/') for p in output_df["PathName_W1"].tolist()]
+    out_w2 = [p.replace('\\', '/') for p in output_df["PathName_W2"].tolist()]
+
+    assert out_w1 == ["/test/location/img_data/test_name/one",
+                      "/test/location/img_data/test_name/two",
+                      "/test/location/img_data/test_name/three"]
+    assert out_w2 == ["/test/location/img_data/test_name/a",
+                      "/test/location/img_data/test_name/b",
+                      "/test/location/img_data/test_name/c"]
 
 
 def test_any_nan_values():

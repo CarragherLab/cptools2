@@ -216,8 +216,6 @@ class Job(object):
         using conservative upper bounds (mean + 2*std).
         """
         import os
-        import random
-        import statistics
         
         thumb_files = []
         regular_files = []

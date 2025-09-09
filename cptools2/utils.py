@@ -7,6 +7,8 @@ def make_dir(directory):
     sensible way to create directory
 
     Parameters:
+    Cursor - cptools2 - Cursor
+    
     ------------
     directory: string
         path to the directory to be created
@@ -68,8 +70,9 @@ def prefix_filepaths(dataframe, name, location):
     path_cols = [col for col in dataframe.columns if col.startswith("PathName")]
     # Updated from deprecated .applymap() to pandas 2.0+ compatible approach
     for col in path_cols:
+        # Create POSIX-style cluster paths while using os.path.join for local correctness
         dataframe[col] = dataframe[col].map(
-            lambda x: os.path.join(location, "img_data", name, x)
+            lambda x: os.path.join(location, "img_data", name, x).replace('\\', '/')
         )
     return dataframe
 

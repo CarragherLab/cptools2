@@ -14,8 +14,9 @@ def test_make_cp_cmnd():
     output_loc = "/path/to/output_location"
     cmnd = commands.make_cp_cmnd(name, pipeline, location, output_loc)
     # will create a loaddata name from $location/loaddata/name
+    # Normalize separators for cross-platform tests
     correct = "cellprofiler -r -c -p test_pipeline.cppipe --data-file=/path/to/test_location/loaddata/test_name.csv -o /path/to/output_location"
-    assert cmnd == correct
+    assert cmnd.replace('\\', '/') == correct
 
 
 def make_rsync_cmnd():

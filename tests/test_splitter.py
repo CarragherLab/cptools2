@@ -37,9 +37,10 @@ def test_group_images():
     assert len(output[0]) == 5
     # check channels are grouped in the same well/site
     for i in output[0]:
-        assert i.startswith("test-plate-1/2015-07-31/4016/val screen_B02_s1")
+        # Normalize path separators for cross-platform assertion
+        assert i.replace('\\', '/').startswith("test-plate-1/2015-07-31/4016/val screen_B02_s1")
     for i in output[1]:
-        assert i.startswith("test-plate-1/2015-07-31/4016/val screen_B02_s2")
+        assert i.replace('\\', '/').startswith("test-plate-1/2015-07-31/4016/val screen_B02_s2")
 
 
 def test_chunks():

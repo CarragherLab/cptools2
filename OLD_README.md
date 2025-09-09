@@ -1,12 +1,4 @@
-# Repository overview
-
-This repository contains two primary components:
-
-- `cptools2/` — the Python package and CLI utilities (core package)
-- `cptools_project_app/` — the frontend/backend application (web/tauri + backend API)
-
-For package-level documentation see `cptools2/README.md` and for the app see
-`cptools_project_app/README.md`.
+# OLD README
 
 # cptools2
 
@@ -16,6 +8,9 @@ Running CellProfiler on computing clusters. This is aimed towards the University
 
 ## Installation:
 `python setup.py install --user`
+
+
+
 
 ## Wiki:
 For more details see the [wiki](https://github.com/CarragherLab/cptools2/wiki).
@@ -32,7 +27,6 @@ chunk : 46
 pipeline : /path/to/cellprofiler/pipeline.cppipe
 location : /path/to/scratch/space
 commands location : /home/user
-new_ix: true
 ```
 
 We could run this as `cptools2 awesome_experiment-1.yml`
@@ -114,61 +108,9 @@ commands location : /home/user
 new_ix: true
 ```
 
-## Joining Result Files
-
-You can automatically join chunked output files (e.g., `Image.csv`, `Cells.csv`) 
-for each plate after the analysis finishes using the `join_files` option. 
-Provide a single filename or a list of filenames to join.
-
-```yaml
-experiment : path/to/imageXpress/experiment
-chunk : 96
-pipeline : /path/to/cellprofiler/pipeline.cppipe
-location : /path/to/scratch/space
-commands location : /home/user
-# Join specific files after analysis
-join_files: ["Image.csv", "Cells.csv", "Nuclei.csv"] 
-```
-
-If this option is omitted, no files will be joined automatically.
 
 --------------------------
 
 Previous version for the AFM filesystem is available [here](https://github.com/swarchal/CP_tools).
-
-
-## Quickstart (developer)
-
-- Create a Python virtual environment and install backend deps:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate  # or .venv\Scripts\Activate.ps1 on Windows
-pip install -r cptools_project_app/backend/requirements.txt
-```
-
-- Copy and edit environment variables:
-
-```bash
-cp .env.example .env
-# edit .env with real values
-```
-
-- Run backend tests:
-
-```bash
-cd cptools_project_app/backend
-pytest
-```
-
-- Start frontend (dev):
-
-```bash
-cd cptools_project_app/frontend
-npm install
-npm run dev
-```
-
-For full developer setup see `DEVELOPMENT.md` (to be added).
 
 
