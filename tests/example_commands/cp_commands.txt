@@ -1,5 +1,0 @@
-cellprofiler example 1 2 3
-cellprofiler example 1 2 3
-cellprofiler example 1 2 3
-cellprofiler example 1 2 3
-cellprofiler example 1 2 3

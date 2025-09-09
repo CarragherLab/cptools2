@@ -11,8 +11,44 @@ build/
 
 # Ignore specific files
 README_BASE64_UPDATE.md
+TODO.md
 
 # Ignore directories related to specific projects/features
 yaml_generator/
 cptools_project_app/
 project_generator_gui/
+
+# Local virtualenvs
+cptools_app/
+venv/
+
+# Env files
+.env
+.env.local
+.env.*
+
+# Frontend
+cptools_project_app/frontend/node_modules/
+cptools_project_app/frontend/dist/
+
+# Frontend Tauri build
+cptools_project_app/frontend/src-tauri/target/
+
+# Rust build
+cptools_project_app/backend/target/
+
+# Large test data
+tests/example_dir/
+tests/example_dir_new_paths/
+tests/example_commands/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python artifacts
+**/__pycache__/
+*.pyc
