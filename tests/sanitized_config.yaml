@@ -1,0 +1,20 @@
+# Sanitized example config derived from user-provided file
+# -- replace placeholders with real paths when running locally
+
+chunk: 96
+new_ix: true
+join_files:
+- Image.csv
+location: /path/to/scratch/USER/project/outputs
+commands location: /path/to/scratch/USER/project/commands
+pipeline: /path/to/pipeline.cppipe
+
+add plate:
+  - experiment: /path/to/imagexpress/experiment
+    plates:
+      - plate_1
+      - plate_2
+
+data_destination: /path/to/datastore/project/data
+
+
