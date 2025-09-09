@@ -23,4 +23,4 @@ __all__ = [
     "file_tools",
 ]
 
-__version__ = "0.0.0"
+__version__ = "0.2.0"
