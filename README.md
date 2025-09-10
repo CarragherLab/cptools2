@@ -1,174 +1,130 @@
-# Repository overview
+# cptools2 — Python package
 
-This repository contains two primary components:
+A lightweight command-line package to generate and manage CellProfiler analysis jobs for HPC clusters. cptools2 builds image lists, splits work into jobs, creates space-optimized plate batches, generates submission scripts, and can join and optionally transfer result CSVs after analysis.
 
-- `cptools2/` — the Python package and CLI utilities (core package)
-- `cptools_project_app/` — the frontend/backend application (web/tauri + backend API)
+---
 
-For package-level documentation see `cptools2/README.md` and for the app see
-`cptools_project_app/README.md`.
+## Table of contents
 
-# cptools2
+- [Key features](#key-features)
+- [Installation (developer)](#installation-developer)
+- [Quick usage](#quick-usage)
+- [YAML configuration](#yaml-configuration)
+- [Behavior notes](#behavior-notes)
+- [Developer quickstart & testing](#developer-quickstart--testing)
+- [Contributing](#contributing)
+- [License](#license)
 
-[![BuildStatus](https://travis-ci.org/CarragherLab/cptools2.svg?branch=master)](https://travis-ci.org/CarragherLab/cptools2)
+---
 
-Running CellProfiler on computing clusters. This is aimed towards the University of Edinburgh's Eddie3 cluster with the staging workflow.
+## Key features
 
-## Installation:
-`python setup.py install --user`
-
-## Wiki:
-For more details see the [wiki](https://github.com/CarragherLab/cptools2/wiki).
-
-## Example:
-
-cptools2 can use a configuration file to list the jobs parameters.
-
-For example if we have a a file named `awesome_experiment-1.yml` containing:
-
-```yaml
-experiment : path/to/imageXpress/experiment
-chunk : 46
-pipeline : /path/to/cellprofiler/pipeline.cppipe
-location : /path/to/scratch/space
-commands location : /home/user
-new_ix: true
-```
-
-We could run this as `cptools2 awesome_experiment-1.yml`
+- Generate `loaddata` files and CellProfiler command lines from YAML configs
+- Space-optimized plate batching for cluster submission
+- Master submission scripts and per-batch command files
+- Join chunked CSV result files after analysis (e.g., `Image.csv`, `Cells.csv`)
+- Optional post-run transfer hooks (S3 or other datastores)
 
 
-This produces a directory containing a loaddata file for each task, and three text files containing staging commands, cellprofiler commands, and de-staging commands that can be run as three concurrent array jobs.
+## Installation (developer)
 
-A script named `YYYY-MM-DD-h:m:s_SUBMIT_JOBS.sh` is created which will submit
-the three jobs in the correct order. This can be run with
-`./YYYY-MM-DD-h:m:s_SUBMIT_JOBS.sh` or `bash YYYY-MM-DD-h:m:s_SUBMIT_JOBS.sh`
-on a login node (the ones that can submit jobs to the queue).
-
-### yaml config options
-
-There are configuration details you can add to a job:
-
-- `experiment` : path to an ImageXpress experiment
-- `chunk` number of imagesets per job
-- `pipeline` : path to a cellprofiler pipeline
-- `location` : path to where to store the loaddata modules, staged data and output
-- `commands location` : path to where to store the qsub array commands
-- `remove plate` : plate names in `experiment` to be removed
-- `add plate` :
-    - `experiment` : path to another ImageXpress experiment
-    - `plates` : plate name(s) in the above experiment
-- `new_ix`: if true/yes then will treat filepaths as from the new ImageXpress
-
-i.e we could remove some plates from an experiment, and also include some plates from a different experiment
-
-```yaml
-experiment: /path/to/imageXpress/experiment
-
-# remove two plates from current experiment
-remove plate:
-    - plate_1
-    - plate_2
-
-# add plates from a separate experiment
-add plate:
-    - experiment : /path/to/different/experiment
-    - plates:
-        - plate_exp2_1
-        - plate_exp2_2
-
-chunk: 96
-
-pipeline: /pipelines/pipeline_1.cppipe
-
-location: /path/to/scratch/space
-
-commands location: /path/to/scratch space
-```
-
-
-We can also use `add plate` without a top-level `experiment` tag to add a few plates
-from a large experiment.
-```yaml
-add plate:
-    - experiment: /path/to/large/experiment
-    - plates:
-        - plate_1
-        - plate_2
-        - plate_3
-chunk : 46
-pipeline : /path/to/cellprofiler/pipeline.cppipe
-location : /path/to/scratch/space
-commands location : /home/user
-```
-
-**NOTE:** The default is expecting old ImageXpress filepaths (for backwarsd
-compatibility), in order to correctly parse metadata from the new IX paths you
-can specify in the config file with `new_ix`.
-```yaml
-experiment : path/to/imageXpress/experiment
-chunk : 46
-pipeline : /path/to/cellprofiler/pipeline.cppipe
-location : /path/to/scratch/space
-commands location : /home/user
-new_ix: true
-```
-
-## Joining Result Files
-
-You can automatically join chunked output files (e.g., `Image.csv`, `Cells.csv`) 
-for each plate after the analysis finishes using the `join_files` option. 
-Provide a single filename or a list of filenames to join.
-
-```yaml
-experiment : path/to/imageXpress/experiment
-chunk : 96
-pipeline : /path/to/cellprofiler/pipeline.cppipe
-location : /path/to/scratch/space
-commands location : /home/user
-# Join specific files after analysis
-join_files: ["Image.csv", "Cells.csv", "Nuclei.csv"] 
-```
-
-If this option is omitted, no files will be joined automatically.
-
---------------------------
-
-Previous version for the AFM filesystem is available [here](https://github.com/swarchal/CP_tools).
-
-
-## Quickstart (developer)
-
-- Create a Python virtual environment and install backend deps:
+Create a virtual environment and install the package with development extras:
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate  # or .venv\Scripts\Activate.ps1 on Windows
-pip install -r cptools_project_app/backend/requirements.txt
+source .venv/bin/activate    # On Windows: .venv\Scripts\Activate.ps1
+pip install -e .[dev]
+pre-commit install
 ```
 
-- Copy and edit environment variables:
+Notes:
+- Root `pyproject.toml` is the single source of packaging metadata.
+- Use `pip install -e .[dev]` to get the testing and linting tools.
+
+
+## Quick usage
+
+Generate a full workflow (creates loaddata, per-plate command files and a master submit script):
 
 ```bash
-cp .env.example .env
-# edit .env with real values
+cptools2 generate config.yml
 ```
 
-- Run backend tests:
+Join chunked CSV outputs after analysis (one or more patterns):
 
 ```bash
-cd cptools_project_app/backend
+cptools2 join --location /path/to/location --patterns Image.csv Cells.csv
+```
+
+
+## YAML configuration
+
+cptools2 accepts a YAML configuration file describing the experiment, pipeline, and optional features such as batching and transfer. A canonical example is included at `tests/new_config.yaml`.
+
+Sanitized example (matches `tests/new_config.yaml`):
+
+```yaml
+chunk: 96
+new_ix: true
+join_files:
+  - Image.csv
+location: /path/to/scratch/$USER/project/outputs
+commands location: /path/to/scratch/$USER/project/commands
+pipeline: /path/to/pipeline.cppipe
+
+add plate:
+  - experiment: /path/to/imagexpress/experiment
+    plates:
+      - plate_1
+      - plate_2
+
+data_destination: /path/to/datastore/project/data
+```
+
+Common fields:
+- `experiment` / `add plate`: where to find image data and which plates to include
+- `chunk`: desired images-per-job (integer)
+- `pipeline`: path to the `.cppipe` CellProfiler pipeline
+- `location`: base location for image outputs
+- `commands location`: directory to write command files
+- `join_files`: list of CSV filenames to join after analysis
+- `data_destination`: optional path for post-join transfer
+
+Advanced sections:
+- `batching` — overrides for automatic batching (if supported)
+- `transfer` — transfer provider configuration (S3 or other); cptools2 will write transfer metadata/commands but actual transfer depends on runner hooks
+
+
+## Behavior notes
+
+- `generate` will discover plates under the `experiment`, create image lists, split jobs according to `chunk`, apply batching overrides (if present), and write command files into `commands location`.
+- `join` concatenates/join CSV outputs after the analysis; provide filename patterns to target.
+- Transfer entries in the config are optional. `generate` records transfer commands/metadata; running transfers typically requires cluster-side hooks or CI steps that read the produced metadata.
+
+
+## Developer quickstart & testing
+
+Run tests:
+
+```bash
 pytest
 ```
 
-- Start frontend (dev):
+Run linters/formatters (configured via pre-commit):
 
 ```bash
-cd cptools_project_app/frontend
-npm install
-npm run dev
+pre-commit run --all-files
 ```
 
-For full developer setup see `DEVELOPMENT.md` (to be added).
+
+## Contributing
+
+- Open issues or PRs describing bugs or enhancements.
+- Keep changes small and focused; tests should accompany functional changes.
+
+
+## License
+
+This project is distributed under the MIT License. See `LICENSE`.
 
 
