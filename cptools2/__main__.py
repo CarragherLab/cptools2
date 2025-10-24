@@ -5,6 +5,7 @@ from cptools2 import job
 from cptools2 import parse_yaml
 from cptools2 import colours
 from cptools2 import file_tools
+from cptools2 import __version__ as CPT_VERSION
 from cptools2.colours import pretty_print
 from cptools2.generate_scripts import get_user_scratch_quota
 
@@ -138,6 +139,7 @@ def handle_join(args):
 def main():
     """Main entry point: parses arguments and calls appropriate handler."""
     parser = argparse.ArgumentParser(description="cptools2: Generate and manage CellProfiler analysis jobs.")
+    parser.add_argument("--version", "-V", action="version", version=f"cptools2 {CPT_VERSION}")
     subparsers = parser.add_subparsers(dest='command', help='Sub-command help')
     subparsers.required = True # Require a subcommand
 
