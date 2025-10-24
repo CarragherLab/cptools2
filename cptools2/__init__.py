@@ -12,6 +12,11 @@ from . import job  # noqa: F401
 from . import colours  # noqa: F401
 from . import file_tools  # noqa: F401
 
+try:
+    from importlib import metadata as _metadata  # Python 3.8+
+except ImportError:  # pragma: no cover
+    import importlib_metadata as _metadata  # type: ignore
+
 __all__ = [
     "filelist",
     "splitter",
@@ -23,4 +28,4 @@ __all__ = [
     "file_tools",
 ]
 
-__version__ = "0.2.0"
+__version__ = _metadata.version("cptools2")

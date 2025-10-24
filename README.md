@@ -4,43 +4,49 @@ A lightweight command-line package to generate and manage CellProfiler analysis 
 
 ---
 
+## Release highlights (v1.0.0)
+
+- Packaging consolidated under `pyproject.toml` with modern metadata and direct references to supporting parser utilities.
+- Scratch-space batching defaults increased to 75% utilisation with a 30% per-plate overhead buffer.
+- Installation instructions updated for both `pip` and `uv` workflows.
+
 ## Table of contents
 
-- [Key features](#key-features)
-- [Installation (developer)](#installation-developer)
+- [Release highlights (v1.0.0)](#release-highlights-v100)
+- [Installation](#installation)
 - [Quick usage](#quick-usage)
 - [YAML configuration](#yaml-configuration)
 - [Behavior notes](#behavior-notes)
 - [Developer quickstart & testing](#developer-quickstart--testing)
+- [HPC validation checklist](#hpc-validation-checklist)
 - [Contributing](#contributing)
 - [License](#license)
 
 ---
 
-## Key features
+## Installation
 
-- Generate `loaddata` files and CellProfiler command lines from YAML configs
-- Space-optimized plate batching for cluster submission
-- Master submission scripts and per-batch command files
-- Join chunked CSV result files after analysis (e.g., `Image.csv`, `Cells.csv`)
-- Optional post-run transfer hooks (S3 or other datastores)
-
-
-## Installation (developer)
-
-Create a virtual environment and install the package with development extras:
+### pip / virtualenv
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate    # On Windows: .venv\Scripts\Activate.ps1
+source .venv/bin/activate    # On Windows: .venv\Scripts\activate
+pip install --upgrade pip
 pip install -e .[dev]
-pre-commit install
 ```
 
 Notes:
-- Root `pyproject.toml` is the single source of packaging metadata.
-- Use `pip install -e .[dev]` to get the testing and linting tools.
+- Runtime dependencies (`pandas`, `pyyaml`, `parserix`, `scissorhands`) are resolved automatically via `pyproject.toml`.
+- Use `pip install .` for a pure runtime install without developer extras.
 
+### uv workflow
+
+```bash
+uv venv
+uv pip install .[dev]  # or: uv pip install .
+```
+
+To run commands without activating the environment explicitly, prefix with `uv run`, e.g. `uv run pytest`.
 
 ## Quick usage
 
@@ -55,7 +61,6 @@ Join chunked CSV outputs after analysis (one or more patterns):
 ```bash
 cptools2 join --location /path/to/location --patterns Image.csv Cells.csv
 ```
-
 
 ## YAML configuration
 
@@ -94,20 +99,18 @@ Advanced sections:
 - `batching` — overrides for automatic batching (if supported)
 - `transfer` — transfer provider configuration (S3 or other); cptools2 will write transfer metadata/commands but actual transfer depends on runner hooks
 
-
 ## Behavior notes
 
 - `generate` will discover plates under the `experiment`, create image lists, split jobs according to `chunk`, apply batching overrides (if present), and write command files into `commands location`.
 - `join` concatenates/join CSV outputs after the analysis; provide filename patterns to target.
 - Transfer entries in the config are optional. `generate` records transfer commands/metadata; running transfers typically requires cluster-side hooks or CI steps that read the produced metadata.
 
-
 ## Developer quickstart & testing
 
 Run tests:
 
 ```bash
-pytest
+uv run pytest  # or: pytest
 ```
 
 Run linters/formatters (configured via pre-commit):
@@ -116,12 +119,22 @@ Run linters/formatters (configured via pre-commit):
 pre-commit run --all-files
 ```
 
+## HPC validation checklist
+
+These steps mirror the checks typically performed on the Eddie HPC cluster:
+
+1. **Scratch quota assessment** – run `cptools2 generate` with real experiment configs to confirm 75% utilisation and overhead handling fits within assigned scratch space.
+2. **Batch command generation** – verify per-batch command files (`staging_batch_*.txt`, `cp_commands_batch_*.txt`) are produced and reference the expected plates.
+3. **CellProfiler dry run** – execute one batch via the HPC queue to confirm staging, CellProfiler invocation, and cleanup complete without exceeding scratch limits.
+4. **Packaging install test** – from a clean node, run `pip install git+https://github.com/CarragherLab/cptools2@v1.0.0` (or sync via `uv`) to ensure dependencies resolve correctly.
+5. **Post-analysis join** – validate `cptools2 join` against batch outputs for consistency with historical runs.
+
+Document outcomes for each release to maintain an audit trail.
 
 ## Contributing
 
 - Open issues or PRs describing bugs or enhancements.
 - Keep changes small and focused; tests should accompany functional changes.
-
 
 ## License
 

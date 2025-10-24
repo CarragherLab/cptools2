@@ -320,37 +320,26 @@ class Job(object):
     def create_plate_batches(self, available_scratch_space):
         """
         Group plates into batches based on space constraints
-        Each batch will fit within 50% of available scratch space
+        Reserve a configurable portion of available scratch space
         """
-        # Reset plate batches to prevent duplication if called multiple times
         self.plate_batches = []
-        
-        # Use 50% of available space per batch
-        max_batch_size = available_scratch_space * 0.5
-        
-        # Account for processing overhead
-        overhead_factor = 1.5  # 50% overhead for temp files
-        
-        # Sort plates by size (largest first for better packing)
+        utilisation_fraction = 0.75
+        overhead_factor = 1.3
+        max_batch_size = available_scratch_space * utilisation_fraction
         sorted_plates = sorted(
-            self.plate_space_requirements.items(), 
-            key=lambda x: x[1], 
+            self.plate_space_requirements.items(),
+            key=lambda x: x[1],
             reverse=True
         )
-        
         current_batch = []
         current_batch_size = 0
         batch_number = 1
-        
         for plate_name, plate_size in sorted_plates:
             effective_plate_size = plate_size * overhead_factor
-            
-            # Check if this plate fits in current batch
             if current_batch_size + effective_plate_size <= max_batch_size:
                 current_batch.append(plate_name)
                 current_batch_size += effective_plate_size
             else:
-                # Start new batch if current batch has plates
                 if current_batch:
                     self.plate_batches.append({
                         'batch_id': batch_number,
@@ -359,12 +348,8 @@ class Job(object):
                         'plate_count': len(current_batch)
                     })
                     batch_number += 1
-                
-                # Start new batch with current plate
                 current_batch = [plate_name]
                 current_batch_size = effective_plate_size
-        
-        # Add final batch if it has plates
         if current_batch:
             self.plate_batches.append({
                 'batch_id': batch_number,
@@ -372,7 +357,6 @@ class Job(object):
                 'total_size_gb': current_batch_size / (1024**3),
                 'plate_count': len(current_batch)
             })
-        
         return self.plate_batches
 
     def get_plates_for_batch(self, batch_id):
