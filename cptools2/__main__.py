@@ -32,9 +32,14 @@ def configure_job(config):
     if config.remove_plate_args is not None:
         jobber.remove_plate(**config.remove_plate_args)
     if config.add_plate_args is not None:
-        # add_plate_args is now a list of dictionaries
-        for plate_args_dict in config.add_plate_args:
-             jobber.add_plate(**plate_args_dict) # Call add_plate for each dictionary in the list
+        # add_plate_args may be a single dict or a list of dicts depending on the config
+        if isinstance(config.add_plate_args, dict):
+            jobber.add_plate(**config.add_plate_args)
+        elif isinstance(config.add_plate_args, list):
+            for plate_args_dict in config.add_plate_args:
+                jobber.add_plate(**plate_args_dict) # Call add_plate for each dictionary in the list
+        else:
+            raise TypeError(f"Unexpected add_plate_args type: {type(config.add_plate_args)}")
     if config.chunk_args is not None:
         jobber.chunk(**config.chunk_args)
     # jobber.create_commands(**config.create_command_args) # This is now handled by batch processing
