@@ -25,6 +25,19 @@ def test_files_from_plate():
         assert f.endswith(".tif")
 
 
+def test_detect_plate_layout():
+    """detect_plate_layout should auto-detect old vs new IX layouts"""
+    plate_path_old = os.path.join(TEST_PATH, "test-plate-1")
+    is_new_old, files_old = filelist.detect_plate_layout(plate_path_old, truncate=False)
+    assert is_new_old is False
+    assert len(files_old) > 0
+
+    plate_path_new = os.path.join(TEST_PATH_NEW, "test-plate-1")
+    is_new_new, files_new = filelist.detect_plate_layout(plate_path_new, truncate=False)
+    assert is_new_new is True
+    assert len(files_new) > 0
+
+
 def test_files_from_plate_clean_false():
     """files_from_plate with clean as false"""
     plate_path = os.path.join(TEST_PATH, "test-plate-1")

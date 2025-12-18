@@ -5,6 +5,57 @@ import parserix
 from cptools2 import utils
 
 
+def detect_plate_layout(plate_dir, ext=".tif", clean=True, truncate=True, sanitise=False):
+    """
+    Detect whether a plate directory follows the old or new ImageXpress layout.
+
+    Old layout (is_new_ix=False): plate_dir/*/*/*/*.tif  (3 levels)
+    New layout (is_new_ix=True):  plate_dir/*/*/*/*/*.tif (4 levels)
+
+    Returns
+    -------
+    (is_new_ix, files) : (bool, list[str])
+    """
+    if not os.path.isdir(plate_dir):
+        raise RuntimeError(
+            f"'{plate_dir}' is not a plate directory (not visible/readable from this node). "
+            f"If this is on a restricted filesystem, run on a node that can access it or verify with: ls '{plate_dir}'"
+        )
+
+    old_glob = plate_dir + "/*/*/*" + ext
+    new_glob = plate_dir + "/*/*/*/*" + ext
+
+    old_files = glob.glob(old_glob)
+    new_files = glob.glob(new_glob)
+
+    # Prefer the layout that yields files; if both do, pick the larger match set.
+    if len(old_files) == 0 and len(new_files) == 0:
+        raise RuntimeError(
+            f"No '{ext}' files found under '{plate_dir}'. Tried patterns: '{old_glob}' and '{new_glob}'"
+        )
+    is_new_ix = len(new_files) > len(old_files)
+    files = new_files if is_new_ix else old_files
+
+    if clean is True:
+        files = parserix.clean.clean(file_list=files, ext=ext)
+    if truncate is True:
+        index = -5 if is_new_ix else -4
+        files = [os.path.join(*i.split(os.sep)[index:]) for i in files]
+    else:
+        files = [os.path.abspath(f) for f in files]
+    if sanitise is True:
+        files = [utils.sanitise_filename(f) for f in files]
+
+    if len(files) == 0:
+        # Clean step can remove all files if only thumbs/non-images matched
+        raise RuntimeError(
+            f"No usable image files found in '{plate_dir}' after cleaning. "
+            f"Tried patterns: '{old_glob}' and '{new_glob}'"
+        )
+
+    return is_new_ix, files
+
+
 def files_from_plate(plate_dir, ext=".tif", clean=True, truncate=True,
                      sanitise=False, is_new_ix=False):
     """
@@ -26,7 +77,10 @@ def files_from_plate(plate_dir, ext=".tif", clean=True, truncate=True,
         whether image paths are from the new IX which are parsed differently
     """
     if not os.path.isdir(plate_dir):
-        raise RuntimeError("'{}' is not a plate directory".format(plate_dir))
+        raise RuntimeError(
+            f"'{plate_dir}' is not a plate directory (not visible/readable from this node). "
+            f"If this is on a restricted filesystem, run on a node that can access it or verify with: ls '{plate_dir}'"
+        )
     glob_str = "/*/*/*/*" if is_new_ix else "/*/*/*"
     files = glob.glob(plate_dir + glob_str + ext)
     if clean is True:
