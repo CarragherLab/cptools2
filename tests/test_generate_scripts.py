@@ -21,3 +21,29 @@ def test_make_command_paths():
     # i.e {"staging": "/directory/staging.txt"}
     for name, path in paths.items():
         assert name in path
+
+
+def test_join_script_quotes_plate_names_with_spaces(tmp_path):
+    """Generated join scripts must shell-quote plate names so spaces are preserved."""
+    class DummyConfig:
+        join_files_patterns = ["data.csv"]
+        create_command_args = {"location": "/tmp/outputs"}
+        data_destination_path = None
+
+    script_path = generate_scripts.make_join_files_script(
+        config=DummyConfig(),
+        commands_location=str(tmp_path),
+        logfile_location=str(tmp_path / "logs"),
+        job_name="join_test",
+        timestamp="20250101_000000",
+        dependency_job_name=None,
+        plates_to_join=["2025-11-27 RC17 Con vs PSP"],
+        batch_id=None,
+    )
+    assert script_path is not None
+    with open(script_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Plate name must appear as a single shell argument (quoted).
+    assert " --plates " in content
+    assert "'2025-11-27 RC17 Con vs PSP'" in content

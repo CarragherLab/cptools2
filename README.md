@@ -70,7 +70,6 @@ Sanitized example (matches `tests/new_config.yaml`):
 
 ```yaml
 chunk: 96
-new_ix: true  # Optional/legacy: cptools2 auto-detects the layout per plate
 join_files:
   - Image.csv
 location: /path/to/scratch/$USER/project/outputs
@@ -89,7 +88,6 @@ data_destination: /path/to/datastore/project/data
 Common fields:
 - `experiment` / `add plate`: where to find image data and which plates to include
 - `chunk`: desired images-per-job (integer)
-- `new_ix`: optional legacy hint; cptools2 will auto-detect old vs new ImageXpress layouts per plate
 - `pipeline`: path to the `.cppipe` CellProfiler pipeline
 - `location`: base location for image outputs
 - `commands location`: directory to write command files

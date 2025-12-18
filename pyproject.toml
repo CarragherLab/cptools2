@@ -24,7 +24,7 @@ license-files = ["LICENSE"]
 dependencies = [
     "pandas>=1.3",
     "pyyaml>=5.4",
-    "parserix @ git+https://github.com/CarragherLab/parserix@new_ix",
+    "parserix @ git+https://github.com/CarragherLab/parserix@master",
     "scissorhands @ git+https://github.com/CarragherLab/scissorhands@master",
 ]
 keywords = ["CellProfiler", "HPC", "batch-processing", "image-analysis", "bioimaging"]

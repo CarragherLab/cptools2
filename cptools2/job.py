@@ -17,7 +17,7 @@ class Job(object):
     de-stating commands for an SGE array job.
     """
 
-    def __init__(self, is_new_ix):
+    def __init__(self, is_new_ix=False):
         self.exp_dir = None
         self.chunked = False
         self.plate_store = dict()

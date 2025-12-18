@@ -173,28 +173,14 @@ def remove_plate(yaml_dict):
 
 def is_new_ix(yaml_dict):
     """
-    Check if the ImageXpress data follows the new or old format.
-    
-    Parameters:
-    -----------
-    yaml_dict: dict
-        Dictionary version of the config yaml file
-    
-    Returns:
-    --------
-    bool
-        True if using the new ImageXpress format, False otherwise.
-        Defaults to True if not specified in the config.
+    Legacy helper retained for backwards compatibility only.
+
+    The `new_ix` argument has been removed. ImageXpress layout is auto-detected
+    per-plate in `cptools2.filelist.detect_plate_layout()` and stored in
+    `Job.plate_is_new_ix`.
+
+    This function always returns False, and `new_ix` is no longer a valid YAML key.
     """
-    if "new_ix" in yaml_dict:
-        new_ix_value = yaml_dict["new_ix"]
-        # Handle boolean values directly
-        if isinstance(new_ix_value, bool):
-            return new_ix_value
-        # Handle string values "true" or "false"
-        elif isinstance(new_ix_value, str):
-            return new_ix_value.lower() == 'true'
-    # Default to False if not specified (matches historical test expectations)
     return False
 
 
@@ -288,7 +274,6 @@ def check_yaml_args(yaml_dict):
                   "commands location",
                   "remove plate",
                   "add plate",
-                  "new_ix",
                   "join_files",
                   "data_destination"]
     bad_arguments = []
@@ -317,7 +302,6 @@ def parse_config_file(config_file):
         config.remove_plate_args   : dict
         config.add_plate_args      : dict
         config.create_command_args : dict
-        config.is_new_ix           : bool
         config.join_files_patterns : list or None
         config.data_destination_path: str or None
     """
@@ -326,7 +310,7 @@ def parse_config_file(config_file):
     check_yaml_args(yaml_dict)
     # create namedtuple to store the configuration dictionaries
     names = ["experiment_args", "chunk_args", "add_plate_args",
-             "remove_plate_args", "create_command_args", "is_new_ix",
+             "remove_plate_args", "create_command_args",
              "join_files_patterns", "data_destination_path"]
     config = namedtuple("config", names)
     return config(experiment_args=experiment(yaml_dict),
@@ -334,7 +318,6 @@ def parse_config_file(config_file):
                   remove_plate_args=remove_plate(yaml_dict),
                   add_plate_args=add_plate(yaml_dict),
                   create_command_args=create_commands(yaml_dict),
-                  is_new_ix=is_new_ix(yaml_dict),
                   join_files_patterns=join_files(yaml_dict),
                   data_destination_path=data_destination(yaml_dict))
 

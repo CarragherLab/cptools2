@@ -24,7 +24,8 @@ def configure_job(config):
     --------
     Job object
     """
-    jobber = job.Job(is_new_ix=config.is_new_ix)
+    # ImageXpress layout is auto-detected per-plate; no `new_ix` config flag.
+    jobber = job.Job()
     # some of the optional arguments might be none if that option was not present in the
     # configuration file, in which case don't pass them as arguments to the methods
     if config.experiment_args is not None:
@@ -57,7 +58,7 @@ def handle_generate(args):
     config = parse_yaml.parse_config_file(config_file)
     yaml_dict = parse_yaml.open_yaml(config_file)
     commands_location = os.path.expandvars(config.create_command_args["commands_location"])
-    logfile_location = os.path.expandvars(os.path.join(yaml_dict["location"], "logfiles"))
+    logfile_location = os.path.expandvars(os.path.join(config.create_command_args["location"], "logfiles"))
 
     # 2. Ensure Directories Exist
     pretty_print("[cptools2] creating output directories...")

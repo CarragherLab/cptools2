@@ -1,5 +1,4 @@
 chunk: 96
-new_ix: true
 join_files:
 - Image.csv
 location: /path/to/scratch/$USER/project/outputs

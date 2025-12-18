@@ -43,7 +43,9 @@ def _discover_plates_from_raw_data(raw_data_location):
         for item in os.listdir(raw_data_location):
             item_path = os.path.join(raw_data_location, item)
             if os.path.isdir(item_path) and '_' in item:
-                plate_name = item.split('_')[0]
+                # Split from the right to avoid truncating plate names that contain underscores.
+                # Expected format: "<plate_name>_<job_or_chunk_id>"
+                plate_name = item.rsplit('_', 1)[0]
                 plate_names.add(plate_name)
     except FileNotFoundError:
         pretty_print(f"Warning: Raw data location {raw_data_location} not found during plate discovery.", colour='yellow')

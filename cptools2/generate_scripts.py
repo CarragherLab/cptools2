@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import re
 import getpass
+import shlex
 
 try:
     from scissorhands import script_generator
@@ -76,6 +77,31 @@ class SafePathScript(script_generator.SGEScript):
     def __add__(self, new_line):
         self.script += new_line
         return self
+
+
+def _sh_quote(arg):
+    """
+    POSIX shell-quote a single argument for safe embedding in generated .sh scripts.
+
+    This is required for plate names and patterns that may contain spaces or other
+    shell-significant characters.
+    """
+    return shlex.quote(str(arg))
+
+
+def _sh_join_args(args):
+    """Join a list of arguments into a shell-safe string."""
+    return " ".join(_sh_quote(a) for a in args)
+
+def _script_user():
+    """
+    Provide a username for scissorhands script generation.
+
+    scissorhands can auto-detect the user on the cluster via $USER, but when
+    generating scripts off-cluster (e.g., during local testing), it raises if
+    `user` is not provided. We fall back to common env vars and getpass.
+    """
+    return os.environ.get("USER") or os.environ.get("USERNAME") or getpass.getuser()
 
 
 def create_master_submit_script(commands_location, logfile_location, batches, config):
@@ -214,8 +240,8 @@ def make_join_files_script(config, commands_location, logfile_location, job_name
 
     patterns_str = ", ".join([colours.yellow(p) for p in patterns])
     
-    # Base command
-    join_command = f'cptools2 join --location "{location}" --patterns {" ".join(patterns)}'
+    # Base command (shell-safe quoting is critical for plate names with spaces)
+    join_command = f"cptools2 join --location {_sh_quote(location)} --patterns {_sh_join_args(patterns)}"
     
     # Add batch ID if provided
     if batch_id is not None:
@@ -224,12 +250,13 @@ def make_join_files_script(config, commands_location, logfile_location, job_name
     # Add specific plates if provided
     if plates_to_join:
         pretty_print(f"  -> Generating join script for plates: {', '.join(plates_to_join)}")
-        join_command += f" --plates {' '.join(plates_to_join)}"
+        join_command += f" --plates {_sh_join_args(plates_to_join)}"
     else:
         pretty_print(f"  -> Generating join script for all plates with patterns: {patterns_str}")
 
     join_script = SafePathScript(
         name=job_name,
+        user=_script_user(),
         memory="2G",
         tasks=1,
         output=os.path.join(logfile_location, "join")
@@ -268,6 +295,7 @@ def make_datastore_transfer_script(config, commands_location, logfile_location, 
 
     transfer_script = SafePathScript(
         name=job_name,
+        user=_script_user(),
         memory="1G",
         tasks=1,
         output=os.path.join(logfile_location, "transfer")
@@ -397,6 +425,7 @@ def _create_staging_script(batch_id, commands_location, logfile_location, job_he
     n_tasks = utils.count_lines_in_file(staging_file)
     staging_script = SafePathScript(
         name=f"staging_{job_hex}",
+        user=_script_user(),
         memory="1G",
         tasks=n_tasks,
         output=os.path.join(logfile_location, "staging")
@@ -448,6 +477,7 @@ def _create_analysis_script(batch_id, commands_location, logfile_location, job_h
     # Create analysis script (use script_generator.AnalysisScript for proper CellProfiler setup)
     analysis_script = script_generator.AnalysisScript(
         name=f"analysis_{job_hex}",
+        user=_script_user(),
         tasks=n_tasks,
         hold_jid_ad=dependency_job_name,
         pe="sharedmem 1",
@@ -503,6 +533,7 @@ def _create_destaging_script(batch_id, commands_location, logfile_location, job_
     # Create SGE script
     destaging_script = SafePathScript(
         name=f"destaging_{job_hex}",
+        user=_script_user(),
         memory="1G",
         tasks=n_tasks,
         output=os.path.join(logfile_location, "destaging")

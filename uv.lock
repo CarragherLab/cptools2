@@ -388,7 +388,7 @@ requires-dist = [
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0" },
     { name = "isort", marker = "extra == 'dev'", specifier = ">=5.0" },
     { name = "pandas", specifier = ">=1.3" },
-    { name = "parserix", git = "https://github.com/CarragherLab/parserix?rev=new_ix" },
+    { name = "parserix", git = "https://github.com/CarragherLab/parserix?rev=master" },
     { name = "pre-commit", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
@@ -915,7 +915,7 @@ wheels = [
 [[package]]
 name = "parserix"
 version = "0.2"
-source = { git = "https://github.com/CarragherLab/parserix?rev=new_ix#d74ce744eba130232629ff3b344bfa37f4ac9a84" }
+source = { git = "https://github.com/CarragherLab/parserix?rev=master#45d0cd8e2598f61e6f60f76754cf0cccb55a8b6b" }
 
 [[package]]
 name = "pathspec"

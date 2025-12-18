@@ -9,6 +9,5 @@ add plate:
         - plate_4
 chunk: 46
 pipeline: tests/example_pipeline.cppipe
-new_ix: true
 location: /example/location
 commands location: /home/user

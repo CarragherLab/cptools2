@@ -62,12 +62,11 @@ def test_create_commands():
                       "job_size": 46}
 
 
-def test_new_ix():
-    """cptools2.parse_yaml.is_new_ix(yaml_dict)"""
-    yaml_dict_1 = parse_yaml.open_yaml(TEST_PATH)
-    yaml_dict_2 = parse_yaml.open_yaml(TEST_PATH2)
-    assert parse_yaml.is_new_ix(yaml_dict_1) == False
-    assert parse_yaml.is_new_ix(yaml_dict_2) == True
-    assert parse_yaml.parse_config_file(TEST_PATH).is_new_ix == False
-    assert parse_yaml.parse_config_file(TEST_PATH2).is_new_ix == True
+def test_new_ix_removed_from_yaml_schema():
+    """`new_ix` is no longer a valid YAML key; layout is auto-detected per-plate."""
+    # test_config.yaml parses fine
+    _ = parse_yaml.parse_config_file(TEST_PATH)
+
+    # test_config2.yaml used to include new_ix; it should still parse after fixture update
+    _ = parse_yaml.parse_config_file(TEST_PATH2)
 
