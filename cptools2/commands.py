@@ -238,7 +238,9 @@ def cp_command(pipeline, load_data, output_location):
     --------
     string: a cellprofiler command
     """
-    base_command = "cellprofiler -r -c -p {pipeline} --data-file={load_data} -o {output_location}".format(
+    # Quote arguments to survive paths with spaces (common in plate names).
+    # These commands are base64-encoded and decoded into /bin/bash, so POSIX-style quoting is correct.
+    base_command = 'cellprofiler -r -c -p "{pipeline}" --data-file="{load_data}" -o "{output_location}"'.format(
         pipeline=pipeline,
         load_data=load_data,
         output_location=output_location)

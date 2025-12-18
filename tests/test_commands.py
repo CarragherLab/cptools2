@@ -15,9 +15,24 @@ def test_make_cp_cmnd():
     cmnd = commands.make_cp_cmnd(name, pipeline, location, output_loc)
     # will create a loaddata name from $location/loaddata/name
     # Normalize separators for cross-platform tests
-    correct = "cellprofiler -r -c -p test_pipeline.cppipe --data-file=/path/to/test_location/loaddata/test_name.csv -o /path/to/output_location"
+    correct = 'cellprofiler -r -c -p "test_pipeline.cppipe" --data-file="/path/to/test_location/loaddata/test_name.csv" -o "/path/to/output_location"'
     assert cmnd.replace('\\', '/') == correct
 
+
+def test_make_cp_cmnd_with_spaces():
+    """cp commands must safely quote paths that contain spaces (e.g. plate names)"""
+    name = "plate with spaces_0"
+    pipeline = "/path/with spaces/pipeline.cppipe"
+    location = "/path/to/test location"
+    output_loc = "/path/to/output location/plate with spaces_0"
+
+    cmnd = commands.make_cp_cmnd(name, pipeline, location, output_loc)
+    expected = (
+        'cellprofiler -r -c -p "/path/with spaces/pipeline.cppipe" '
+        '--data-file="/path/to/test location/loaddata/plate with spaces_0.csv" '
+        '-o "/path/to/output location/plate with spaces_0"'
+    )
+    assert cmnd.replace('\\', '/') == expected
 
 def make_rsync_cmnd():
     """cptools2.commands.make_rsync_cmnd(plate_loc, filelist_name, img_location)"""
