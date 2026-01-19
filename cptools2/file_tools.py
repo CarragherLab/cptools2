@@ -35,7 +35,7 @@ import glob
 import os
 
 import pandas as pd
-import polars as pl
+import polars as pl  # type: ignore[import-untyped]
 
 from cptools2.colours import pretty_print, purple, red, yellow
 
