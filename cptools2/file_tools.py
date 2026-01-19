@@ -227,6 +227,51 @@ def _discover_plates_from_raw_data(raw_data_location):
     return sorted(list(plate_names))
 
 
+def _enrich_chunk_csvs(
+    chunk_path, chunk_name, loaddata_csv, patterns, results
+):
+    """Enrich CSV files within a single chunk."""
+    chunk_results = []
+
+    # Discover CSV files in this chunk
+    chunk_csvs = []
+    if patterns:
+        for pattern in patterns:
+            matching = glob.glob(os.path.join(chunk_path, pattern))
+            chunk_csvs.extend(matching)
+    else:
+        chunk_csvs = glob.glob(os.path.join(chunk_path, "*.csv"))
+
+    if not chunk_csvs:
+        pretty_print("\t\tNo CSV files found in chunk")
+        return chunk_results
+
+    # Enrich each CSV file in the chunk
+    for csv_file in sorted(chunk_csvs):
+        csv_name = os.path.basename(csv_file)
+        merge_result = merge_loaddata_metadata(csv_file, loaddata_csv)
+
+        if merge_result["success"]:
+            pretty_print(
+                f"\t\t{yellow(csv_name)}: "
+                f"{purple(merge_result['rows_after'])} rows, "
+                f"{purple(len(merge_result['metadata_columns_added']))}"
+                " metadata columns"
+            )
+            results["total_files_enriched"] += 1
+            results["total_rows_enriched"] += merge_result["rows_after"]
+            chunk_results.append(merge_result)
+        else:
+            msg = (
+                f"\t\tFailed to enrich {csv_name}: "
+                f"{merge_result['error']}"
+            )
+            pretty_print(msg)
+            results["errors"].append(msg)
+
+    return chunk_results
+
+
 def enrich_chunks_with_metadata(location, patterns=None):
     """
     Enrich all chunks with LoadData metadata before concatenation.
@@ -294,7 +339,6 @@ def enrich_chunks_with_metadata(location, patterns=None):
     for plate_name in plate_names:
         pretty_print(f"Processing plate: {purple(plate_name)}")
 
-        # Discover chunks for this plate
         chunks = _discover_chunks_for_plate(raw_data_location, plate_name)
         if not chunks:
             pretty_print(f"\tNo chunks found for plate {purple(plate_name)}")
@@ -305,8 +349,6 @@ def enrich_chunks_with_metadata(location, patterns=None):
         # Process each chunk
         for chunk_path in chunks:
             chunk_name = os.path.basename(chunk_path)
-
-            # Find corresponding LoadData CSV
             loaddata_csv = os.path.join(
                 loaddata_location, f"{chunk_name}.csv"
             )
@@ -319,52 +361,9 @@ def enrich_chunks_with_metadata(location, patterns=None):
 
             pretty_print(f"\t{chunk_name}")
 
-            # Discover CSV files in this chunk
-            chunk_csvs = []
-            if patterns:
-                # If patterns specified, only look for those
-                for pattern in patterns:
-                    matching = glob.glob(
-                        os.path.join(chunk_path, pattern)
-                    )
-                    chunk_csvs.extend(matching)
-            else:
-                # Otherwise, find all CSV files
-                chunk_csvs = glob.glob(os.path.join(chunk_path, "*.csv"))
-
-            if not chunk_csvs:
-                pretty_print("\t\tNo CSV files found in chunk")
-                continue
-
-            # Enrich each CSV file in the chunk
-            chunk_results = []
-            for csv_file in sorted(chunk_csvs):
-                csv_name = os.path.basename(csv_file)
-
-                # Merge metadata into this CSV (overwrite in-place)
-                merge_result = merge_loaddata_metadata(
-                    csv_file, loaddata_csv
-                )
-
-                if merge_result["success"]:
-                    pretty_print(
-                        f"\t\t{yellow(csv_name)}: "
-                        f"{purple(merge_result['rows_after'])} rows, "
-                        f"{purple(len(merge_result['metadata_columns_added']))}"
-                        " metadata columns"
-                    )
-                    results["total_files_enriched"] += 1
-                    results["total_rows_enriched"] += merge_result[
-                        "rows_after"
-                    ]
-                    chunk_results.append(merge_result)
-                else:
-                    msg = (
-                        f"\t\tFailed to enrich {csv_name}: "
-                        f"{merge_result['error']}"
-                    )
-                    pretty_print(msg)
-                    results["errors"].append(msg)
+            chunk_results = _enrich_chunk_csvs(
+                chunk_path, chunk_name, loaddata_csv, patterns, results
+            )
 
             if chunk_results:
                 results["chunks"][plate_name].append(
@@ -383,6 +382,56 @@ def enrich_chunks_with_metadata(location, patterns=None):
     )
 
     return results
+
+
+def _concatenate_and_save_files(
+    matched_files,
+    plate_name,
+    pattern,
+    raw_data_location,
+    batch_id,
+    enrich_metadata,
+    results,
+):
+    """Concatenate and save matched CSV files for a plate and pattern."""
+    try:
+        combined_csv = pd.concat(
+            [pd.read_csv(f, low_memory=False) for f in matched_files]
+        )
+
+        # Determine output directory
+        parent_dir = os.path.dirname(raw_data_location)
+        output_dir_name = (
+            f"joined_files_batch_{batch_id}"
+            if batch_id is not None
+            else "joined_files"
+        )
+        output_dir = os.path.join(parent_dir, output_dir_name)
+        os.makedirs(output_dir, exist_ok=True)
+        output_file = os.path.join(output_dir, f"{plate_name}_{pattern}")
+
+        combined_csv.to_csv(output_file, index=False, encoding="utf-8-sig")
+
+        # Store output info
+        if plate_name not in results:
+            results[plate_name] = {}
+        results[plate_name][pattern] = {
+            "output_file": output_file,
+            "rows": len(combined_csv),
+            "files_combined": len(matched_files),
+            "metadata_enriched": enrich_metadata,
+        }
+
+        pretty_print(
+            f"\tCreated {yellow(output_file)} with "
+            f"{purple(len(combined_csv))} rows from "
+            f"{purple(len(matched_files))} files"
+        )
+    except Exception as e:
+        pretty_print(
+            f"\tError processing pattern {yellow(pattern)} "
+            f"for plate {purple(plate_name)}: {str(e)}"
+        )
 
 
 def join_plate_files(
@@ -452,7 +501,7 @@ def join_plate_files(
 
     results = {}
 
-    # Determine plate names: use plate_store if provided, otherwise discover
+    # Determine plate names
     if plate_store:
         plate_names = sorted(plate_store.keys())
         pretty_print(
@@ -466,7 +515,7 @@ def join_plate_files(
         )
         plate_names = _discover_plates_from_raw_data(raw_data_location)
         if not plate_names:
-            return None  # Stop if no plates were found
+            return None
         pretty_print(
             f"Discovered plate names: {', '.join(purple(p) for p in plate_names)}"
         )
@@ -479,7 +528,6 @@ def join_plate_files(
                 "\tProcessing plate: {}".format(purple(plate_name))
             )
 
-            # Find all files matching the pattern for this plate
             search_pattern = os.path.join(
                 raw_data_location, f"{plate_name}_*", pattern
             )
@@ -492,51 +540,14 @@ def join_plate_files(
                 )
                 continue
 
-            try:
-                # Combine enriched files
-                combined_csv = pd.concat(
-                    [
-                        pd.read_csv(f, low_memory=False)
-                        for f in matched_files
-                    ]
-                )
-
-                # Determine output directory (batch-specific if batch_id provided)
-                parent_dir = os.path.dirname(raw_data_location)
-                if batch_id is not None:
-                    output_dir_name = f"joined_files_batch_{batch_id}"
-                else:
-                    output_dir_name = "joined_files"
-
-                output_dir = os.path.join(parent_dir, output_dir_name)
-                os.makedirs(output_dir, exist_ok=True)
-                output_file = os.path.join(
-                    output_dir, f"{plate_name}_{pattern}"
-                )
-
-                combined_csv.to_csv(
-                    output_file, index=False, encoding="utf-8-sig"
-                )
-
-                # Store output info
-                if plate_name not in results:
-                    results[plate_name] = {}
-                results[plate_name][pattern] = {
-                    "output_file": output_file,
-                    "rows": len(combined_csv),
-                    "files_combined": len(matched_files),
-                    "metadata_enriched": enrich_metadata,
-                }
-
-                pretty_print(
-                    f"\tCreated {yellow(output_file)} with "
-                    f"{purple(len(combined_csv))} rows from "
-                    f"{purple(len(matched_files))} files"
-                )
-            except Exception as e:
-                pretty_print(
-                    f"\tError processing pattern {yellow(pattern)} "
-                    f"for plate {purple(plate_name)}: {str(e)}"
-                )
+            _concatenate_and_save_files(
+                matched_files,
+                plate_name,
+                pattern,
+                raw_data_location,
+                batch_id,
+                enrich_metadata,
+                results,
+            )
 
     return results
