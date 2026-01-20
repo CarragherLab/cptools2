@@ -35,7 +35,6 @@ import glob
 import os
 
 import pandas as pd
-import polars as pl  # type: ignore[import-untyped]
 
 from cptools2.colours import pretty_print, purple, red, yellow
 
@@ -97,9 +96,9 @@ def merge_loaddata_metadata(chunk_output_csv, loaddata_csv, output_path=None):
         if not os.path.exists(loaddata_csv):
             raise FileNotFoundError(f"LoadData CSV not found: {loaddata_csv}")
 
-        # Load CSVs with polars
-        output_df = pl.read_csv(chunk_output_csv)
-        loaddata_df = pl.read_csv(loaddata_csv)
+        # Load CSVs with pandas
+        output_df = pd.read_csv(chunk_output_csv, low_memory=False)
+        loaddata_df = pd.read_csv(loaddata_csv, low_memory=False)
 
         result["rows_before"] = len(output_df)
 
@@ -130,25 +129,18 @@ def merge_loaddata_metadata(chunk_output_csv, loaddata_csv, output_path=None):
                 f"No Metadata_* columns found in LoadData CSV: {loaddata_csv}"
             )
 
-        loaddata_subset = loaddata_df.select(available_cols)
+        loaddata_subset = loaddata_df[available_cols]
         result["metadata_columns_added"] = metadata_cols
 
-        # Perform left join: keep all output rows, add metadata where available
-        joined_df = output_df.join(
+        # Perform left merge: keep all output rows, add metadata where available
+        joined_df = output_df.merge(
             loaddata_subset, on="ImageNumber", how="left"
         )
 
         # Validate join integrity: count null metadata (ImageNumber mismatch)
         if metadata_cols:
             # Count total nulls across all metadata columns
-            null_count_df = joined_df.select(
-                pl.col(metadata_cols).null_count()
-            )
-            null_count = (
-                null_count_df.sum_horizontal()[0]
-                if len(null_count_df) > 0
-                else 0
-            )
+            null_count = joined_df[metadata_cols].isna().sum().sum()
             result["null_metadata_count"] = null_count
 
             if null_count > 0:
@@ -162,7 +154,7 @@ def merge_loaddata_metadata(chunk_output_csv, loaddata_csv, output_path=None):
 
         # Write enriched CSV
         output_file = output_path or chunk_output_csv
-        joined_df.write_csv(output_file)
+        joined_df.to_csv(output_file, index=False, encoding="utf-8-sig")
         result["output_file"] = output_file
         result["success"] = True
 
