@@ -41,43 +41,25 @@ from cptools2.colours import pretty_print, purple, red, yellow
 
 def merge_loaddata_metadata(chunk_output_csv, loaddata_csv, output_path=None):
     """
-    Merge LoadData metadata into CellProfiler output CSV using ImageNumber key.
+    Merge LoadData metadata into CellProfiler output CSV using an index-based join.
 
-    This function joins metadata from a LoadData CSV (containing Metadata_*
-    columns) into a CellProfiler output CSV (Image.csv, Cells.csv, etc.)
-    using ImageNumber as the join key. The join happens at the chunk level
-    BEFORE concatenation to preserve metadata integrity.
+    This function adds a 1-based ImageNumber index to the LoadData CSV and joins
+    it with the CellProfiler output CSV. This approach mimics R's bind_cols
+    for Image.csv while correctly broadcasting metadata for Cells.csv.
 
     Parameters
     ----------
     chunk_output_csv : str
-        Path to the CellProfiler output CSV file (e.g.,
-        raw_data/plate_0/Image.csv)
+        Path to the CellProfiler output CSV file.
     loaddata_csv : str
-        Path to the corresponding LoadData CSV file (e.g.,
-        loaddata/plate_0.csv)
+        Path to the corresponding LoadData CSV file.
     output_path : str, optional
-        Path to write the enriched CSV. If None, overwrites chunk_output_csv
-        in-place.
+        Path to write the enriched CSV. If None, overwrites in-place.
 
     Returns
     -------
     dict
-        Dictionary containing:
-        - 'success': bool - Whether merge completed successfully
-        - 'output_file': str - Path to the enriched CSV
-        - 'rows_before': int - Row count before merge
-        - 'rows_after': int - Row count after merge
-        - 'metadata_columns_added': list - Names of metadata columns added
-        - 'null_metadata_count': int - Rows with null metadata (ImageNumber
-          mismatch)
-
-    Raises
-    ------
-    FileNotFoundError
-        If input files don't exist
-    ValueError
-        If ImageNumber column not found in either file
+        Success status and metadata details.
     """
     result = {
         "success": False,
@@ -88,81 +70,46 @@ def merge_loaddata_metadata(chunk_output_csv, loaddata_csv, output_path=None):
         "null_metadata_count": 0,
         "error": None,
     }
-
     try:
-        # Validate files exist
-        if not os.path.exists(chunk_output_csv):
-            raise FileNotFoundError(f"Output CSV not found: {chunk_output_csv}")
-        if not os.path.exists(loaddata_csv):
-            raise FileNotFoundError(f"LoadData CSV not found: {loaddata_csv}")
+        # Load data
+        out_df = pd.read_csv(chunk_output_csv, low_memory=False)
+        load_df = pd.read_csv(loaddata_csv, low_memory=False)
 
-        # Load CSVs with pandas
-        output_df = pd.read_csv(chunk_output_csv, low_memory=False)
-        loaddata_df = pd.read_csv(loaddata_csv, low_memory=False)
+        result["rows_before"] = len(out_df)
 
-        result["rows_before"] = len(output_df)
+        # Create 1-based ImageNumber index on LoadData
+        # (This matches CellProfiler's internal assignment for chunks)
+        load_df["ImageNumber"] = range(1, len(load_df) + 1)
 
-        # Validate ImageNumber column exists in both
-        if "ImageNumber" not in output_df.columns:
-            raise ValueError(
-                f"ImageNumber column not found in output CSV: "
-                f"{chunk_output_csv}"
-            )
-        if "ImageNumber" not in loaddata_df.columns:
-            raise ValueError(
-                f"ImageNumber column not found in LoadData CSV: "
-                f"{loaddata_csv}"
-            )
+        # Identify missing columns to add (exclude existing ones)
+        new_cols = [c for c in load_df.columns if c not in out_df.columns]
+        result["metadata_columns_added"] = new_cols
 
-        # Extract only Metadata_* columns from LoadData (plus ImageNumber)
-        metadata_cols = [
-            col for col in loaddata_df.columns if col.startswith("Metadata_")
-        ]
-        cols_to_keep = ["ImageNumber"] + metadata_cols
+        if not new_cols:
+            result["success"] = True
+            result["rows_after"] = len(out_df)
+            return result
 
-        # Select and validate columns exist
-        available_cols = [
-            col for col in cols_to_keep if col in loaddata_df.columns
-        ]
-        if not available_cols:
-            raise ValueError(
-                f"No Metadata_* columns found in LoadData CSV: {loaddata_csv}"
-            )
-
-        loaddata_subset = loaddata_df[available_cols]
-        result["metadata_columns_added"] = metadata_cols
-
-        # Perform left merge: keep all output rows, add metadata where available
-        joined_df = output_df.merge(
-            loaddata_subset, on="ImageNumber", how="left"
+        # Join on ImageNumber
+        enriched_df = out_df.merge(
+            load_df[["ImageNumber"] + new_cols], on="ImageNumber", how="left"
         )
 
-        # Validate join integrity: count null metadata (ImageNumber mismatch)
-        if metadata_cols:
-            # Count total nulls across all metadata columns
-            null_count = joined_df[metadata_cols].isna().sum().sum()
-            result["null_metadata_count"] = null_count
+        # Count nulls for reporting
+        result["null_metadata_count"] = enriched_df[new_cols].isna().sum().sum()
 
-            if null_count > 0:
-                pretty_print(
-                    "Warning: "
-                    f"{null_count} rows have null metadata after join - "
-                    "possible ImageNumber mismatch"
-                )
+        # Save
+        target = output_path or chunk_output_csv
+        enriched_df.to_csv(target, index=False, encoding="utf-8-sig")
 
-        result["rows_after"] = len(joined_df)
-
-        # Write enriched CSV
-        output_file = output_path or chunk_output_csv
-        joined_df.to_csv(output_file, index=False, encoding="utf-8-sig")
-        result["output_file"] = output_file
+        result["rows_after"] = len(enriched_df)
         result["success"] = True
+        return result
 
     except Exception as e:
-        result["error"] = str(e)
         pretty_print(f"Error merging metadata: {red(str(e))}")
-
-    return result
+        result["error"] = str(e)
+        return result
 
 
 def _discover_chunks_for_plate(raw_data_location, plate_name):
@@ -219,160 +166,65 @@ def _discover_plates_from_raw_data(raw_data_location):
     return sorted(list(plate_names))
 
 
-def _enrich_chunk_csvs(
-    chunk_path, chunk_name, loaddata_csv, patterns, results
-):
-    """Enrich CSV files within a single chunk."""
-    chunk_results = []
-
-    # Discover CSV files in this chunk
-    chunk_csvs = []
-    if patterns:
-        for pattern in patterns:
-            matching = glob.glob(os.path.join(chunk_path, pattern))
-            chunk_csvs.extend(matching)
-    else:
-        chunk_csvs = glob.glob(os.path.join(chunk_path, "*.csv"))
-
-    if not chunk_csvs:
-        pretty_print("\t\tNo CSV files found in chunk")
-        return chunk_results
-
-    # Enrich each CSV file in the chunk
-    for csv_file in sorted(chunk_csvs):
-        csv_name = os.path.basename(csv_file)
-        merge_result = merge_loaddata_metadata(csv_file, loaddata_csv)
-
-        if merge_result["success"]:
-            pretty_print(
-                f"\t\t{yellow(csv_name)}: "
-                f"{purple(merge_result['rows_after'])} rows, "
-                f"{purple(len(merge_result['metadata_columns_added']))}"
-                " metadata columns"
-            )
-            results["total_files_enriched"] += 1
-            results["total_rows_enriched"] += merge_result["rows_after"]
-            chunk_results.append(merge_result)
-        else:
-            msg = (
-                f"\t\tFailed to enrich {csv_name}: "
-                f"{merge_result['error']}"
-            )
-            pretty_print(msg)
-            results["errors"].append(msg)
-
-    return chunk_results
-
-
 def enrich_chunks_with_metadata(location, patterns=None):
     """
     Enrich all chunks with LoadData metadata before concatenation.
 
-    This is the orchestration function that discovers all chunk/LoadData pairs
-    and merges metadata into each chunk's output CSVs. This MUST happen before
-    chunks are concatenated to preserve metadata integrity (ImageNumber is
-    sequential per chunk).
-
-    Parameters
-    ----------
-    location : str
-        Base location directory containing 'loaddata/' and 'raw_data/'
-        subdirectories
-    patterns : list, optional
-        List of CSV filename patterns to enrich (e.g.,
-        ['Image.csv', 'Cells.csv']). If None, discovers all CSV files
-        in chunks.
-
-    Returns
-    -------
-    dict
-        Dictionary with enrichment results:
-        - 'total_chunks_processed': int
-        - 'total_files_enriched': int
-        - 'total_rows_enriched': int
-        - 'chunks': dict - Per-chunk details
-        - 'errors': list - Any errors encountered
+    This function discovers all chunk/LoadData pairs and merges metadata into
+    each chunk's output CSVs. This MUST happen before concatenation to
+    preserve ImageNumber integrity.
     """
     results = {
         "total_chunks_processed": 0,
         "total_files_enriched": 0,
-        "total_rows_enriched": 0,
-        "chunks": {},
         "errors": [],
     }
-
     raw_data_location = os.path.join(location, "raw_data")
     loaddata_location = os.path.join(location, "loaddata")
 
-    # Validate directories exist
-    if not os.path.exists(raw_data_location):
-        pretty_print(
-            f"Raw data directory not found: {red(raw_data_location)}"
-        )
-        results["errors"].append(
-            f"Raw data directory not found: {raw_data_location}"
-        )
-        return results
-
-    if not os.path.exists(loaddata_location):
-        pretty_print("LoadData directory not found - skipping metadata enrichment")
+    if not os.path.exists(raw_data_location) or not os.path.exists(
+        loaddata_location
+    ):
+        pretty_print("Metadata enrichment skipped (directories missing)")
         return results
 
     pretty_print("PHASE 1: Starting metadata enrichment...")
-    pretty_print(f"Scanning for chunks in: {yellow(raw_data_location)}")
 
-    # Discover all plates
     plate_names = _discover_plates_from_raw_data(raw_data_location)
-    if not plate_names:
-        pretty_print("No plates found in raw_data directory.")
-        return results
 
-    # Process each plate's chunks
-    for plate_name in plate_names:
-        pretty_print(f"Processing plate: {purple(plate_name)}")
-
-        chunks = _discover_chunks_for_plate(raw_data_location, plate_name)
-        if not chunks:
-            pretty_print(f"\tNo chunks found for plate {purple(plate_name)}")
-            continue
-
-        results["chunks"][plate_name] = []
-
-        # Process each chunk
+    for plate in plate_names:
+        chunks = _discover_chunks_for_plate(raw_data_location, plate)
         for chunk_path in chunks:
             chunk_name = os.path.basename(chunk_path)
-            loaddata_csv = os.path.join(
-                loaddata_location, f"{chunk_name}.csv"
-            )
+            loaddata_csv = os.path.join(loaddata_location, f"{chunk_name}.csv")
 
             if not os.path.exists(loaddata_csv):
-                msg = f"\t\tNo LoadData file found for {chunk_name}"
-                pretty_print(msg)
-                results["errors"].append(msg)
+                results["errors"].append(f"Missing loaddata: {chunk_name}")
                 continue
 
-            pretty_print(f"\t{chunk_name}")
+            # Find files to enrich
+            csv_files = []
+            if patterns:
+                for p in patterns:
+                    csv_files.extend(glob.glob(os.path.join(chunk_path, p)))
+            else:
+                csv_files = glob.glob(os.path.join(chunk_path, "*.csv"))
 
-            chunk_results = _enrich_chunk_csvs(
-                chunk_path, chunk_name, loaddata_csv, patterns, results
-            )
+            enriched_in_chunk = 0
+            for csv_file in csv_files:
+                res = merge_loaddata_metadata(csv_file, loaddata_csv)
+                if res.get("success"):
+                    results["total_files_enriched"] += 1
+                    enriched_in_chunk += 1
+                else:
+                    results["errors"].append(f"Merge error in {csv_file}")
 
-            if chunk_results:
-                results["chunks"][plate_name].append(
-                    {
-                        "chunk_name": chunk_name,
-                        "files_enriched": len(chunk_results),
-                        "details": chunk_results,
-                    }
-                )
+            if enriched_in_chunk > 0:
                 results["total_chunks_processed"] += 1
 
-    pretty_print("Metadata enrichment complete!")
     pretty_print(
-        f"Enriched {yellow(results['total_files_enriched'])} files across "
-        f"{yellow(results['total_chunks_processed'])} chunks"
+        f"Metadata enrichment complete! Enriched {results['total_files_enriched']} files."
     )
-
     return results
 
 
@@ -473,15 +325,7 @@ def join_plate_files(
     # PHASE 1: ENRICH chunks with metadata BEFORE concatenation
     if enrich_metadata:
         location = os.path.dirname(raw_data_location)
-        enrich_results = enrich_chunks_with_metadata(location, patterns)
-
-        if enrich_results["errors"]:
-            pretty_print(
-                "Enrichment completed with "
-                f"{len(enrich_results['errors'])} warnings/errors"
-            )
-        else:
-            pretty_print("Enrichment successful!")
+        enrich_chunks_with_metadata(location, patterns)
 
     # PHASE 2: Concatenate enriched chunks
     pretty_print("PHASE 2: Concatenating enriched chunks...")

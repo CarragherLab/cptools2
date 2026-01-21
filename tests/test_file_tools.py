@@ -1,5 +1,7 @@
 import os
 import tempfile
+
+import pandas as pd
 import polars as pl
 
 from cptools2.file_tools import (
@@ -81,14 +83,14 @@ def test_merge_loaddata_metadata_basic(tmp_path):
 
 
 def test_merge_loaddata_metadata_missing_imagenumber(tmp_path):
-    """Test error handling when ImageNumber column is missing."""
+    """Test that we can merge even if ImageNumber is missing from LoadData (it's generated)."""
     # Create LoadData CSV without ImageNumber
     loaddata_csv = tmp_path / "loaddata.csv"
     loaddata_data = pl.DataFrame({
         "Metadata_well": ["A01", "A02"],
     })
     loaddata_data.write_csv(loaddata_csv)
-    
+
     # Create output CSV with ImageNumber
     output_csv = tmp_path / "output.csv"
     output_data = pl.DataFrame({
@@ -96,12 +98,15 @@ def test_merge_loaddata_metadata_missing_imagenumber(tmp_path):
         "AreaShape_Area": [100, 200],
     })
     output_data.write_csv(output_csv)
-    
-    # Merge should fail gracefully
+
+    # Merge should succeed because we generate the index
     result = merge_loaddata_metadata(str(output_csv), str(loaddata_csv))
-    
-    assert result['success'] is False
-    assert "ImageNumber" in result['error']
+
+    assert result["success"] is True
+    # Verify the well metadata was still added correctly
+    enriched = pd.read_csv(str(output_csv))
+    assert "Metadata_well" in enriched.columns
+    assert enriched["Metadata_well"].tolist() == ["A01", "A02"]
 
 
 def test_merge_loaddata_metadata_mismatched_imagenumber(tmp_path):
