@@ -128,12 +128,16 @@ def handle_join(args):
         # The value doesn't matter, only the keys (plate names) are used.
         plate_store = {plate_name: None for plate_name in args.plates}
 
-    # Call join_plate_files directly.
+    # Determine whether to enrich metadata (default: True, can be disabled with --no-enrich-metadata)
+    enrich_metadata = not args.no_enrich_metadata
+
+    # Call join_plate_files directly with enrichment flag
     results = file_tools.join_plate_files(
         plate_store=plate_store, 
         raw_data_location=raw_data_location, 
         patterns=args.patterns,
-        batch_id=args.batch_id
+        batch_id=args.batch_id,
+        enrich_metadata=enrich_metadata
     )
     
     if results:
@@ -161,6 +165,7 @@ def main():
     parser_join.add_argument('--patterns', type=str, required=True, nargs='+', help='File name patterns to join (e.g., Image.csv Cells.csv).')
     parser_join.add_argument('--plates', type=str, nargs='+', help='(Optional) Specific plate names to join. If not provided, all plates found will be joined.')
     parser_join.add_argument('--batch-id', type=int, help='(Optional) Batch ID for creating batch-specific output directories.')
+    parser_join.add_argument('--no-enrich-metadata', action='store_true', help='(Optional) Disable automatic metadata enrichment (default: enabled).')
     parser_join.set_defaults(func=handle_join)
 
     args = parser.parse_args()

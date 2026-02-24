@@ -9,12 +9,14 @@ A lightweight command-line package to generate and manage CellProfiler analysis 
 - Packaging consolidated under `pyproject.toml` with modern metadata and direct references to supporting parser utilities.
 - Scratch-space batching defaults increased to 75% utilisation with a 30% per-plate overhead buffer.
 - Installation instructions updated for both `pip` and `uv` workflows.
+- **NEW:** Automatic LoadData metadata enrichment integrated into the join workflow—output CSVs now include complete well, site, and plate metadata.
 
 ## Table of contents
 
 - [Release highlights (v1.0.0)](#release-highlights-v100)
 - [Installation](#installation)
 - [Quick usage](#quick-usage)
+- [Metadata enrichment](#metadata-enrichment)
 - [YAML configuration](#yaml-configuration)
 - [Behavior notes](#behavior-notes)
 - [Developer quickstart & testing](#developer-quickstart--testing)
@@ -61,6 +63,46 @@ Join chunked CSV outputs after analysis (one or more patterns):
 ```bash
 cptools2 join --location /path/to/location --patterns Image.csv Cells.csv
 ```
+
+The join command automatically enriches output files with LoadData metadata before concatenation, ensuring complete metadata columns in the final output.
+
+### Metadata enrichment
+
+When you run `cptools2 join`, the tool automatically enriches all output CSV files with metadata from the corresponding LoadData files. This happens **before** concatenation to preserve metadata integrity.
+
+**Why this matters:**
+
+Each CellProfiler chunk has sequential `ImageNumber` values (1, 2, 3, ...). If chunks are concatenated first, these ImageNumbers become duplicated and lose meaning. By enriching each chunk individually before concatenation, every row retains its correct metadata (well, site, plate, etc.).
+
+**Example workflow:**
+
+```
+Input structure:
+  loaddata/plate_0.csv          <- Contains Metadata_well, Metadata_site, etc.
+  loaddata/plate_1.csv
+  raw_data/plate_0/Image.csv    <- No metadata, just measurements
+  raw_data/plate_1/Image.csv
+
+Processing:
+  1. Enrich chunk 0: Join Image.csv with loaddata/plate_0.csv on ImageNumber
+  2. Enrich chunk 1: Join Image.csv with loaddata/plate_1.csv on ImageNumber
+  3. Concatenate enriched chunks into joined_files/plate_Image.csv
+
+Output:
+  joined_files/plate_Image.csv  <- Complete metadata preserved!
+```
+
+To disable metadata enrichment (for debugging), use `--no-enrich-metadata`:
+
+```bash
+cptools2 join --location /path/to/location --patterns Image.csv --no-enrich-metadata
+```
+
+**Troubleshooting:**
+
+- If metadata enrichment fails, check that LoadData CSV files exist in `location/loaddata/` with filenames matching the chunk pattern (e.g., `plate_0.csv`).
+- Verify that both the LoadData and output CSVs have an `ImageNumber` column.
+- Check for ImageNumber mismatches—output CSVs with more rows than their corresponding LoadData CSV will have null metadata for unmatched rows.
 
 ## YAML configuration
 
