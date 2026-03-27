@@ -1,5 +1,6 @@
 import os
 import base64
+import shlex
 
 from cptools2 import utils
 
@@ -195,13 +196,11 @@ def make_rsync_cmnd(plate_loc, filelist_name, img_location):
     --------
     string: an rsync command
     """
-    # Use more secure permissions appropriate for Eddie
-    # Only owner and group get write access, others get read-only
-    # Use double quotes to properly handle paths with spaces
-    return "rsync -s --perms --chmod=ug+rwx,o+rx --files-from=\"{filelist}\" \"{source}\" \"{destination}\""\
-        .format(filelist=filelist_name,
-                source=plate_loc,
-                destination=img_location)
+    return "rsync -s --perms --chmod=ug+rwx,o+rx --files-from={filelist} {source} {destination}".format(
+        filelist=shlex.quote(filelist_name),
+        source=shlex.quote(plate_loc),
+        destination=shlex.quote(img_location)
+    )
 
 
 def rm_string(directory):
@@ -218,7 +217,7 @@ def rm_string(directory):
     --------
     nothing, removes directory on disk
     """
-    return "rm -rf \"{}\"".format(directory)
+    return "rm -rf {}".format(shlex.quote(directory))
 
 
 def cp_command(pipeline, load_data, output_location):
@@ -238,14 +237,11 @@ def cp_command(pipeline, load_data, output_location):
     --------
     string: a cellprofiler command
     """
-    # Quote arguments to survive paths with spaces (common in plate names).
-    # These commands are base64-encoded and decoded into /bin/bash, so POSIX-style quoting is correct.
-    base_command = 'cellprofiler -r -c -p "{pipeline}" --data-file="{load_data}" -o "{output_location}"'.format(
-        pipeline=pipeline,
-        load_data=load_data,
-        output_location=output_location)
-    
-    return base_command
+    return "cellprofiler -r -c -p {pipeline} --data-file={load_data} -o {output_location}".format(
+        pipeline=shlex.quote(pipeline),
+        load_data=shlex.quote(load_data),
+        output_location=shlex.quote(output_location)
+    )
 
 
 def make_output_directories(location):

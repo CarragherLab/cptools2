@@ -1,4 +1,5 @@
 import os
+import shlex
 from cptools2 import commands
 
 CURRENT_PATH = os.path.dirname(__file__)
@@ -13,32 +14,53 @@ def test_make_cp_cmnd():
     location = "/path/to/test_location"
     output_loc = "/path/to/output_location"
     cmnd = commands.make_cp_cmnd(name, pipeline, location, output_loc)
-    # will create a loaddata name from $location/loaddata/name
-    # Normalize separators for cross-platform tests
-    correct = 'cellprofiler -r -c -p "test_pipeline.cppipe" --data-file="/path/to/test_location/loaddata/test_name.csv" -o "/path/to/output_location"'
-    assert cmnd.replace('\\', '/') == correct
+    # Build loaddata path identically to commands.py so quoting is consistent
+    loaddata = os.path.join(location, "loaddata", name + ".csv")
+    correct = "cellprofiler -r -c -p {pipeline} --data-file={loaddata} -o {output}".format(
+        pipeline=shlex.quote(pipeline),
+        loaddata=shlex.quote(loaddata),
+        output=shlex.quote(output_loc),
+    )
+    assert cmnd == correct
 
 
 def test_make_cp_cmnd_with_spaces():
-    """cp commands must safely quote paths that contain spaces (e.g. plate names)"""
+    """shlex.quote prevents injection even when paths contain spaces"""
     name = "plate with spaces_0"
     pipeline = "/path/with spaces/pipeline.cppipe"
     location = "/path/to/test location"
     output_loc = "/path/to/output location/plate with spaces_0"
-
     cmnd = commands.make_cp_cmnd(name, pipeline, location, output_loc)
-    expected = (
-        'cellprofiler -r -c -p "/path/with spaces/pipeline.cppipe" '
-        '--data-file="/path/to/test location/loaddata/plate with spaces_0.csv" '
-        '-o "/path/to/output location/plate with spaces_0"'
+    loaddata = "/path/to/test location/loaddata/plate with spaces_0.csv"
+    correct = "cellprofiler -r -c -p {pipeline} --data-file={loaddata} -o {output}".format(
+        pipeline=shlex.quote(pipeline),
+        loaddata=shlex.quote(loaddata),
+        output=shlex.quote(output_loc),
     )
-    assert cmnd.replace('\\', '/') == expected
+    assert cmnd.replace('\\', '/') == correct
 
-def make_rsync_cmnd():
-    """cptools2.commands.make_rsync_cmnd(plate_loc, filelist_name, img_location)"""
+
+def test_make_cp_cmnd_injection_attempt():
+    """shlex.quote must neutralise shell metacharacters in plate names"""
+    name = 'plate"; touch /tmp/pwned; echo "'
+    pipeline = "/path/pipeline.cppipe"
+    location = "/scratch/output"
+    output_loc = "/scratch/output/raw_data/" + name
+    cmnd = commands.make_cp_cmnd(name, pipeline, location, output_loc)
+    # shlex.quote wraps the dangerous path in a single-quoted token
+    quoted_output = shlex.quote(output_loc)
+    assert quoted_output in cmnd
+    # shlex.quote must have determined quoting was needed (starts with single quote)
+    assert quoted_output.startswith("'")
+
+
+def test_make_rsync_cmnd():
+    """cptools2.commands.make_rsync_cmnd uses shlex.quote on all paths"""
     plate_loc = "/plate_location"
     filelist_name = "/path/to/filelist"
     img_location = "/path/to/images"
     cmnd = commands.make_rsync_cmnd(plate_loc, filelist_name, img_location)
-    correct = "rsync --files-from=/path/to/filelist /plate_location /path/to/images"
-    assert cmnd == correct
+    assert shlex.quote(filelist_name) in cmnd
+    assert shlex.quote(plate_loc) in cmnd
+    assert shlex.quote(img_location) in cmnd
+    assert cmnd.startswith("rsync")
