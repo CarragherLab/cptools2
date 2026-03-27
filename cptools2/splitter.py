@@ -42,7 +42,7 @@ def _group_images(df_img):
     grouped_list = []
     for _, group in  df_img.groupby(["Metadata_well", "Metadata_site"]):
         grouped = list(group["img_paths"])
-        channel_nums = [_parse.img_channel(i) for i in grouped]
+        channel_nums = [_parse.img_channel(_parse.img_filename(i)) for i in grouped]
         # create tuple (path, channel_number) and sort by channel number
         sort_im = sorted(list(zip(grouped, channel_nums)), key=lambda x: x[1])
         # return on the file-paths back from the list of tuples

@@ -62,6 +62,30 @@ def test_chunks():
     assert len(output2[-1]) == 9
 
 
+def test_group_images_plate_name_with_underscores():
+    """_group_images should handle plate names containing underscores without mis-parsing channels"""
+    # Simulate truncated paths where the plate name contains underscores.
+    # This previously caused img_channel() to split on path separators instead
+    # of channel indicators, raising ValueError.
+    plate = "plate_name_with_underscores"
+    paths = [
+        os.path.join(plate, "2000-01-01", "00001", "TimePoint_1",
+                     f"val screen_A01_s1_w{ch}FAKEUUID.tif")
+        for ch in [1, 2, 3]
+    ]
+    df_img = pd.DataFrame({
+        "img_paths": paths,
+        "Metadata_well": ["A01"] * 3,
+        "Metadata_site": [1] * 3,
+    })
+    output = splitter._group_images(df_img)
+    assert len(output) == 1
+    assert len(output[0]) == 3
+    # channels should be sorted 1, 2, 3
+    for i, path in enumerate(output[0], start=1):
+        assert f"_w{i}" in path
+
+
 def test_split():
     """cptools2.splitter.split()"""
     job_size = 96
