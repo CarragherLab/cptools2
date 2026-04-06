@@ -1,0 +1,5 @@
+FROM tensorflow/tensorflow:2.5.3-gpu
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y git libglib2.0-0 && rm -rf /var/lib/apt/lists/*
+RUN pip install --upgrade pip && pip install git+https://github.com/cytomining/DeepProfiler.git numpy pandas scipy scikit-image tifffile
+WORKDIR /app
