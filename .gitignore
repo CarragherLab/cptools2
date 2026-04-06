@@ -18,9 +18,10 @@ examples/
 .venv/
 venv/
 
-# Env files
+# Env files — .env.example is committed as a template for users
 .env
-.env.*
+.env.local
+.env.production
 
 # Large test data (keep if present; move heavy data out of repo)
 tests/example_dir/
@@ -37,3 +38,6 @@ Thumbs.db
 # Python artifacts
 **/__pycache__/
 *.pyc
+
+# Dev Docs
+dev_docs/

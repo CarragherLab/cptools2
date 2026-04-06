@@ -12,6 +12,8 @@ import os
 from collections import namedtuple
 import yaml
 
+from cptools2.containers import resolve_container_path, validate_container_path
+
 
 def open_yaml(path_to_yaml):
     """
@@ -275,7 +277,8 @@ def check_yaml_args(yaml_dict):
                   "remove plate",
                   "add plate",
                   "join_files",
-                  "data_destination"]
+                  "data_destination",
+                  "container_path"]
     bad_arguments = []
     for argument in yaml_dict.keys():
         if argument not in valid_args:
@@ -283,6 +286,28 @@ def check_yaml_args(yaml_dict):
     if len(bad_arguments) > 0:
         err_msg = "Unrecognized argument(s) : {}".format(bad_arguments)
         raise ValueError(err_msg)
+
+
+def container_path(yaml_dict):
+    """
+    Resolve the path to the CellProfiler Singularity container (.sif).
+
+    Delegates to the ``containers`` module which handles the full resolution
+    chain: YAML config → CPTOOLS2_CONTAINER_DIR env var → None.
+
+    See ``cptools2.containers`` for the full resolution logic and validation.
+
+    Parameters
+    ----------
+    yaml_dict : dict
+        Dictionary version of the config yaml file.
+
+    Returns
+    -------
+    str or None
+        Absolute path to the .sif container, or None if not configured.
+    """
+    return resolve_container_path(yaml_dict)
 
 
 def parse_config_file(config_file):
@@ -297,21 +322,27 @@ def parse_config_file(config_file):
     Returns:
     ---------
     namedtuple:
-        config.experiment_args     : dict
-        config.chunk_args          : dict
-        config.remove_plate_args   : dict
-        config.add_plate_args      : dict
-        config.create_command_args : dict
-        config.join_files_patterns : list or None
+        config.experiment_args      : dict
+        config.chunk_args           : dict
+        config.remove_plate_args    : dict
+        config.add_plate_args       : dict
+        config.create_command_args  : dict
+        config.join_files_patterns  : list or None
         config.data_destination_path: str or None
+        config.container_path       : str or None
     """
     yaml_dict = open_yaml(config_file)
     # check the arguments in the yaml file are recognised
     check_yaml_args(yaml_dict)
+
+    # Resolve container path via the containers module
+    resolved_container = validate_container_path(container_path(yaml_dict))
+
     # create namedtuple to store the configuration dictionaries
     names = ["experiment_args", "chunk_args", "add_plate_args",
              "remove_plate_args", "create_command_args",
-             "join_files_patterns", "data_destination_path"]
+             "join_files_patterns", "data_destination_path",
+             "container_path"]
     config = namedtuple("config", names)
     return config(experiment_args=experiment(yaml_dict),
                   chunk_args=chunk(yaml_dict),
@@ -319,7 +350,8 @@ def parse_config_file(config_file):
                   add_plate_args=add_plate(yaml_dict),
                   create_command_args=create_commands(yaml_dict),
                   join_files_patterns=join_files(yaml_dict),
-                  data_destination_path=data_destination(yaml_dict))
+                  data_destination_path=data_destination(yaml_dict),
+                  container_path=resolved_container)
 
 
 def join_files(yaml_dict):

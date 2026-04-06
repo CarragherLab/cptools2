@@ -11,6 +11,7 @@ from . import utils  # noqa: F401
 from . import job  # noqa: F401
 from . import colours  # noqa: F401
 from . import file_tools  # noqa: F401
+from . import containers  # noqa: F401
 
 try:
     from importlib import metadata as _metadata  # Python 3.8+
@@ -26,6 +27,7 @@ __all__ = [
     "job",
     "colours",
     "file_tools",
+    "containers",
 ]
 
 __version__ = _metadata.version("cptools2")

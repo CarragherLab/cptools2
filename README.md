@@ -18,6 +18,7 @@ A lightweight command-line package to generate and manage CellProfiler analysis 
 - [Quick usage](#quick-usage)
 - [Metadata enrichment](#metadata-enrichment)
 - [YAML configuration](#yaml-configuration)
+- [Container configuration](#container-configuration)
 - [Behavior notes](#behavior-notes)
 - [Developer quickstart & testing](#developer-quickstart--testing)
 - [HPC validation checklist](#hpc-validation-checklist)
@@ -135,16 +136,63 @@ Common fields:
 - `commands location`: directory to write command files
 - `join_files`: list of CSV filenames to join after analysis
 - `data_destination`: optional path for post-join transfer
+- `container_path`: optional path to Singularity `.sif` container (see [Container configuration](#container-configuration))
 
 Advanced sections:
 - `batching` — overrides for automatic batching (if supported)
 - `transfer` — transfer provider configuration (S3 or other); cptools2 will write transfer metadata/commands but actual transfer depends on runner hooks
+
+## Container configuration
+
+cptools2 supports running CellProfiler inside a Singularity container rather than a conda environment. This is the recommended approach for HPC deployments — containers are reproducible, portable, and avoid the dependency issues common with conda on shared filesystems.
+
+cptools2 itself is **not** containerised (it is an orchestration tool that runs on the login node or locally). Only the CellProfiler compute workloads run inside containers on the cluster's compute nodes.
+
+### Setting the container path
+
+The container path is resolved using a precedence chain — no site-specific paths are hardcoded in the repository:
+
+1. **YAML config** (per-experiment override): add `container_path` to your experiment config:
+   ```yaml
+   container_path: /path/to/your/containers/cellprofiler_4.2.8.sif
+   ```
+
+2. **Environment variable** (site-wide default): set `CPTOOLS2_CONTAINER_DIR` to the directory containing your `.sif` files:
+   ```bash
+   export CPTOOLS2_CONTAINER_DIR=/path/to/your/containers
+   ```
+   cptools2 will look for `cellprofiler_4.2.8.sif` within that directory. To use a different image name, also set `CPTOOLS2_CP_CONTAINER`:
+   ```bash
+   export CPTOOLS2_CP_CONTAINER=cellprofiler_4.3.0.sif
+   ```
+
+3. **Neither set**: cptools2 falls back to legacy conda-based execution (no `singularity exec` wrapping).
+
+### First-time setup
+
+Copy `.env.example` to `.env` and fill in your site-specific container directory. The `.env` file is gitignored and will not be committed:
+
+```bash
+cp .env.example .env
+# Edit .env with your container directory path
+```
+
+Alternatively, add the environment variable to your shell profile (`~/.bashrc` on Linux):
+
+```bash
+echo 'export CPTOOLS2_CONTAINER_DIR=/path/to/your/containers' >> ~/.bashrc
+```
+
+### Building containers
+
+See the project's development documentation for instructions on building CellProfiler Docker images locally, converting them to Singularity `.sif` format, and deploying them to your HPC cluster.
 
 ## Behavior notes
 
 - `generate` will discover plates under the `experiment`, create image lists, split jobs according to `chunk`, apply batching overrides (if present), and write command files into `commands location`.
 - `join` concatenates/join CSV outputs after the analysis; provide filename patterns to target.
 - Transfer entries in the config are optional. `generate` records transfer commands/metadata; running transfers typically requires cluster-side hooks or CI steps that read the produced metadata.
+- When a container path is configured, generated job scripts use `singularity exec` to invoke CellProfiler. When not configured, scripts use the legacy conda activation approach.
 
 ## Developer quickstart & testing
 
@@ -169,6 +217,7 @@ These steps mirror the checks typically performed on the Eddie HPC cluster:
 3. **CellProfiler dry run** – execute one batch via the HPC queue to confirm staging, CellProfiler invocation, and cleanup complete without exceeding scratch limits.
 4. **Packaging install test** – from a clean node, run `pip install git+https://github.com/CarragherLab/cptools2@v1.0.0` (or sync via `uv`) to ensure dependencies resolve correctly.
 5. **Post-analysis join** – validate `cptools2 join` against batch outputs for consistency with historical runs.
+6. **Container validation** – confirm `singularity exec <container> cellprofiler --version` returns the expected version on a compute node.
 
 Document outcomes for each release to maintain an audit trail.
 
@@ -180,5 +229,3 @@ Document outcomes for each release to maintain an audit trail.
 ## License
 
 This project is distributed under the MIT License. See `LICENSE`.
-
-

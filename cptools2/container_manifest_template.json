@@ -1,0 +1,14 @@
+{
+    "_comment": "cptools2 container manifest — lives alongside .sif files in the container directory",
+    "_updated": "2026-03-26",
+    "_updated_by": "install_cptools2_v4.sh",
+    "containers": {
+        "cellprofiler": {
+            "image": "cellprofiler_4.2.8.sif",
+            "version": "4.2.8",
+            "source": "docker://cellprofiler/cellprofiler:4.2.8",
+            "gpu": false,
+            "verified": false
+        }
+    }
+}
