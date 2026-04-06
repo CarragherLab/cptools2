@@ -8,11 +8,10 @@ then these functions parse that dictionary into separate dictionaries
 which can be used in other functions in cptools2 using **kwargs.
 """
 
+import json
 import os
-from collections import namedtuple
-import yaml
 
-from cptools2.containers import resolve_container_path, validate_container_path
+import yaml
 
 
 def open_yaml(path_to_yaml):
@@ -94,58 +93,24 @@ def add_plate(yaml_dict):
 
     Returns:
     --------
-    list of dictionaries, each suitable for Job.add_plate kwargs
+    dictionary
     """
     if "add plate" in yaml_dict:
-        add_plate_entries = yaml_dict["add plate"]
-        plate_list = []
-
-        # Normalize to list
-        if not isinstance(add_plate_entries, list):
-            add_plate_entries = [add_plate_entries]
-
-        # Support entries where 'experiment' and 'plates' may be split across consecutive list items
-        i = 0
-        while i < len(add_plate_entries):
-            entry = add_plate_entries[i]
-            if not isinstance(entry, dict):
-                i += 1
-                continue
-
-            exp_dir = None
-            plates = None
-
-            if "experiment" in entry:
-                exp_dir = str(entry["experiment"])
-
-            if "plates" in entry:
-                plate_args = entry["plates"]
-                if isinstance(plate_args, str):
-                    plates = [plate_args]
-                elif isinstance(plate_args, list):
-                    plates = plate_args
-
-            # If plates missing but next entry contains plates, combine them
-            if plates is None and (i + 1) < len(add_plate_entries):
-                next_entry = add_plate_entries[i + 1]
-                if isinstance(next_entry, dict) and "plates" in next_entry:
-                    plate_args = next_entry["plates"]
+        add_plate_dicts = yaml_dict["add plate"]
+        # returns a list of dictionaries
+        if isinstance(add_plate_dicts, list):
+            for d in add_plate_dicts:
+                if "experiment" in d.keys():
+                    # is the experiment labels
+                    experiment = str(d["experiment"])
+                if "plates" in d.keys():
+                    # is the plates, either a string or a list
+                    plate_args = d["plates"]
                     if isinstance(plate_args, str):
-                        plates = [plate_args]
-                    elif isinstance(plate_args, list):
-                        plates = plate_args
-                    i += 1  # skip the next entry as we've consumed it
-
-            if exp_dir is not None and plates is not None:
-                plate_list.append({"exp_dir": exp_dir, "plates": plates})
-
-            i += 1
-
-        if not plate_list:
-            return None
-        if len(plate_list) == 1:
-            return plate_list[0]
-        return plate_list
+                        plates = [d["plates"]]
+                    if isinstance(plate_args, list):
+                        plates = d["plates"]
+            return {"exp_dir" : experiment, "plates" : plates}
     else:
         return None
 
@@ -174,16 +139,12 @@ def remove_plate(yaml_dict):
 
 
 def is_new_ix(yaml_dict):
-    """
-    Legacy helper retained for backwards compatibility only.
-
-    The `new_ix` argument has been removed. ImageXpress layout is auto-detected
-    per-plate in `cptools2.filelist.detect_plate_layout()` and stored in
-    `Job.plate_is_new_ix`.
-
-    This function always returns False, and `new_ix` is no longer a valid YAML key.
-    """
-    return False
+    """docstring"""
+    if "new_ix" in yaml_dict:
+        new_ix = yaml_dict["new_ix"]
+    else:
+        new_ix = False
+    return new_ix
 
 
 def create_commands(yaml_dict):
@@ -201,52 +162,29 @@ def create_commands(yaml_dict):
     --------
     dictionary
     """
-    # Check for required keys first
-    required_keys = ["pipeline", "location", "commands location"]
-    missing_keys = [key for key in required_keys if key not in yaml_dict]
-    if missing_keys:
-        raise ValueError(f"Missing required configuration key(s): {', '.join(missing_keys)}")
-
-    # Process pipeline argument
-    pipeline_arg = yaml_dict["pipeline"]
-    if isinstance(pipeline_arg, list):
-        pipeline_arg = pipeline_arg[0]
-    
-    # Expand environment variables like $USER
-    pipeline_arg = os.path.expandvars(pipeline_arg)
-    
-    pipeline_arg = os.path.abspath(pipeline_arg)
-    if not os.path.isfile(pipeline_arg):
-        raise IOError(f"'{pipeline_arg}' pipeline not found")
-
-    # Process location argument
-    location_arg = yaml_dict["location"]
-    if isinstance(location_arg, list):
-        location_arg = location_arg[0]
-    # Expand environment variables like $USER
-    location_arg = os.path.expandvars(location_arg)
-
-    # Process commands location argument
-    commands_loc_arg = yaml_dict["commands location"]
-    if isinstance(commands_loc_arg, list):
-        commands_loc_arg = commands_loc_arg[0]
-    # Expand environment variables like $USER
-    commands_loc_arg = os.path.expandvars(commands_loc_arg)
-
-    # Process optional chunk argument (for LoadData size check)
-    chunk_arg = None
+    if "pipeline" in yaml_dict:
+        pipeline_arg = yaml_dict["pipeline"]
+        if isinstance(pipeline_arg, list):
+            pipeline_arg = pipeline_arg[0]
+        pipeline_arg = os.path.abspath(pipeline_arg)
+        if not os.path.isfile(pipeline_arg):
+            raise IOError("'{}' pipeline not found".format(pipeline_arg))
+    if "location" in yaml_dict:
+        location_arg = yaml_dict["location"]
+        if isinstance(location_arg, list):
+            location_arg = location_arg[0]
+    # TODO more options rather than exactly "commands location"
+    if "commands location" in yaml_dict:
+        commands_loc_arg = yaml_dict["commands location"]
+        if isinstance(commands_loc_arg, list):
+            commands_loc_arg = commands_loc_arg[0]
+    # need the chunk size to check LoadData dataframes are the correct size
     if "chunk" in yaml_dict:
-        chunk_val = yaml_dict["chunk"]
-        if isinstance(chunk_val, list):
-            chunk_arg = int(chunk_val[0])
-        elif isinstance(chunk_val, (int, str)): # Allow int or string that can be cast
-             try:
-                 chunk_arg = int(chunk_val)
-             except ValueError:
-                 raise ValueError(f"Invalid value for 'chunk': {chunk_val}. Must be an integer.")
-        else:
-             raise ValueError(f"Invalid type for 'chunk': {type(chunk_val)}. Must be an integer or list containing an integer.")
-
+        chunk_arg = yaml_dict["chunk"]
+        if isinstance(chunk_arg, list):
+            chunk_arg = int(chunk_arg[0])
+    else:
+        chunk_arg = None
     return {"pipeline"          : pipeline_arg,
             "location"          : location_arg,
             "commands_location" : commands_loc_arg,
@@ -256,15 +194,15 @@ def create_commands(yaml_dict):
 def check_yaml_args(yaml_dict):
     """
     check the validity of the yaml arguments
-    
+
     raises a ValueError if any of the arguments in the yaml setup file are
     not recognised
-    
+
     Parameters:
     -----------
     yaml_dict: dict
         dictionary version of the config yaml file
-        
+
     Returns:
     --------
     nothing if successful, otherwise raises a ValueError
@@ -276,9 +214,12 @@ def check_yaml_args(yaml_dict):
                   "commands location",
                   "remove plate",
                   "add plate",
-                  "join_files",
-                  "data_destination",
-                  "container_path"]
+                  "new_ix",
+                  "channels",
+                  "stages",
+                  "segmentation",
+                  "feature_extraction",
+                  "containers"]
     bad_arguments = []
     for argument in yaml_dict.keys():
         if argument not in valid_args:
@@ -288,120 +229,137 @@ def check_yaml_args(yaml_dict):
         raise ValueError(err_msg)
 
 
-def container_path(yaml_dict):
-    """
-    Resolve the path to the CellProfiler Singularity container (.sif).
-
-    Delegates to the ``containers`` module which handles the full resolution
-    chain: YAML config → CPTOOLS2_CONTAINER_DIR env var → None.
-
-    See ``cptools2.containers`` for the full resolution logic and validation.
-
-    Parameters
-    ----------
-    yaml_dict : dict
-        Dictionary version of the config yaml file.
-
-    Returns
-    -------
-    str or None
-        Absolute path to the .sif container, or None if not configured.
-    """
-    return resolve_container_path(yaml_dict)
-
-
 def parse_config_file(config_file):
     """
-    parse config file, store dictionaries in a named tuple
-    
+    parse config file, return a plain dict
+
     Parameters:
     ------------
     config_file: string
         path to configuration/yaml file which lists the experiment, pipeline etc.
-        
+
     Returns:
     ---------
-    namedtuple:
-        config.experiment_args      : dict
-        config.chunk_args           : dict
-        config.remove_plate_args    : dict
-        config.add_plate_args       : dict
-        config.create_command_args  : dict
-        config.join_files_patterns  : list or None
-        config.data_destination_path: str or None
-        config.container_path       : str or None
+    dict with keys:
+        experiment_args     : dict or None
+        chunk_args          : dict or None
+        remove_plate_args   : dict or None
+        add_plate_args      : dict or None
+        create_command_args : dict
+        is_new_ix           : bool
+        channels            : list or None
+        stages              : list or None
+        segmentation        : dict or None
+        feature_extraction  : dict or None
+        containers          : dict or None
     """
     yaml_dict = open_yaml(config_file)
     # check the arguments in the yaml file are recognised
     check_yaml_args(yaml_dict)
-
-    # Resolve container path via the containers module
-    resolved_container = validate_container_path(container_path(yaml_dict))
-
-    # create namedtuple to store the configuration dictionaries
-    names = ["experiment_args", "chunk_args", "add_plate_args",
-             "remove_plate_args", "create_command_args",
-             "join_files_patterns", "data_destination_path",
-             "container_path"]
-    config = namedtuple("config", names)
-    return config(experiment_args=experiment(yaml_dict),
-                  chunk_args=chunk(yaml_dict),
-                  remove_plate_args=remove_plate(yaml_dict),
-                  add_plate_args=add_plate(yaml_dict),
-                  create_command_args=create_commands(yaml_dict),
-                  join_files_patterns=join_files(yaml_dict),
-                  data_destination_path=data_destination(yaml_dict),
-                  container_path=resolved_container)
+    config = {
+        "experiment_args": experiment(yaml_dict),
+        "chunk_args": chunk(yaml_dict),
+        "remove_plate_args": remove_plate(yaml_dict),
+        "add_plate_args": add_plate(yaml_dict),
+        "create_command_args": create_commands(yaml_dict),
+        "is_new_ix": is_new_ix(yaml_dict),
+        "channels": yaml_dict.get("channels"),
+        "stages": yaml_dict.get("stages"),
+        "segmentation": yaml_dict.get("segmentation"),
+        "feature_extraction": yaml_dict.get("feature_extraction"),
+        "containers": yaml_dict.get("containers"),
+    }
+    return config
 
 
-def join_files(yaml_dict):
+# Stage alias expansion table
+STAGE_ALIASES = {
+    "illum": ["illum_calculate", "illum_apply"],
+    "segment": ["segmentation"],
+    "extract": ["feature_extraction"],
+}
+
+
+def expand_stage_aliases(stages):
     """
-    Get specifications for joining files after analysis
-    
-    Parameters:
-    -----------
-    yaml_dict: dict
-        Dictionary version of the config yaml file
-        
-    Returns:
-    --------
-    List of file patterns to join, or None if not specified
-    """
-    if "join_files" in yaml_dict:
-        join_files_arg = yaml_dict["join_files"]
-        # Convert to list if it's a single string
-        if isinstance(join_files_arg, str):
-            return [join_files_arg]
-        # It's already a list
-        elif isinstance(join_files_arg, list):
-            return join_files_arg
-    # Not specified
-    return None
-
-
-def data_destination(yaml_dict):
-    """
-    Get the destination path for transferring joined data.
-
-    This is optional, so if not there then return None.
+    Expand stage aliases to their full names.
 
     Parameters:
     -----------
-    yaml_dict: dict
-        Dictionary version of the config yaml file
+    stages: list of str
+        stage names, possibly including aliases
 
     Returns:
     --------
-    str or None
-        The data destination path, or None if not specified.
+    list of str with aliases expanded
     """
-    if "data_destination" in yaml_dict:
-        dest_arg = yaml_dict["data_destination"]
-        if isinstance(dest_arg, list):
-            # Take the first element if it's a list
-            return os.path.expandvars(str(dest_arg[0]))
-        elif isinstance(dest_arg, str):
-            return os.path.expandvars(dest_arg)
+    if stages is None:
+        return None
+    expanded = []
+    for stage in stages:
+        if stage in STAGE_ALIASES:
+            expanded.extend(STAGE_ALIASES[stage])
         else:
-            raise ValueError(f"Invalid type for 'data_destination': {type(dest_arg)}. Must be a string or list of strings.")
-    return None
+            expanded.append(stage)
+    return expanded
+
+
+def generate_params_json(config_dict, output_path):
+    """
+    Write a Nextflow params.json file from a parsed config dict.
+
+    Parameters:
+    -----------
+    config_dict: dict
+        parsed config dict from parse_config_file()
+    output_path: str
+        path to write the JSON file
+
+    Returns:
+    --------
+    str: the output_path written to
+    """
+    params = {}
+
+    # experiment / location
+    exp_args = config_dict.get("experiment_args")
+    if exp_args is not None:
+        params["experiment_dir"] = exp_args["exp_dir"]
+
+    cmd_args = config_dict.get("create_command_args")
+    if cmd_args is not None:
+        if "location" in cmd_args:
+            params["location"] = cmd_args["location"]
+        if "pipeline" in cmd_args:
+            params["pipeline"] = cmd_args["pipeline"]
+
+    # chunk
+    chunk_args = config_dict.get("chunk_args")
+    if chunk_args is not None:
+        params["chunk_size"] = chunk_args["job_size"]
+
+    # stages with alias expansion
+    stages = config_dict.get("stages")
+    if stages is not None:
+        params["stages"] = expand_stage_aliases(stages)
+
+    # channels
+    if config_dict.get("channels") is not None:
+        params["channels"] = config_dict["channels"]
+
+    # segmentation
+    if config_dict.get("segmentation") is not None:
+        params["segmentation"] = config_dict["segmentation"]
+
+    # feature_extraction
+    if config_dict.get("feature_extraction") is not None:
+        params["feature_extraction"] = config_dict["feature_extraction"]
+
+    # containers
+    if config_dict.get("containers") is not None:
+        params["containers"] = config_dict["containers"]
+
+    with open(output_path, "w") as f:
+        json.dump(params, f, indent=2)
+
+    return output_path
