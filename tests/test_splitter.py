@@ -1,5 +1,5 @@
 import os
-import pandas as pd
+import polars as pl
 from cptools2 import splitter
 from cptools2 import filelist
 
@@ -13,15 +13,15 @@ IMG_LIST = filelist.files_from_plate(TEST_PATH_PLATE_1)
 def test_well_site_table():
     """job_splitter._well_site_table(img_list)"""
     output = splitter._well_site_table(IMG_LIST)
-    assert isinstance(output, pd.DataFrame)
+    assert isinstance(output, pl.DataFrame)
     # check the dataframe is the right size
     # should have a row per image in image list and 3 columns
     assert output.shape == (len(IMG_LIST), 3)
-    # need to short as for some unknown reason the order is being mixed up
+    # need to sort as for some unknown reason the order is being mixed up
     # though doesn't matter as always use column names rather than index
-    assert sorted(output.columns.tolist()) == sorted(["img_paths",
-                                                      "Metadata_well",
-                                                      "Metadata_site"])
+    assert sorted(output.columns) == sorted(["img_paths",
+                                              "Metadata_well",
+                                              "Metadata_site"])
 
 
 def test_group_images():
@@ -69,3 +69,19 @@ def test_split():
     assert len(output[0]) == job_size
     for job in output[:-1]:
         assert len(job) == job_size
+
+
+def test_split_by_plate():
+    """cptools2.splitter.split_by_plate(plate_store)"""
+    plate_store = {
+        "plate1": ["/path/plate1", ["img1.tif", "img2.tif", "img3.tif"]],
+        "plate2": ["/path/plate2", ["img4.tif", "img5.tif"]],
+    }
+    result = splitter.split_by_plate(plate_store)
+    assert "plate1" in result
+    assert "plate2" in result
+    # Each plate should have a single partition
+    assert len(result["plate1"]) == 1
+    assert len(result["plate2"]) == 1
+    assert result["plate1"][0] == ["img1.tif", "img2.tif", "img3.tif"]
+    assert result["plate2"][0] == ["img4.tif", "img5.tif"]

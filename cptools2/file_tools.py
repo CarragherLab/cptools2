@@ -34,7 +34,7 @@ If no joining is required, simply omit the join_files parameter.
 import glob
 import os
 
-import pandas as pd
+import polars as pl
 
 from cptools2.colours import pretty_print, purple, red, yellow
 
@@ -72,14 +72,17 @@ def merge_loaddata_metadata(chunk_output_csv, loaddata_csv, output_path=None):
     }
     try:
         # Load data
-        out_df = pd.read_csv(chunk_output_csv, low_memory=False)
-        load_df = pd.read_csv(loaddata_csv, low_memory=False)
+        out_df = pl.read_csv(chunk_output_csv, infer_schema_length=10000)
+        load_df = pl.read_csv(loaddata_csv, infer_schema_length=10000)
 
-        result["rows_before"] = len(out_df)
+        result["rows_before"] = out_df.height
 
         # Create 1-based ImageNumber index on LoadData
         # (This matches CellProfiler's internal assignment for chunks)
-        load_df["ImageNumber"] = range(1, len(load_df) + 1)
+        if "ImageNumber" not in load_df.columns:
+            load_df = load_df.with_columns(
+                pl.arange(1, load_df.height + 1, eager=True).alias("ImageNumber")
+            )
 
         # Identify missing columns to add (exclude existing ones)
         new_cols = [c for c in load_df.columns if c not in out_df.columns]
@@ -87,22 +90,29 @@ def merge_loaddata_metadata(chunk_output_csv, loaddata_csv, output_path=None):
 
         if not new_cols:
             result["success"] = True
-            result["rows_after"] = len(out_df)
+            result["rows_after"] = out_df.height
             return result
 
+        # Cast ImageNumber to same type in both DataFrames for join
+        out_img_dtype = out_df["ImageNumber"].dtype
+        load_df = load_df.cast({"ImageNumber": out_img_dtype})
+
         # Join on ImageNumber
-        enriched_df = out_df.merge(
-            load_df[["ImageNumber"] + new_cols], on="ImageNumber", how="left"
+        enriched_df = out_df.join(
+            load_df.select(["ImageNumber"] + new_cols),
+            on="ImageNumber",
+            how="left",
         )
 
         # Count nulls for reporting
-        result["null_metadata_count"] = enriched_df[new_cols].isna().sum().sum()
+        null_counts = enriched_df.select(new_cols).null_count().row(0)
+        result["null_metadata_count"] = sum(null_counts)
 
         # Save
         target = output_path or chunk_output_csv
-        enriched_df.to_csv(target, index=False, encoding="utf-8-sig")
+        enriched_df.write_csv(target)
 
-        result["rows_after"] = len(enriched_df)
+        result["rows_after"] = enriched_df.height
         result["success"] = True
         return result
 
@@ -239,9 +249,8 @@ def _concatenate_and_save_files(
 ):
     """Concatenate and save matched CSV files for a plate and pattern."""
     try:
-        combined_csv = pd.concat(
-            [pd.read_csv(f, low_memory=False) for f in matched_files]
-        )
+        dfs = [pl.read_csv(f, infer_schema_length=10000) for f in matched_files]
+        combined_csv = pl.concat(dfs)
 
         # Determine output directory
         parent_dir = os.path.dirname(raw_data_location)
@@ -254,21 +263,21 @@ def _concatenate_and_save_files(
         os.makedirs(output_dir, exist_ok=True)
         output_file = os.path.join(output_dir, f"{plate_name}_{pattern}")
 
-        combined_csv.to_csv(output_file, index=False, encoding="utf-8-sig")
+        combined_csv.write_csv(output_file)
 
         # Store output info
         if plate_name not in results:
             results[plate_name] = {}
         results[plate_name][pattern] = {
             "output_file": output_file,
-            "rows": len(combined_csv),
+            "rows": combined_csv.height,
             "files_combined": len(matched_files),
             "metadata_enriched": enrich_metadata,
         }
 
         pretty_print(
             f"\tCreated {yellow(output_file)} with "
-            f"{purple(len(combined_csv))} rows from "
+            f"{purple(combined_csv.height)} rows from "
             f"{purple(len(matched_files))} files"
         )
     except Exception as e:
