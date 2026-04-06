@@ -1,0 +1,39 @@
+{
+  "dataset": {
+    "metadata": {
+      "label_field": "Metadata_Compound",
+      "control_value": "DMSO"
+    },
+    "images": {
+      "channels": ["DNA", "RNA", "ER", "AGP", "Mito"],
+      "file_format": "png",
+      "bits": 16,
+      "width": 1080,
+      "height": 1080
+    },
+    "locations": {
+      "mode": "single_cells",
+      "area_coverage": 0.25,
+      "box_size": 128,
+      "mask_objects": false
+    }
+  },
+  "model": {
+    "name": "efficientnet",
+    "augmentation": false,
+    "profile": {
+      "feature_layer": "block6a_activation",
+      "checkpoint": "combinedset_cellsout_e30.hdf5",
+      "batch_size": 128
+    }
+  },
+  "prepare": {
+    "illumination_correction": {
+      "down_scale_factor": 8,
+      "median_filter_size": 48
+    },
+    "compression": {
+      "implement": false
+    }
+  }
+}
