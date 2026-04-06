@@ -1,5 +1,0 @@
-rm -rf some_tile
-rm -rf some_tile
-rm -rf some_tile
-rm -rf some_tile
-rm -rf some_tile

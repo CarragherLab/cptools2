@@ -47,7 +47,8 @@
       "Bash(~/.claude/skills/gstack/bin/gstack-learnings-log '{\"skill\":\"plan-eng-review\",\"type\":\"architecture\",\"key\":\"nextflow-sge-native-hrss\",\"insight\":\"Nextflow SGE executor natively emits h_rss in job scripts. No clusterOptions override needed for memory - only use clusterOptions for GPU-specific directives like -l gpus=1. Discovered during Eddie validation.\",\"confidence\":10,\"source\":\"observed\",\"files\":[\"nextflow/conf/eddie.config\"]}')",
       "Bash(ls:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m ':*)"
+      "Bash(git commit -m ':*)",
+      "Bash(git rm:*)"
     ]
   }
 }
