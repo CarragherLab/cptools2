@@ -1,7 +1,6 @@
 import os
 from cptools2 import utils
-import pandas as pd
-import numpy as np
+import polars as pl
 
 CURRENT_PATH = os.path.dirname(__file__)
 TEST_PATH = os.path.join(CURRENT_PATH, "example_dir")
@@ -18,20 +17,57 @@ def test_flatten():
     assert out2 == [1, 2, 3, 4, 5, 6, 7, 8]
 
 
-def test_prefix_filepaths_simulated():
-    """utils.prefix_filepaths(dataframe, location)"""
-    # create a simulated dataframe
-    test_df = pd.DataFrame({
-        "x" : [1, 2, 3],
-        "PathName_W1" : ["one", "two", "three"],
-        "PathName_W2" : ["a", "b", "c"]})
+def test_any_nan_values():
+    """utils.any_nan_values(dataframe) with polars"""
+    from cptools2.loaddata import _CompatDataFrame
+
+    # DataFrame with null values
+    test_df = _CompatDataFrame(pl.DataFrame({
+        "x": [1, 2, 3],
+        "y": [1, 2, None],
+        "z": [3, 2, 1]
+    }))
+    # DataFrame without null values
+    test_df_2 = _CompatDataFrame(pl.DataFrame({
+        "x": [1, 2, 3],
+        "y": [1, 2, 3],
+        "z": [3, 2, 1]
+    }))
+    assert utils.any_nan_values(test_df) == True
+    assert utils.any_nan_values(test_df_2) == False
+
+
+def test_any_nan_values_raw_polars():
+    """utils.any_nan_values works with raw polars DataFrames too"""
+    df_with_null = pl.DataFrame({
+        "a": [1, None, 3],
+        "b": [4, 5, 6],
+    })
+    df_no_null = pl.DataFrame({
+        "a": [1, 2, 3],
+        "b": [4, 5, 6],
+    })
+    assert utils.any_nan_values(df_with_null) == True
+    assert utils.any_nan_values(df_no_null) == False
+
+
+def test_prefix_filepaths_polars():
+    """utils.prefix_filepaths with polars DataFrames via _CompatDataFrame"""
+    from cptools2.loaddata import _CompatDataFrame
+
+    test_df = _CompatDataFrame(pl.DataFrame({
+        "x": [1, 2, 3],
+        "PathName_W1": ["one", "two", "three"],
+        "PathName_W2": ["a", "b", "c"]
+    }))
     location = "/test/location"
     name = "test_name"
     output_df = utils.prefix_filepaths(test_df, name, location)
-    assert test_df.shape == output_df.shape
-    # Normalize paths so tests pass on Windows and Unix
-    out_w1 = [p.replace('\\', '/') for p in output_df["PathName_W1"].tolist()]
-    out_w2 = [p.replace('\\', '/') for p in output_df["PathName_W2"].tolist()]
+    assert output_df.shape == test_df.shape
+    # Check values
+    df = output_df._df
+    out_w1 = df["PathName_W1"].to_list()
+    out_w2 = df["PathName_W2"].to_list()
 
     assert out_w1 == ["/test/location/img_data/test_name/one",
                       "/test/location/img_data/test_name/two",
@@ -39,23 +75,6 @@ def test_prefix_filepaths_simulated():
     assert out_w2 == ["/test/location/img_data/test_name/a",
                       "/test/location/img_data/test_name/b",
                       "/test/location/img_data/test_name/c"]
-
-
-def test_any_nan_values():
-    """utils.any_nan_values(dataframe)"""
-    # create test DataFrame
-    test_df = pd.DataFrame({
-        "x" : [1, 2, 3],
-        "y" : [1, 2, np.nan],
-        "z" : [3, 2, 1]
-    })
-    test_df_2 = pd.DataFrame({
-        "x" : [1, 2, 3],
-        "y" : [1, 2, 3],
-        "z" : [3, 2, 1]
-    })
-    assert utils.any_nan_values(test_df) == True
-    assert utils.any_nan_values(test_df_2) == False
 
 
 def test_count_lines_in_file():

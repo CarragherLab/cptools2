@@ -285,6 +285,34 @@ def validate_container_setup(yaml_dict=None, role="cellprofiler", require_contai
     return container_path
 
 
+def is_gpu_container(container_dir, role):
+    """
+    Check whether a container for a given role requires GPU resources.
+
+    Reads the ``gpu`` field from the manifest entry for the specified role.
+    If no manifest exists or the role is not listed, returns False (assume CPU).
+
+    Parameters
+    ----------
+    container_dir : str
+        Path to the container directory.
+    role : str
+        Container role to check (e.g., "cellprofiler", "deepprofiler").
+
+    Returns
+    -------
+    bool
+        True if the manifest indicates GPU is required, False otherwise.
+    """
+    manifest = read_manifest(container_dir)
+    if manifest is None:
+        return False
+    containers = manifest.get("containers", {})
+    if role not in containers:
+        return False
+    return containers[role].get("gpu", False)
+
+
 def list_available_containers(yaml_dict=None):
     """
     List all containers available in the configured container directory.

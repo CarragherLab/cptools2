@@ -1,6 +1,8 @@
 import os
 import collections
 
+import polars as pl
+
 
 def make_dir(directory):
     """
@@ -56,7 +58,7 @@ def prefix_filepaths(dataframe, name, location):
 
     Parameters:
     -----------
-    dataframe: pandas.DataFrame
+    dataframe: _CompatDataFrame or polars DataFrame
         a loaddata dataframe
     name: string
         name of individual job (e.g., "14202-D-30_0")
@@ -65,16 +67,33 @@ def prefix_filepaths(dataframe, name, location):
 
     Returns:
     --------
-    pandas.DataFrame with altered `PathName_` columns
+    dataframe with altered `PathName_` columns
     """
-    path_cols = [col for col in dataframe.columns if col.startswith("PathName")]
-    # Updated from deprecated .applymap() to pandas 2.0+ compatible approach
-    for col in path_cols:
-        # Create POSIX-style cluster paths while using os.path.join for local correctness
-        dataframe[col] = dataframe[col].map(
-            lambda x: os.path.join(location, "img_data", name, x).replace('\\', '/')
-        )
-    return dataframe
+    # Support both _CompatDataFrame wrapper and raw polars DataFrames
+    from cptools2.loaddata import _CompatDataFrame
+
+    is_compat = isinstance(dataframe, _CompatDataFrame)
+    df = dataframe._df if is_compat else dataframe
+
+    if isinstance(df, pl.DataFrame):
+        path_cols = [col for col in df.columns if col.startswith("PathName")]
+        prefix = os.path.join(location, "img_data", name).replace('\\', '/')
+        for col in path_cols:
+            df = df.with_columns(
+                (pl.lit(prefix + "/") + pl.col(col)).alias(col)
+            )
+        if is_compat:
+            dataframe._df = df
+            return dataframe
+        return df
+    else:
+        # Fallback for pandas DataFrames (used by other modules)
+        path_cols = [col for col in dataframe.columns if col.startswith("PathName")]
+        for col in path_cols:
+            dataframe[col] = dataframe[col].map(
+                lambda x: os.path.join(location, "img_data", name, x).replace('\\', '/')
+            )
+        return dataframe
 
 
 def any_nan_values(dataframe):
@@ -83,13 +102,21 @@ def any_nan_values(dataframe):
 
     Parameters:
     -----------
-    dataframe: pandas.DataFrame
+    dataframe: polars DataFrame or _CompatDataFrame
 
     Returns:
     --------
     Boolean
     """
-    return dataframe.isnull().any().any()
+    from cptools2.loaddata import _CompatDataFrame
+
+    df = dataframe._df if isinstance(dataframe, _CompatDataFrame) else dataframe
+
+    if isinstance(df, pl.DataFrame):
+        return df.null_count().row(0) != tuple(0 for _ in df.columns)
+    else:
+        # Fallback for pandas
+        return dataframe.isnull().any().any()
 
 
 def count_lines_in_file(input_file):

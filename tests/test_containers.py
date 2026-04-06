@@ -9,6 +9,7 @@ from cptools2.containers import (
     DEFAULT_CONTAINERS,
     MANIFEST_FILENAME,
     _image_name_for_role,
+    is_gpu_container,
     list_available_containers,
     read_manifest,
     resolve_container_dir,
@@ -267,6 +268,73 @@ class TestValidateContainerSetup:
         assert result.endswith(".sif")
         captured = capsys.readouterr()
         assert "not yet verified" in captured.out.lower()
+
+
+# --- is_gpu_container --------------------------------------------------------
+
+
+class TestIsGpuContainer:
+    def test_gpu_true_in_manifest(self, tmp_path):
+        """Container marked as GPU in manifest should return True."""
+        manifest = {
+            "containers": {
+                "deepprofiler": {
+                    "image": "deepprofiler_1.0.sif",
+                    "version": "1.0",
+                    "gpu": True,
+                }
+            }
+        }
+        with open(tmp_path / MANIFEST_FILENAME, "w") as f:
+            json.dump(manifest, f)
+        assert is_gpu_container(str(tmp_path), "deepprofiler") is True
+
+    def test_gpu_false_in_manifest(self, tmp_path):
+        """Container explicitly marked as not GPU should return False."""
+        manifest = {
+            "containers": {
+                "cellprofiler": {
+                    "image": "cellprofiler_4.2.8.sif",
+                    "version": "4.2.8",
+                    "gpu": False,
+                }
+            }
+        }
+        with open(tmp_path / MANIFEST_FILENAME, "w") as f:
+            json.dump(manifest, f)
+        assert is_gpu_container(str(tmp_path), "cellprofiler") is False
+
+    def test_gpu_not_specified_defaults_false(self, tmp_path):
+        """Container without gpu field should default to False."""
+        manifest = {
+            "containers": {
+                "cellprofiler": {
+                    "image": "cellprofiler_4.2.8.sif",
+                    "version": "4.2.8",
+                }
+            }
+        }
+        with open(tmp_path / MANIFEST_FILENAME, "w") as f:
+            json.dump(manifest, f)
+        assert is_gpu_container(str(tmp_path), "cellprofiler") is False
+
+    def test_no_manifest_returns_false(self, tmp_path):
+        """No manifest file should return False."""
+        assert is_gpu_container(str(tmp_path), "cellprofiler") is False
+
+    def test_role_not_in_manifest_returns_false(self, tmp_path):
+        """Role not listed in manifest should return False."""
+        manifest = {
+            "containers": {
+                "cellprofiler": {
+                    "image": "cellprofiler_4.2.8.sif",
+                    "gpu": True,
+                }
+            }
+        }
+        with open(tmp_path / MANIFEST_FILENAME, "w") as f:
+            json.dump(manifest, f)
+        assert is_gpu_container(str(tmp_path), "deepprofiler") is False
 
 
 # --- list_available_containers -----------------------------------------------
