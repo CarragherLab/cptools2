@@ -1,0 +1,217 @@
+import json
+import os
+import subprocess
+import sys
+
+import pytest
+
+# Import the CLI module directly for unit testing
+from cptools2.__main__ import build_parser, cmd_generate, cmd_pipeline, cmd_prepare
+
+CURRENT_PATH = os.path.dirname(__file__)
+PIPELINE_CONFIG = os.path.join(CURRENT_PATH, "pipeline_config.yaml")
+TEST_CONFIG = os.path.join(CURRENT_PATH, "test_config.yaml")
+
+
+class TestBuildParser:
+    """Test that the argparse parser is built correctly."""
+
+    def test_parser_has_subcommands(self):
+        parser = build_parser()
+        # parser should not raise when given valid subcommands
+        args = parser.parse_args(["pipeline", PIPELINE_CONFIG, "--dry-run"])
+        assert args.command == "pipeline"
+        assert args.dry_run is True
+
+    def test_pipeline_subcommand_defaults(self):
+        parser = build_parser()
+        args = parser.parse_args(["pipeline", PIPELINE_CONFIG])
+        assert args.command == "pipeline"
+        assert args.config == PIPELINE_CONFIG
+        assert args.dry_run is False
+        assert args.resume is False
+        assert args.stages is None
+
+    def test_pipeline_with_stages(self):
+        parser = build_parser()
+        args = parser.parse_args(
+            ["pipeline", PIPELINE_CONFIG, "--stages", "illum", "segment"]
+        )
+        assert args.stages == ["illum", "segment"]
+
+    def test_pipeline_with_resume(self):
+        parser = build_parser()
+        args = parser.parse_args(["pipeline", PIPELINE_CONFIG, "--resume"])
+        assert args.resume is True
+
+    def test_prepare_subcommand(self):
+        parser = build_parser()
+        args = parser.parse_args(["prepare", PIPELINE_CONFIG])
+        assert args.command == "prepare"
+        assert args.config == PIPELINE_CONFIG
+
+    def test_prepare_with_stages(self):
+        parser = build_parser()
+        args = parser.parse_args(
+            ["prepare", PIPELINE_CONFIG, "--stages", "extract"]
+        )
+        assert args.stages == ["extract"]
+
+    def test_join_subcommand(self):
+        parser = build_parser()
+        args = parser.parse_args(
+            ["join", "--location", "/some/path", "--patterns", "Image.csv", "Cells.csv"]
+        )
+        assert args.command == "join"
+        assert args.location == "/some/path"
+        assert args.patterns == ["Image.csv", "Cells.csv"]
+
+    def test_generate_subcommand_exists(self):
+        parser = build_parser()
+        args = parser.parse_args(["generate", "config.yml"])
+        assert args.command == "generate"
+
+    def test_version_flag(self):
+        parser = build_parser()
+        with pytest.raises(SystemExit) as exc_info:
+            parser.parse_args(["--version"])
+        assert exc_info.value.code == 0
+
+
+class TestCmdGenerate:
+    """Test that 'generate' prints deprecation and exits."""
+
+    def test_generate_exits_with_error(self):
+        parser = build_parser()
+        args = parser.parse_args(["generate", "config.yml"])
+        with pytest.raises(SystemExit) as exc_info:
+            cmd_generate(args)
+        assert exc_info.value.code == 1
+
+
+class TestCmdPipelineDryRun:
+    """Test pipeline --dry-run generates params.json."""
+
+    def test_dry_run_creates_params_json(self, tmp_path):
+        """pipeline --dry-run should generate params.json without invoking nextflow."""
+        # Create a minimal config pointing location to tmp_path
+        config_content = (
+            "experiment: /path/to/experiment\n"
+            "chunk: 46\n"
+            "pipeline: tests/example_pipeline.cppipe\n"
+            "location: {}\n"
+            "commands location: /home/user\n"
+            "channels:\n"
+            "  - DAPI\n"
+            "  - GFP\n"
+            "stages:\n"
+            "  - illum\n"
+            "  - segment\n"
+        ).format(str(tmp_path))
+        config_file = tmp_path / "test_config.yaml"
+        config_file.write_text(config_content)
+
+        parser = build_parser()
+        args = parser.parse_args(
+            ["pipeline", str(config_file), "--dry-run"]
+        )
+        cmd_pipeline(args)
+
+        params_path = tmp_path / "params.json"
+        assert params_path.exists()
+        with open(params_path) as f:
+            params = json.load(f)
+        assert isinstance(params, dict)
+        assert params["channels"] == ["DAPI", "GFP"]
+        # illum alias should be expanded
+        assert "illum_calculate" in params["stages"]
+        assert "illum_apply" in params["stages"]
+        assert "segmentation" in params["stages"]
+
+    def test_dry_run_with_stages_override(self, tmp_path):
+        """--stages flag should override stages from config."""
+        config_content = (
+            "experiment: /path/to/experiment\n"
+            "chunk: 46\n"
+            "pipeline: tests/example_pipeline.cppipe\n"
+            "location: {}\n"
+            "commands location: /home/user\n"
+            "stages:\n"
+            "  - illum\n"
+            "  - segment\n"
+            "  - extract\n"
+        ).format(str(tmp_path))
+        config_file = tmp_path / "test_config.yaml"
+        config_file.write_text(config_content)
+
+        parser = build_parser()
+        args = parser.parse_args(
+            ["pipeline", str(config_file), "--dry-run", "--stages", "illum"]
+        )
+        cmd_pipeline(args)
+
+        params_path = tmp_path / "params.json"
+        with open(params_path) as f:
+            params = json.load(f)
+        # Only illum stages should be present (overridden)
+        assert params["stages"] == ["illum_calculate", "illum_apply"]
+
+
+class TestCmdPrepare:
+    """Test the prepare subcommand."""
+
+    def test_prepare_creates_params_json(self, tmp_path):
+        config_content = (
+            "experiment: /path/to/experiment\n"
+            "chunk: 46\n"
+            "pipeline: tests/example_pipeline.cppipe\n"
+            "location: {}\n"
+            "commands location: /home/user\n"
+            "stages:\n"
+            "  - extract\n"
+        ).format(str(tmp_path))
+        config_file = tmp_path / "test_config.yaml"
+        config_file.write_text(config_content)
+
+        parser = build_parser()
+        args = parser.parse_args(["prepare", str(config_file)])
+        cmd_prepare(args)
+
+        params_path = tmp_path / "params.json"
+        assert params_path.exists()
+        with open(params_path) as f:
+            params = json.load(f)
+        assert params["stages"] == ["feature_extraction"]
+
+
+class TestCmdPipelineNoNextflow:
+    """Test pipeline without --dry-run when nextflow is not found."""
+
+    def test_pipeline_exits_when_nextflow_missing(self, tmp_path):
+        """Without nextflow on PATH, pipeline should exit with error."""
+        config_content = (
+            "experiment: /path/to/experiment\n"
+            "chunk: 46\n"
+            "pipeline: tests/example_pipeline.cppipe\n"
+            "location: {}\n"
+            "commands location: /home/user\n"
+        ).format(str(tmp_path))
+        config_file = tmp_path / "test_config.yaml"
+        config_file.write_text(config_content)
+
+        parser = build_parser()
+        args = parser.parse_args(["pipeline", str(config_file)])
+        # nextflow is not on PATH in test environment
+        with pytest.raises(SystemExit) as exc_info:
+            cmd_pipeline(args)
+        assert exc_info.value.code == 1
+
+
+class TestConfigFileValidation:
+    """Test config file validation."""
+
+    def test_missing_config_raises(self):
+        from cptools2.__main__ import _check_config_file
+
+        with pytest.raises(FileNotFoundError):
+            _check_config_file("/nonexistent/path/config.yaml")

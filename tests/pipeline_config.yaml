@@ -1,0 +1,30 @@
+experiment: /path/to/experiment
+chunk: 46
+pipeline: tests/example_pipeline.cppipe
+location: /example/location
+commands location: /home/user
+
+channels:
+  - DAPI
+  - GFP
+  - CY5
+  - CY3
+  - BF
+
+stages:
+  - illum
+  - segment
+  - extract
+
+segmentation:
+  model: cellpose
+  diameter: 60
+  channels: [DAPI, GFP]
+
+feature_extraction:
+  pipeline: cell_painting.cppipe
+  output_format: csv
+
+containers:
+  cellprofiler: /containers/cellprofiler_4.2.6.sif
+  cellpose: /containers/cellpose_3.0.sif

@@ -8,8 +8,9 @@ then these functions parse that dictionary into separate dictionaries
 which can be used in other functions in cptools2 using **kwargs.
 """
 
+import json
 import os
-from collections import namedtuple
+
 import yaml
 
 
@@ -213,7 +214,12 @@ def check_yaml_args(yaml_dict):
                   "commands location",
                   "remove plate",
                   "add plate",
-                  "new_ix"]
+                  "new_ix",
+                  "channels",
+                  "stages",
+                  "segmentation",
+                  "feature_extraction",
+                  "containers"]
     bad_arguments = []
     for argument in yaml_dict.keys():
         if argument not in valid_args:
@@ -225,7 +231,7 @@ def check_yaml_args(yaml_dict):
 
 def parse_config_file(config_file):
     """
-    parse config file, store dictionaries in a named tuple
+    parse config file, return a plain dict
 
     Parameters:
     ------------
@@ -234,24 +240,126 @@ def parse_config_file(config_file):
 
     Returns:
     ---------
-    namedtuple:
-        config.experiment_args     : dict
-        config.chunk_args          : dict
-        config.remove_plate_args   : dict
-        config.add_plate_args      : dict
-        config.create_command_args : dict
-        config.is_new_ix           : bool
+    dict with keys:
+        experiment_args     : dict or None
+        chunk_args          : dict or None
+        remove_plate_args   : dict or None
+        add_plate_args      : dict or None
+        create_command_args : dict
+        is_new_ix           : bool
+        channels            : list or None
+        stages              : list or None
+        segmentation        : dict or None
+        feature_extraction  : dict or None
+        containers          : dict or None
     """
     yaml_dict = open_yaml(config_file)
     # check the arguments in the yaml file are recognised
     check_yaml_args(yaml_dict)
-    # create namedtuple to store the configuration dictionaries
-    names = ["experiment_args", "chunk_args", "add_plate_args",
-             "remove_plate_args", "create_command_args", "is_new_ix"]
-    config = namedtuple("config", names)
-    return config(experiment_args=experiment(yaml_dict),
-                  chunk_args=chunk(yaml_dict),
-                  remove_plate_args=remove_plate(yaml_dict),
-                  add_plate_args=add_plate(yaml_dict),
-                  create_command_args=create_commands(yaml_dict),
-                  is_new_ix=is_new_ix(yaml_dict))
+    config = {
+        "experiment_args": experiment(yaml_dict),
+        "chunk_args": chunk(yaml_dict),
+        "remove_plate_args": remove_plate(yaml_dict),
+        "add_plate_args": add_plate(yaml_dict),
+        "create_command_args": create_commands(yaml_dict),
+        "is_new_ix": is_new_ix(yaml_dict),
+        "channels": yaml_dict.get("channels"),
+        "stages": yaml_dict.get("stages"),
+        "segmentation": yaml_dict.get("segmentation"),
+        "feature_extraction": yaml_dict.get("feature_extraction"),
+        "containers": yaml_dict.get("containers"),
+    }
+    return config
+
+
+# Stage alias expansion table
+STAGE_ALIASES = {
+    "illum": ["illum_calculate", "illum_apply"],
+    "segment": ["segmentation"],
+    "extract": ["feature_extraction"],
+}
+
+
+def expand_stage_aliases(stages):
+    """
+    Expand stage aliases to their full names.
+
+    Parameters:
+    -----------
+    stages: list of str
+        stage names, possibly including aliases
+
+    Returns:
+    --------
+    list of str with aliases expanded
+    """
+    if stages is None:
+        return None
+    expanded = []
+    for stage in stages:
+        if stage in STAGE_ALIASES:
+            expanded.extend(STAGE_ALIASES[stage])
+        else:
+            expanded.append(stage)
+    return expanded
+
+
+def generate_params_json(config_dict, output_path):
+    """
+    Write a Nextflow params.json file from a parsed config dict.
+
+    Parameters:
+    -----------
+    config_dict: dict
+        parsed config dict from parse_config_file()
+    output_path: str
+        path to write the JSON file
+
+    Returns:
+    --------
+    str: the output_path written to
+    """
+    params = {}
+
+    # experiment / location
+    exp_args = config_dict.get("experiment_args")
+    if exp_args is not None:
+        params["experiment_dir"] = exp_args["exp_dir"]
+
+    cmd_args = config_dict.get("create_command_args")
+    if cmd_args is not None:
+        if "location" in cmd_args:
+            params["location"] = cmd_args["location"]
+        if "pipeline" in cmd_args:
+            params["pipeline"] = cmd_args["pipeline"]
+
+    # chunk
+    chunk_args = config_dict.get("chunk_args")
+    if chunk_args is not None:
+        params["chunk_size"] = chunk_args["job_size"]
+
+    # stages with alias expansion
+    stages = config_dict.get("stages")
+    if stages is not None:
+        params["stages"] = expand_stage_aliases(stages)
+
+    # channels
+    if config_dict.get("channels") is not None:
+        params["channels"] = config_dict["channels"]
+
+    # segmentation
+    if config_dict.get("segmentation") is not None:
+        params["segmentation"] = config_dict["segmentation"]
+
+    # feature_extraction
+    if config_dict.get("feature_extraction") is not None:
+        params["feature_extraction"] = config_dict["feature_extraction"]
+
+    # containers
+    if config_dict.get("containers") is not None:
+        params["containers"] = config_dict["containers"]
+
+    with open(output_path, "w") as f:
+        json.dump(params, f, indent=2)
+
+    return output_path
