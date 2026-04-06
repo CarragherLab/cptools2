@@ -79,13 +79,12 @@ def test_create_commands():
 
 
 def test_new_ix():
-    """cptools2.parse_yaml.is_new_ix(yaml_dict)"""
+    """is_new_ix always returns False — layout is auto-detected per plate"""
     yaml_dict_1 = parse_yaml.open_yaml(TEST_PATH)
     yaml_dict_2 = parse_yaml.open_yaml(TEST_PATH2)
+    # is_new_ix is a legacy stub — always returns False
     assert parse_yaml.is_new_ix(yaml_dict_1) is False
-    assert parse_yaml.is_new_ix(yaml_dict_2) is True
-    assert parse_yaml.parse_config_file(TEST_PATH)["is_new_ix"] is False
-    assert parse_yaml.parse_config_file(TEST_PATH2)["is_new_ix"] is True
+    assert parse_yaml.is_new_ix(yaml_dict_2) is False
 
 
 def test_parse_config_file_returns_dict():
