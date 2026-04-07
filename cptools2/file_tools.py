@@ -81,7 +81,7 @@ def merge_loaddata_metadata(chunk_output_csv, loaddata_csv, output_path=None):
         # (This matches CellProfiler's internal assignment for chunks)
         if "ImageNumber" not in load_df.columns:
             load_df = load_df.with_columns(
-                pl.arange(1, load_df.height + 1, eager=True).alias("ImageNumber")
+                pl.int_range(1, load_df.height + 1, eager=True).alias("ImageNumber")
             )
 
         # Identify missing columns to add (exclude existing ones)

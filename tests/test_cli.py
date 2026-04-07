@@ -181,7 +181,7 @@ class TestCmdPrepare:
         assert params_path.exists()
         with open(params_path) as f:
             params = json.load(f)
-        assert params["stages"] == ["feature_extraction"]
+        assert params["stages"] == ["feature_extract"]
 
 
 class TestCmdPipelineNoNextflow:

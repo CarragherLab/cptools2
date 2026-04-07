@@ -108,22 +108,32 @@ def test_parse_config_file_new_keys():
     assert config["containers"] is not None
 
 
-def test_expand_stage_aliases():
-    """expand_stage_aliases expands illum, segment, extract"""
-    assert parse_yaml.expand_stage_aliases(["illum"]) == [
+def test_resolve_stages():
+    """resolve_stages expands illum, segment, extract and validates stage names"""
+    assert parse_yaml.resolve_stages(["illum"]) == [
         "illum_calculate",
         "illum_apply",
     ]
-    assert parse_yaml.expand_stage_aliases(["segment"]) == ["segmentation"]
-    assert parse_yaml.expand_stage_aliases(["extract"]) == ["feature_extraction"]
-    assert parse_yaml.expand_stage_aliases(["illum", "segment"]) == [
+    assert parse_yaml.resolve_stages(["segment"]) == ["segmentation"]
+    assert parse_yaml.resolve_stages(["extract"]) == ["feature_extract"]
+    assert parse_yaml.resolve_stages(["illum", "segment"]) == [
         "illum_calculate",
         "illum_apply",
         "segmentation",
     ]
-    assert parse_yaml.expand_stage_aliases(None) is None
-    # non-alias passes through
-    assert parse_yaml.expand_stage_aliases(["segmentation"]) == ["segmentation"]
+    # None input returns None
+    assert parse_yaml.resolve_stages(None) is None
+    # valid stage name passes through unchanged
+    assert parse_yaml.resolve_stages(["segmentation"]) == ["segmentation"]
+    assert parse_yaml.resolve_stages(["illum_calculate"]) == ["illum_calculate"]
+    # deduplication: illum + illum_calculate => no duplicate illum_calculate
+    assert parse_yaml.resolve_stages(["illum", "illum_calculate"]) == [
+        "illum_calculate",
+        "illum_apply",
+    ]
+    # unrecognized stage raises ValueError
+    with pytest.raises(ValueError, match="Unrecognized stage"):
+        parse_yaml.resolve_stages(["not_a_stage"])
 
 
 def test_generate_params_json(tmp_path):

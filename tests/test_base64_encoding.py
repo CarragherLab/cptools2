@@ -1,108 +1,57 @@
-#!/usr/bin/env python
 """
-Test script to verify base64 encoding/decoding works correctly for rsync commands
-with special characters in paths.
-
-This script:
-1. Creates a complex rsync command with spaces and special characters
-2. Encodes it using base64
-3. Writes it to a temporary file
-4. Generates a shell script to decode and print the command
-5. Executes the shell script and verifies the output matches the original
-
-Run this script on Eddie to test the implementation.
+Tests for base64 encoding/decoding of rsync commands with special characters.
 """
 
-import os
 import base64
-import subprocess
-import tempfile
-import shutil
+import os
 
-def test_base64_encoding():
-    """Test base64 encoding/decoding of complex rsync commands"""
-    
-    # Create a temporary directory for test files
-    temp_dir = tempfile.mkdtemp()
-    try:
-        # Create a complex rsync command with spaces and special characters
-        test_command = 'rsync -s --perms --chmod=a+rwx --files-from="file with spaces.txt" ' \
-                       '"/path/with spaces & special chars!" ' \
-                       '"/destination/with spaces/and/special\'characters"'
-        
-        print(f"Original command:\n{test_command}\n")
-        
-        # Base64 encode the command
-        encoded_command = base64.b64encode(test_command.encode()).decode()
-        print(f"Base64 encoded command:\n{encoded_command}\n")
-        
-        # Write encoded command to a temporary file
-        cmd_file = os.path.join(temp_dir, "test_command.txt")
-        with open(cmd_file, "w") as f:
-            f.write(encoded_command)
-        
-        # Decode in Python (cross-platform) rather than invoking a shell script
-        decoded = base64.b64decode(encoded_command.encode()).decode()
-        assert decoded == test_command
-            
-    finally:
-        # Clean up
-        shutil.rmtree(temp_dir)
+import pytest
 
-def test_complex_characters():
-    """Test encoding/decoding with a wider range of special characters"""
-    
-    special_chars = [
-        "Spaces in path",
-        "Path with & ampersand",
-        "Path with ' single quotes",
-        "Path with \" double quotes",
-        "Path with | pipes",
-        "Path with > redirect",
-        "Path with ; semicolon",
-        "Path with $ dollar sign",
-        "Path with ` backtick",
-        "Path with () parentheses",
-        "Path with [] brackets",
-        "Path with {} braces",
-        "Path with tab\tcharacter",
-        "Path with newline\ncharacter",
-        "Path with #*~!@%^*()_+-={}[]|\\:;\"'<>,.?/ all special chars"
-    ]
-    
-    print("\nTesting complex character handling:")
-    
-    success = True
-    for path in special_chars:
-        # Create a command with the special path
-        original = f'rsync -avz "/source/{path}" "/dest/{path}"'
-        
-        # Encode and decode
-        encoded = base64.b64encode(original.encode()).decode()
-        decoded = base64.b64decode(encoded).decode()
-        
-        # Check if they match
-        if original == decoded:
-            print(f"✓ Success: {path}")
-        else:
-            print(f"✗ Failed: {path}")
-            print(f"  Original: {original}")
-            print(f"  Decoded:  {decoded}")
-            success = False
-    
-    return success
 
-if __name__ == "__main__":
-    print("=== Testing Base64 Encoding for rsync Commands ===\n")
-    
-    # Test basic functionality
-    basic_success = test_base64_encoding()
-    
-    # Test complex character handling
-    complex_success = test_complex_characters()
-    
-    # Final result
-    if basic_success and complex_success:
-        print("\nALL TESTS PASSED! The base64 encoding solution works correctly.")
-    else:
-        print("\nSome tests FAILED. Please review the output above.")
+def test_base64_encoding(tmp_path):
+    """Test base64 encoding/decoding of complex rsync commands."""
+    test_command = (
+        'rsync -s --perms --chmod=a+rwx --files-from="file with spaces.txt" '
+        '"/path/with spaces & special chars!" '
+        '"/destination/with spaces/and/special\'characters"'
+    )
+
+    # Base64 encode the command
+    encoded_command = base64.b64encode(test_command.encode()).decode()
+
+    # Write encoded command to a temporary file
+    cmd_file = os.path.join(str(tmp_path), "test_command.txt")
+    with open(cmd_file, "w") as f:
+        f.write(encoded_command)
+
+    # Decode in Python (cross-platform)
+    decoded = base64.b64decode(encoded_command.encode()).decode()
+    assert decoded == test_command
+
+
+SPECIAL_CHAR_PATHS = [
+    "Spaces in path",
+    "Path with & ampersand",
+    "Path with ' single quotes",
+    'Path with " double quotes',
+    "Path with | pipes",
+    "Path with > redirect",
+    "Path with ; semicolon",
+    "Path with $ dollar sign",
+    "Path with ` backtick",
+    "Path with () parentheses",
+    "Path with [] brackets",
+    "Path with {} braces",
+    "Path with tab\tcharacter",
+    "Path with newline\ncharacter",
+    "Path with #*~!@%^*()_+-={}[]|\\:;\"'<>,.?/ all special chars",
+]
+
+
+@pytest.mark.parametrize("path", SPECIAL_CHAR_PATHS)
+def test_complex_characters(path):
+    """Test encoding/decoding with a wide range of special characters."""
+    original = f'rsync -avz "/source/{path}" "/dest/{path}"'
+    encoded = base64.b64encode(original.encode()).decode()
+    decoded = base64.b64decode(encoded).decode()
+    assert original == decoded

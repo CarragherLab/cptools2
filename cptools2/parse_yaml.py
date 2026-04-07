@@ -139,12 +139,8 @@ def remove_plate(yaml_dict):
 
 
 def is_new_ix(yaml_dict):
-    """docstring"""
-    if "new_ix" in yaml_dict:
-        new_ix = yaml_dict["new_ix"]
-    else:
-        new_ix = False
-    return new_ix
+    """Legacy stub. Layout auto-detection in filelist.py handles this."""
+    return False
 
 
 def create_commands(yaml_dict):
@@ -219,7 +215,13 @@ def check_yaml_args(yaml_dict):
                   "stages",
                   "segmentation",
                   "feature_extraction",
-                  "containers"]
+                  "containers",
+                  "join_files",
+                  "data_destination",
+                  "container_path",
+                  "output_dir",
+                  "input_dir",
+                  "plate_list"]
     bad_arguments = []
     for argument in yaml_dict.keys():
         if argument not in valid_args:
@@ -227,6 +229,52 @@ def check_yaml_args(yaml_dict):
     if len(bad_arguments) > 0:
         err_msg = "Unrecognized argument(s) : {}".format(bad_arguments)
         raise ValueError(err_msg)
+
+
+def join_files(yaml_dict):
+    """
+    Get specifications for joining files after analysis.
+
+    Parameters:
+    -----------
+    yaml_dict: dict
+        dictionary version of the config yaml file
+
+    Returns:
+    --------
+    list or None
+        List of file patterns to join, or None if not specified.
+    """
+    if "join_files" in yaml_dict:
+        join_files_arg = yaml_dict["join_files"]
+        if isinstance(join_files_arg, str):
+            return [join_files_arg]
+        elif isinstance(join_files_arg, list):
+            return join_files_arg
+    return None
+
+
+def data_destination(yaml_dict):
+    """
+    Get the destination path for transferring joined data.
+
+    Parameters:
+    -----------
+    yaml_dict: dict
+        dictionary version of the config yaml file
+
+    Returns:
+    --------
+    str or None
+        The data destination path, or None if not specified.
+    """
+    if "data_destination" in yaml_dict:
+        dest_arg = yaml_dict["data_destination"]
+        if isinstance(dest_arg, list):
+            return str(dest_arg[0])
+        elif isinstance(dest_arg, str):
+            return dest_arg
+    return None
 
 
 def parse_config_file(config_file):
@@ -268,21 +316,33 @@ def parse_config_file(config_file):
         "segmentation": yaml_dict.get("segmentation"),
         "feature_extraction": yaml_dict.get("feature_extraction"),
         "containers": yaml_dict.get("containers"),
+        "join_files_patterns": join_files(yaml_dict),
+        "data_destination_path": data_destination(yaml_dict),
     }
     return config
 
+
+# All valid stage names
+VALID_STAGES = [
+    "illum_calculate",
+    "illum_apply",
+    "segmentation",
+    "feature_extract",
+]
 
 # Stage alias expansion table
 STAGE_ALIASES = {
     "illum": ["illum_calculate", "illum_apply"],
     "segment": ["segmentation"],
-    "extract": ["feature_extraction"],
+    "extract": ["feature_extract"],
 }
 
 
 def expand_stage_aliases(stages):
     """
     Expand stage aliases to their full names.
+
+    Deprecated: use resolve_stages() instead.
 
     Parameters:
     -----------
@@ -302,6 +362,52 @@ def expand_stage_aliases(stages):
         else:
             expanded.append(stage)
     return expanded
+
+
+def resolve_stages(stages):
+    """
+    Resolve stage aliases and validate stage names.
+
+    Parameters:
+    -----------
+    stages: list of str or None
+        stage names or aliases from the config file.
+
+    Returns:
+    --------
+    list of str or None
+        Expanded, deduplicated list of stage names with aliases resolved.
+        Returns None if stages is None.
+
+    Raises:
+    -------
+    ValueError
+        If any stage name is not recognized.
+    """
+    if stages is None:
+        return None
+    resolved = []
+    for stage in stages:
+        if stage in STAGE_ALIASES:
+            resolved.extend(STAGE_ALIASES[stage])
+        elif stage in VALID_STAGES:
+            resolved.append(stage)
+        else:
+            raise ValueError(
+                "Unrecognized stage '{}'. "
+                "Valid stages: {}. "
+                "Valid aliases: {}.".format(
+                    stage, VALID_STAGES, list(STAGE_ALIASES.keys())
+                )
+            )
+    # Deduplicate while preserving order
+    seen = set()
+    deduped = []
+    for s in resolved:
+        if s not in seen:
+            seen.add(s)
+            deduped.append(s)
+    return deduped
 
 
 def generate_params_json(config_dict, output_path):
@@ -338,10 +444,10 @@ def generate_params_json(config_dict, output_path):
     if chunk_args is not None:
         params["chunk_size"] = chunk_args["job_size"]
 
-    # stages with alias expansion
+    # stages with alias expansion and validation
     stages = config_dict.get("stages")
     if stages is not None:
-        params["stages"] = expand_stage_aliases(stages)
+        params["stages"] = resolve_stages(stages)
 
     # channels
     if config_dict.get("channels") is not None:

@@ -45,9 +45,9 @@ def cmd_pipeline(args):
     if args.stages:
         config["stages"] = args.stages
 
-    # Expand stage aliases
+    # Expand stage aliases and validate
     if config.get("stages"):
-        config["stages"] = parse_yaml.expand_stage_aliases(config["stages"])
+        config["stages"] = parse_yaml.resolve_stages(config["stages"])
 
     # Determine output path for params.json
     cmd_args = config.get("create_command_args") or {}
@@ -87,9 +87,9 @@ def cmd_prepare(args):
     if args.stages:
         config["stages"] = args.stages
 
-    # Expand stage aliases
+    # Expand stage aliases and validate
     if config.get("stages"):
-        config["stages"] = parse_yaml.expand_stage_aliases(config["stages"])
+        config["stages"] = parse_yaml.resolve_stages(config["stages"])
 
     # Determine output path for params.json
     cmd_args = config.get("create_command_args") or {}
@@ -108,7 +108,12 @@ def cmd_join(args):
     from cptools2 import file_tools
 
     pretty_print("joining files in: {}".format(args.location))
-    file_tools.join_output_files(args.location, args.patterns)
+    raw_data_location = os.path.join(args.location, "raw_data")
+    file_tools.join_plate_files(
+        plate_store=None,
+        raw_data_location=raw_data_location,
+        patterns=args.patterns,
+    )
     pretty_print("DONE!")
 
 

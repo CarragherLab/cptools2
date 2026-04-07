@@ -224,6 +224,8 @@ def check_dataframe_size(dataframe, min_rows=None):
     Raises a `LoadDataError` or nothing
     """
     df = dataframe._df if isinstance(dataframe, _CompatDataFrame) else dataframe
+    if min_rows is None:
+        return
     nrow = df.height
     if nrow < min_rows:
         msg = """Too few rows detected in a LoadData dataframe. Expected at
