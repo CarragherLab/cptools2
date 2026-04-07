@@ -1,14 +1,14 @@
 {
-  "loop_name": "Loop 120: Nextflow + Design Fixes",
-  "loop_id": "120",
+  "loop_name": "Loop 130: Cleanup + Multi-Assay Tests",
+  "loop_id": "130",
   "loop_file": ".claude/plans/phase-1-ralph-loops.md",
-  "task_name": "Nextflow + Design Fixes",
-  "todos_count": 8,
+  "task_name": "Cleanup + Multi-Assay Tests",
+  "todos_count": 10,
   "prepared_at": "2026-04-06T00:00:00Z",
   "status": "ready",
   "handoff_injected": {
-    "done": "Loop 110: Added VALID_STAGES/resolve_stages/join_files/data_destination to parse_yaml.py; fixed cmd_join, pl.arange, check_dataframe_size, is_new_ix; 128 tests pass",
+    "done": "Loops 110+120: parse_yaml improved, bugs fixed, Nextflow stage gating fixed, publishDir added, --nv GPU flag, channel-agnostic illum columns, container resolution. 128 tests pass.",
     "failed": "",
-    "needed": "Nextflow main.nf stage gating fix, publishDir on modules, --nv GPU flag, channel-agnostic _append_illum_columns, container path resolution"
+    "needed": "Dead code removal, _prepare_config helper, version bump, .gitignore, 13 new multi-assay tests"
   }
 }
