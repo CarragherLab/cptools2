@@ -79,15 +79,15 @@ Key routing rules:
 
 ## Planning State
 
-- phase: 1
-- phase_name: Code Review Fixes + Multi-Assay Hardening
-- phase_plan: .claude/plans/2026-04-06-code-review-fixes-design.md
-- loop_file: .claude/plans/phase-1-ralph-loops.md
-- status: complete
+- phase: 2
+- phase_name: Eddie Deployment
+- phase_plan: .claude/plans/phase-2-eddie-deployment.md
+- loop_file: .claude/plans/phase-2-ralph-loops.md
+- status: not_started
 - loops_total: 3
-- loops_done: 3
-- todos_total: 26
-- todos_done: 26
+- loops_done: 0
+- todos_total: 29
+- todos_done: 0
 
 ## Test conventions
 

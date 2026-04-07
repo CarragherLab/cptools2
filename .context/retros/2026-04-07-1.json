@@ -1,0 +1,38 @@
+{
+  "date": "2026-04-07",
+  "window": "7d",
+  "metrics": {
+    "commits": 21,
+    "non_merge_commits": 17,
+    "contributors": 1,
+    "prs_merged": 0,
+    "insertions": 5800,
+    "deletions": 800,
+    "net_loc": 5000,
+    "test_files_changed": 11,
+    "tests_before": 114,
+    "tests_after": 140,
+    "active_days": 2,
+    "sessions": 2,
+    "deep_sessions": 1,
+    "avg_session_minutes": 54,
+    "loc_per_session_hour": 3200,
+    "feat_pct": 0.0,
+    "fix_pct": 0.06,
+    "complete_pct": 0.65,
+    "checkpoint_pct": 0.24,
+    "peak_hour": 16,
+    "ai_assisted_commits": 6
+  },
+  "authors": {
+    "Mungo Harvey": {
+      "commits": 17,
+      "insertions": 5800,
+      "deletions": 800,
+      "test_files_changed": 11,
+      "top_area": "cptools2/parse_yaml.py"
+    }
+  },
+  "streak_days": 2,
+  "tweetable": "Week of Mar 31: 21 commits, 5.8k LOC, 140 tests, 4 parallel lanes merged + 3 critical bugs fixed | AI-assisted | Streak: 2d"
+}

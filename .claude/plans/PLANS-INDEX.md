@@ -38,7 +38,8 @@ Phases A-D run in **parallel worktrees**. Phase E runs after all 4 merge.
 | C | Container Builds & Deploy | Planned | [phase-C-container-builds.md](phase-C-container-builds.md) | 3 | Yes (worktree) |
 | D | CLI & Config Refactor | Planned | [phase-D-cli-config-refactor.md](phase-D-cli-config-refactor.md) | 3 | Yes (worktree) |
 | E | Integration & Validation | Complete | [phase-E-integration-validation.md](phase-E-integration-validation.md) | 4 | No (sequential, after A-D) |
-| 1 | Code Review Fixes + Multi-Assay Hardening | Active | [2026-04-06-code-review-fixes-design.md](2026-04-06-code-review-fixes-design.md) | 3 | No (sequential) |
+| 1 | Code Review Fixes + Multi-Assay Hardening | Complete | [2026-04-06-code-review-fixes-design.md](2026-04-06-code-review-fixes-design.md) | 3 | No (sequential) |
+| 2 | Eddie Deployment | Active | [phase-2-eddie-deployment.md](phase-2-eddie-deployment.md) | 3 | No (sequential, C1→C2→C3) |
 
 ## Loop Summary
 
