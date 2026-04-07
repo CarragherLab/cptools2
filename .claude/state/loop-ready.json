@@ -1,0 +1,14 @@
+{
+  "loop_name": "Loop 110: Foundation + Bug Fixes",
+  "loop_id": "110",
+  "loop_file": ".claude/plans/phase-1-ralph-loops.md",
+  "task_name": "Foundation + Bug Fixes",
+  "todos_count": 8,
+  "prepared_at": "2026-04-06T00:00:00Z",
+  "status": "ready",
+  "handoff_injected": {
+    "done": "",
+    "failed": "",
+    "needed": "Lane A parse_yaml merge-back, critical bug fixes, test conversion"
+  }
+}
