@@ -83,11 +83,11 @@ Key routing rules:
 - phase_name: Eddie Deployment
 - phase_plan: .claude/plans/phase-2-eddie-deployment.md
 - loop_file: .claude/plans/phase-2-ralph-loops.md
-- status: not_started
+- status: in_progress
 - loops_total: 3
 - loops_done: 0
 - todos_total: 29
-- todos_done: 0
+- todos_done: 3
 
 ## Test conventions
 
