@@ -11,6 +11,7 @@
 # ============================================================
 # Submit from Eddie login node:
 #   qsub build_containers.sh
+#   qsub build_containers.sh /path/to/other/group/space/cptools2/containers
 #
 # Prerequisites:
 #   - Docker archives (.tar.gz) already transferred to CONTAINER_DIR
@@ -28,7 +29,7 @@ mkdir -p "$SINGULARITY_TMPDIR"
 
 module load singularity
 
-CONTAINER_DIR=/exports/cmvm/eddie/scs/groups/chandranlabs/containers
+CONTAINER_DIR="${1:-/exports/cmvm/eddie/scs/groups/chandranlabs/cptools2/containers}"
 
 echo "=== Building CellProfiler ==="
 singularity build "$CONTAINER_DIR/cellprofiler_4.2.8.sif" \

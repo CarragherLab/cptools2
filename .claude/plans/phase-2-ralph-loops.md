@@ -21,13 +21,14 @@ key_outputs:
   - build_containers.sh parameterized for reuse
 todos:
   - text: "Parameterize build_containers.sh: accept CONTAINER_DIR as first argument with default /exports/cmvm/eddie/scs/groups/chandranlabs/cptools2/containers"
-    status: pending
+    status: completed
     skill: null
     agent: null
   - text: "Remove dead eddie_container_dir param from nextflow/conf/containers.config"
-    status: pending
+    status: completed
     skill: null
     agent: null
+  # AWAITING MANUAL EXECUTION — todos below require Eddie SSH or Docker daemon access
   - text: "Create cptools2/ directory on Eddie: ssh eddie 'mkdir -p /exports/cmvm/eddie/scs/groups/chandranlabs/cptools2/{containers,env,nextflow}'"
     status: pending
     skill: eddie:eddie-login
@@ -65,7 +66,7 @@ todos:
     skill: eddie:eddie-login
     agent: null
   - text: "Run pytest tests/ -v locally and verify 140+ tests still pass after config changes"
-    status: pending
+    status: completed
     skill: null
     agent: null
 ```
