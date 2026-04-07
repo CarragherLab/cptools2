@@ -77,6 +77,18 @@ Key routing rules:
 - Save progress, checkpoint, resume → invoke checkpoint
 - Code quality, health check → invoke health
 
+## Planning State
+
+- phase: 1
+- phase_name: Code Review Fixes + Multi-Assay Hardening
+- phase_plan: .claude/plans/2026-04-06-code-review-fixes-design.md
+- loop_file: .claude/plans/phase-1-ralph-loops.md
+- status: not_started
+- loops_total: 3
+- loops_done: 0
+- todos_total: 26
+- todos_done: 0
+
 ## Test conventions
 
 - Tests live in `tests/` with fixtures in `tests/fixtures/`

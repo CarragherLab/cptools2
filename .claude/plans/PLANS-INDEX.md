@@ -37,7 +37,8 @@ Phases A-D run in **parallel worktrees**. Phase E runs after all 4 merge.
 | B | Nextflow Pipeline | Planned | [phase-B-nextflow-pipeline.md](phase-B-nextflow-pipeline.md) | 5 | Yes (worktree) |
 | C | Container Builds & Deploy | Planned | [phase-C-container-builds.md](phase-C-container-builds.md) | 3 | Yes (worktree) |
 | D | CLI & Config Refactor | Planned | [phase-D-cli-config-refactor.md](phase-D-cli-config-refactor.md) | 3 | Yes (worktree) |
-| E | Integration & Validation | Planned | [phase-E-integration-validation.md](phase-E-integration-validation.md) | 4 | No (sequential, after A-D) |
+| E | Integration & Validation | Complete | [phase-E-integration-validation.md](phase-E-integration-validation.md) | 4 | No (sequential, after A-D) |
+| 1 | Code Review Fixes + Multi-Assay Hardening | Active | [2026-04-06-code-review-fixes-design.md](2026-04-06-code-review-fixes-design.md) | 3 | No (sequential) |
 
 ## Loop Summary
 
@@ -93,3 +94,6 @@ git worktree add ../cptools2-lane-d ai-update
 - **Eng review**: completed 2026-04-06 (5 issues found, all resolved, 1 critical gap: scratch quota)
 - **Office hours**: completed 2026-04-06 (design APPROVED, Nextflow hybrid architecture)
 - **Eddie validation**: Nextflow SGE executor validated on Eddie (job ID 55013075)
+- **Code review**: completed 2026-04-06 (3 critical bugs, 3 high, 21 additional issues)
+- **Eng review (Phase 1)**: completed 2026-04-07 (2 issues found, 0 critical gaps, CLEARED)
+- **Investigate**: completed 2026-04-07 (root cause: parallel lane interface mismatches, Bug 2 downgraded)

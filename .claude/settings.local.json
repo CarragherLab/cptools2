@@ -1,6 +1,12 @@
 {
   "permissions": {
     "allow": [
+      "Bash(*)",
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "Glob(*)",
+      "Grep(*)",
       "Bash(git push:*)",
       "Bash(gh repo:*)",
       "Bash(gh.exe repo:*)",
@@ -48,7 +54,13 @@
       "Bash(ls:*)",
       "Bash(git add:*)",
       "Bash(git commit -m ':*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(git worktree:*)",
+      "Bash(git merge:*)",
+      "Bash(git commit:*)",
+      "Bash(git stash:*)",
+      "Skill(plan-eng-review)",
+      "Skill(investigate)"
     ]
   }
 }

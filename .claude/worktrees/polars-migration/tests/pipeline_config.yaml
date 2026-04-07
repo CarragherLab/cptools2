@@ -1,0 +1,32 @@
+input_dir: /exports/eddie/scratch/user/experiment_001
+output_dir: /exports/eddie/scratch/user/results_001
+
+channels:
+  - DAPI
+  - GFP
+  - Mito
+  - AGP
+  - DNA
+
+stages:
+  - illum
+  - segment
+  - feature_extract
+
+segmentation:
+  model: cellpose
+  diameter: 60
+
+feature_extraction:
+  pipeline: cell_painting_v2.cppipe
+
+containers:
+  cellprofiler: /exports/containers/cellprofiler_4.2.6.sif
+  cellpose: /exports/containers/cellpose_3.0.sif
+
+plate_list:
+  - plate_001
+  - plate_002
+  - plate_003
+
+chunk: 20
