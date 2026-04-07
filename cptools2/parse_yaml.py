@@ -319,6 +319,17 @@ def parse_config_file(config_file):
         "join_files_patterns": join_files(yaml_dict),
         "data_destination_path": data_destination(yaml_dict),
     }
+    # Resolve container .sif paths from manifest if available
+    from cptools2 import containers as _containers
+    container_dir = _containers.resolve_container_dir(yaml_dict)
+    if container_dir is not None:
+        resolved_containers = {}
+        for role in ["cellprofiler", "deepprofiler", "cellpose_sam"]:
+            path = _containers.resolve_container_path(yaml_dict, role=role)
+            if path:
+                resolved_containers[role] = path
+        if resolved_containers:
+            config["resolved_containers"] = resolved_containers
     return config
 
 
@@ -464,6 +475,10 @@ def generate_params_json(config_dict, output_path):
     # containers
     if config_dict.get("containers") is not None:
         params["containers"] = config_dict["containers"]
+
+    # resolved container .sif paths take precedence if available
+    if config_dict.get("resolved_containers"):
+        params["containers"] = config_dict["resolved_containers"]
 
     with open(output_path, "w") as f:
         json.dump(params, f, indent=2)

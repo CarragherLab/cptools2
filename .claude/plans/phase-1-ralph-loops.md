@@ -61,7 +61,7 @@ todos:
 ```yaml
 loop_id: 120
 name: Nextflow + Design Fixes
-status: pending
+status: completed
 type: implementation
 depends_on: [110]
 key_outputs:
@@ -71,37 +71,41 @@ key_outputs:
   - _append_illum_columns channel-agnostic
   - Container path resolution through parse_config_file
   - cellpose_sam in containers.config
+handoff_summary:
+  done: "main.nf stage gating fixed; publishDir on all 4 modules; --nv in eddie.config gpu block; illum_apply.nf documented; _append_illum_columns channel-agnostic; cellpose_sam in containers.config and DEFAULT_CONTAINERS; resolved_containers in parse_config_file/generate_params_json; 128 tests pass"
+  failed: ""
+  needed: "Loop 130: dead code removal, _prepare_config() helper, version bump to 0.3.0, .gitignore Nextflow entries, 13 new multi-assay tests"
 todos:
   - text: "Fix main.nf stage gating: handle both List and String for params.stages, check for expanded names (illum_calculate, illum_apply, segmentation, feature_extract)"
-    status: pending
+    status: completed
     skill: null
     agent: null
   - text: "Add publishDir to illum_calculate.nf, illum_apply.nf, segmentation.nf, feature_extract.nf with per-plate/per-stage structure"
-    status: pending
+    status: completed
     skill: null
     agent: null
   - text: "Add containerOptions = '--nv' to eddie.config withLabel: 'gpu' block"
-    status: pending
+    status: completed
     skill: null
     agent: null
   - text: "Add comment to illum_apply.nf documenting that CellProfiler reads illum function paths from the .cppipe file"
-    status: pending
+    status: completed
     skill: null
     agent: null
   - text: "Make _append_illum_columns channel-agnostic: detect channel numbers from FileName_W* columns instead of hardcoded range(1, 6)"
-    status: pending
+    status: completed
     skill: null
     agent: null
   - text: "Add cellpose_sam entry to containers.config"
-    status: pending
+    status: completed
     skill: null
     agent: null
   - text: "Add container .sif path resolution in parse_config_file() using containers.resolve_container_path(), pass through config_dict to generate_params_json"
-    status: pending
+    status: completed
     skill: null
     agent: null
   - text: "Run pytest tests/ -v and verify no regressions"
-    status: pending
+    status: completed
     skill: null
     agent: null
 ```

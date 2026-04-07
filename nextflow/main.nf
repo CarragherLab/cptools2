@@ -42,10 +42,18 @@ params.feature_extraction_batch_size = 128
 // Resolve active stages
 // ---------------------------------------------------------------------------
 
-def active_stages = params.stages.tokenize(',').collect { it.trim().toLowerCase() }
-def run_illum    = active_stages.contains('all') || active_stages.contains('illum')
-def run_segment  = active_stages.contains('all') || active_stages.contains('segment')
-def run_extract  = active_stages.contains('all') || active_stages.contains('extract')
+// Handle both List (from params-file JSON) and String (from CLI/config)
+def active_stages = params.stages instanceof List
+    ? params.stages.collect { it.trim().toLowerCase() }
+    : params.stages.tokenize(',').collect { it.trim().toLowerCase() }
+
+def run_illum_calc = active_stages.contains('all') || active_stages.contains('illum_calculate')
+def run_illum_app  = active_stages.contains('all') || active_stages.contains('illum_apply')
+def run_segment    = active_stages.contains('all') || active_stages.contains('segmentation')
+def run_extract    = active_stages.contains('all') || active_stages.contains('feature_extract')
+
+// Convenience: if either illum sub-stage requested, run both
+def run_illum = run_illum_calc || run_illum_app
 
 // ---------------------------------------------------------------------------
 // Module includes

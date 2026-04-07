@@ -179,9 +179,12 @@ def cast_dataframe(dataframe, check_nan=True):
 
 def _append_illum_columns(dataframe, illum_dir):
     """
-    Append FileName_Illum_W1..W5 and PathName_Illum_W1..W5 columns.
+    Append FileName_Illum_W* and PathName_Illum_W* columns.
 
-    For each channel W1..W5 present in the dataframe, creates:
+    Detects channel numbers dynamically from existing FileName_W* columns,
+    so this works for any number of channels (not just 5-channel Cell Painting).
+
+    For each channel Wn present in the dataframe, creates:
     - FileName_Illum_W<n>: "illum_W<n>.npy"
     - PathName_Illum_W<n>: the provided illum_dir path
 
@@ -196,13 +199,20 @@ def _append_illum_columns(dataframe, illum_dir):
     _CompatDataFrame with additional illumination columns
     """
     df = dataframe._df if isinstance(dataframe, _CompatDataFrame) else dataframe
-    for i in range(1, 6):
-        col_name = f"FileName_W{i}"
-        if col_name in df.columns:
-            df = df.with_columns([
-                pl.lit(f"illum_W{i}.npy").alias(f"FileName_Illum_W{i}"),
-                pl.lit(illum_dir).alias(f"PathName_Illum_W{i}"),
-            ])
+    # Detect channel numbers from existing FileName_W* columns
+    channel_nums = []
+    for col in df.columns:
+        if col.startswith("FileName_W"):
+            try:
+                num = int(col.replace("FileName_W", ""))
+                channel_nums.append(num)
+            except ValueError:
+                pass
+    for i in sorted(channel_nums):
+        df = df.with_columns([
+            pl.lit(f"illum_W{i}.npy").alias(f"FileName_Illum_W{i}"),
+            pl.lit(illum_dir).alias(f"PathName_Illum_W{i}"),
+        ])
     return _CompatDataFrame(df)
 
 

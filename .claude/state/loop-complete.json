@@ -1,14 +1,13 @@
 {
-  "loop_name": "Loop 110: Foundation + Bug Fixes",
-  "loop_id": "110",
+  "loop_name": "Loop 120: Nextflow + Design Fixes",
   "loop_file": ".claude/plans/phase-1-ralph-loops.md",
   "status": "completed",
   "todos_done": 8,
   "todos_failed": 0,
   "completed_at": "2026-04-06T00:00:00Z",
   "handoff": {
-    "done": "Added VALID_STAGES/resolve_stages/join_files/data_destination to parse_yaml.py; fixed cmd_join to use join_plate_files; fixed pl.arange->pl.int_range in file_tools.py; added None guard to check_dataframe_size; stubbed is_new_ix to return False; converted test_base64_encoding.py to parametrized pytest; renamed test_expand_stage_aliases to test_resolve_stages with validation; 128 tests pass.",
+    "done": "main.nf stage gating fixed (List/String, expanded names); publishDir on all 4 modules; --nv in eddie.config gpu block; illum_apply.nf documented; _append_illum_columns channel-agnostic; cellpose_sam in containers.config and DEFAULT_CONTAINERS; resolved_containers added to parse_config_file/generate_params_json; 128 tests pass",
     "failed": "",
-    "needed": "Loop 120 can proceed: Nextflow main.nf stage gating, publishDir on modules, --nv GPU flag, channel-agnostic _append_illum_columns, container path resolution."
+    "needed": "Loop 130: dead code removal, _prepare_config() helper, version bump to 0.3.0, .gitignore Nextflow entries, 13 new multi-assay tests"
   }
 }

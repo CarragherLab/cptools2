@@ -10,6 +10,7 @@ process FEATURE_EXTRACT {
     tag "${plate_id}"
     label 'feature_extract'
     label 'gpu'
+    publishDir "${params.output_dir}/${plate_id}/features", mode: 'copy'
 
     container {
         switch (params.feature_extraction_tool) {

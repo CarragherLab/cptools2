@@ -9,6 +9,7 @@
 process SEGMENTATION {
     tag "${plate_id}"
     label 'segmentation'
+    publishDir "${params.output_dir}/${plate_id}/segmentation", mode: 'copy'
 
     container params.containers.cellprofiler
 

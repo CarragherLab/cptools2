@@ -40,6 +40,7 @@ DEFAULT_CONTAINERS = {
     "cellprofiler": "cellprofiler_4.2.8.sif",
     "deepprofiler": "deepprofiler_1.0.sif",
     "cellpose": "cellpose_sam_1.0.sif",
+    "cellpose_sam": "cellpose_sam_1.0.sif",
 }
 
 # Manifest filename — lives alongside .sif files in the container directory
