@@ -83,11 +83,11 @@ Key routing rules:
 - phase_name: Code Review Fixes + Multi-Assay Hardening
 - phase_plan: .claude/plans/2026-04-06-code-review-fixes-design.md
 - loop_file: .claude/plans/phase-1-ralph-loops.md
-- status: in_progress
+- status: complete
 - loops_total: 3
-- loops_done: 2
+- loops_done: 3
 - todos_total: 26
-- todos_done: 16
+- todos_done: 26
 
 ## Test conventions
 
