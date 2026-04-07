@@ -1,7 +1,5 @@
 import json
 import os
-import subprocess
-import sys
 
 import pytest
 
@@ -215,3 +213,38 @@ class TestConfigFileValidation:
 
         with pytest.raises(FileNotFoundError):
             _check_config_file("/nonexistent/path/config.yaml")
+
+
+def test_cmd_join_calls_join_plate_files(tmp_path):
+    """cmd_join calls file_tools.join_plate_files with correct args."""
+    from unittest.mock import patch
+    from cptools2.__main__ import cmd_join
+    import argparse
+    args = argparse.Namespace(location=str(tmp_path), patterns=["Image.csv"])
+    with patch("cptools2.file_tools.join_plate_files") as mock_join:
+        cmd_join(args)
+        mock_join.assert_called_once()
+        call_kwargs = mock_join.call_args
+        assert call_kwargs[1]["plate_store"] is None or call_kwargs[0][0] is None
+        assert "Image.csv" in (call_kwargs[1].get("patterns") or call_kwargs[0][2])
+
+
+def test_cmd_pipeline_stages_expanded_in_params(tmp_path):
+    """--stages illum produces expanded names in params.json."""
+    import json
+    # Create minimal config
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "pipeline: ./tests/example_pipeline.cppipe\n"
+        "location: {}\n"
+        "commands location: /tmp\n"
+        "chunk: 10\n"
+        "stages:\n"
+        "  - illum\n".format(str(tmp_path))
+    )
+    from cptools2.__main__ import _prepare_config
+    config, params_path = _prepare_config(str(config_file))
+    with open(params_path) as f:
+        params = json.load(f)
+    assert "illum_calculate" in params["stages"]
+    assert "illum_apply" in params["stages"]

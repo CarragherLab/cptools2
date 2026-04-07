@@ -269,3 +269,29 @@ def test_enrich_chunks_no_loaddata_directory(tmp_path):
 
     # Should handle gracefully
     assert len(result['errors']) == 0  # Graceful degradation - no errors, just returns
+
+
+def test_enrich_idempotency(tmp_path):
+    """Running enrichment twice does not duplicate metadata columns."""
+    location = tmp_path / "project"
+    location.mkdir()
+    raw_data = location / "raw_data"
+    raw_data.mkdir()
+    loaddata_dir = location / "loaddata"
+    loaddata_dir.mkdir()
+    chunk = raw_data / "plate1_0"
+    chunk.mkdir()
+    # Create LoadData CSV
+    loaddata_csv = loaddata_dir / "plate1_0.csv"
+    pl.DataFrame({"ImageNumber": [1, 2], "Metadata_well": ["A01", "A02"]}).write_csv(loaddata_csv)
+    # Create output CSV
+    output_csv = chunk / "Image.csv"
+    pl.DataFrame({"ImageNumber": [1, 2], "Image_Area": [100, 200]}).write_csv(output_csv)
+    # Enrich once
+    enrich_chunks_with_metadata(str(location), patterns=["Image.csv"])
+    # Enrich again
+    enrich_chunks_with_metadata(str(location), patterns=["Image.csv"])
+    # Verify no duplicate columns
+    enriched = pl.read_csv(str(output_csv))
+    well_cols = [c for c in enriched.columns if c == "Metadata_well"]
+    assert len(well_cols) == 1, f"Metadata_well duplicated: {enriched.columns}"

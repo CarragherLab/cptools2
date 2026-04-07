@@ -41,3 +41,8 @@ Thumbs.db
 
 # Dev Docs
 dev_docs/
+
+# Nextflow
+.nextflow/
+.nextflow.log*
+work/

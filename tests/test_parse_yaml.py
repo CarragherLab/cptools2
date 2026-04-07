@@ -137,15 +137,18 @@ def test_resolve_stages():
 
 
 def test_generate_params_json(tmp_path):
-    """generate_params_json writes valid JSON"""
+    """generate_params_json writes valid JSON; stages must be pre-expanded by caller."""
     config = parse_yaml.parse_config_file(PIPELINE_CONFIG_PATH)
+    # CLI pre-expands stages before calling generate_params_json
+    if config.get("stages"):
+        config["stages"] = parse_yaml.resolve_stages(config["stages"])
     output_path = str(tmp_path / "params.json")
     parse_yaml.generate_params_json(config, output_path)
     assert os.path.isfile(output_path)
     with open(output_path) as f:
         params = json.load(f)
     assert isinstance(params, dict)
-    # stages should be expanded
+    # stages should be expanded (pre-expanded by caller)
     assert "stages" in params
     assert "illum_calculate" in params["stages"]
     assert "illum_apply" in params["stages"]
@@ -163,4 +166,37 @@ def test_generate_params_json_minimal(tmp_path):
     # should not have stages/channels since legacy config lacks them
     assert "stages" not in params
     assert "channels" not in params
+
+
+def test_resolve_stages_none():
+    """resolve_stages(None) returns None."""
+    assert parse_yaml.resolve_stages(None) is None
+
+
+def test_resolve_stages_empty_list():
+    """resolve_stages([]) returns []."""
+    assert parse_yaml.resolve_stages([]) == []
+
+
+def test_resolve_stages_dedup():
+    """resolve_stages deduplicates when alias overlaps with expanded name."""
+    result = parse_yaml.resolve_stages(["illum", "illum_calculate"])
+    assert result == ["illum_calculate", "illum_apply"]
+
+
+def test_resolve_stages_validation():
+    """resolve_stages raises ValueError on unrecognized stage."""
+    with pytest.raises(ValueError, match="Unrecognized stage"):
+        parse_yaml.resolve_stages(["typo_stage"])
+
+
+def test_generate_params_json_custom_channels(tmp_path):
+    """generate_params_json handles non-Cell-Painting channel lists."""
+    config = parse_yaml.parse_config_file(PIPELINE_CONFIG_PATH)
+    config["channels"] = ["DAPI", "GFP", "mCherry"]
+    output_path = str(tmp_path / "params.json")
+    parse_yaml.generate_params_json(config, output_path)
+    with open(output_path) as f:
+        params = json.load(f)
+    assert params["channels"] == ["DAPI", "GFP", "mCherry"]
 

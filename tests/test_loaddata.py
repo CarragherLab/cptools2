@@ -89,3 +89,51 @@ def test_to_csv_compat(tmp_path):
     df_back = pl.read_csv(csv_path)
     assert df_back.shape == output.shape
     assert sorted(df_back.columns) == sorted(output.columns)
+
+
+def test_append_illum_columns_3_channels():
+    """_append_illum_columns works with 3 channels."""
+    from cptools2.loaddata import _append_illum_columns
+    df = pl.DataFrame({
+        "FileName_W1": ["img1.tif"],
+        "FileName_W2": ["img2.tif"],
+        "FileName_W3": ["img3.tif"],
+        "PathName_W1": ["/path"],
+        "PathName_W2": ["/path"],
+        "PathName_W3": ["/path"],
+    })
+    result = _append_illum_columns(_CompatDataFrame(df), "/illum")
+    assert "FileName_Illum_W1" in result.columns
+    assert "FileName_Illum_W2" in result.columns
+    assert "FileName_Illum_W3" in result.columns
+    assert "FileName_Illum_W4" not in result.columns  # Should NOT have W4
+
+
+def test_append_illum_columns_7_channels():
+    """_append_illum_columns works with 7 channels."""
+    from cptools2.loaddata import _append_illum_columns
+    df = pl.DataFrame({
+        **{f"FileName_W{i}": [f"img{i}.tif"] for i in range(1, 8)},
+        **{f"PathName_W{i}": ["/path"] for i in range(1, 8)},
+    })
+    result = _append_illum_columns(_CompatDataFrame(df), "/illum")
+    for i in range(1, 8):
+        assert f"FileName_Illum_W{i}" in result.columns
+        assert f"PathName_Illum_W{i}" in result.columns
+
+
+def test_append_illum_columns_0_channels():
+    """_append_illum_columns with no FileName_W* columns returns unchanged DataFrame."""
+    from cptools2.loaddata import _append_illum_columns
+    df = pl.DataFrame({"other_col": ["value"]})
+    result = _append_illum_columns(_CompatDataFrame(df), "/illum")
+    assert "FileName_Illum_W1" not in result.columns
+    assert result.columns == ["other_col"]
+
+
+def test_check_dataframe_size_none():
+    """check_dataframe_size with min_rows=None does not crash."""
+    from cptools2.loaddata import check_dataframe_size
+    df = _CompatDataFrame(pl.DataFrame({"a": [1, 2]}))
+    # Should return without error (was TypeError before fix)
+    check_dataframe_size(df, min_rows=None)

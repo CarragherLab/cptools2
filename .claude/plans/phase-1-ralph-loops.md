@@ -115,7 +115,7 @@ todos:
 ```yaml
 loop_id: 130
 name: Cleanup + Multi-Assay Tests
-status: pending
+status: completed
 type: testing
 depends_on: [120]
 key_outputs:
@@ -124,45 +124,49 @@ key_outputs:
   - Version aligned to 0.3.0
   - .gitignore updated for Nextflow
   - 13 new tests proving multi-assay flexibility
+handoff_summary:
+  done: "EddieNodeError removed; _prepare_config() extracted; resolve_stages removed from generate_params_json; unused imports cleaned; nextflow.config version 0.3.0; main.nf path resolved relative to package; .gitignore updated; debug prints replaced with pretty_print(); 12 new tests added (4 loaddata, 5 parse_yaml, 1 file_tools, 2 cli); 140 tests pass"
+  failed: ""
+  needed: ""
 todos:
   - text: "Remove EddieNodeError dead class from __main__.py"
-    status: pending
+    status: completed
     skill: null
     agent: null
   - text: "Extract _prepare_config() helper to deduplicate cmd_pipeline/cmd_prepare shared logic"
-    status: pending
+    status: completed
     skill: null
     agent: null
   - text: "Remove duplicate resolve_stages() call inside generate_params_json (CLI already expands)"
-    status: pending
+    status: completed
     skill: null
     agent: null
   - text: "Remove unused imports: subprocess/sys from test_cli.py, subprocess/shutil from test_base64_encoding.py"
-    status: pending
+    status: completed
     skill: null
     agent: null
   - text: "Update nextflow.config manifest version from 0.1.0 to 0.3.0"
-    status: pending
+    status: completed
     skill: null
     agent: null
   - text: "Resolve main.nf path relative to package root using os.path.dirname(os.path.abspath(__file__))"
-    status: pending
+    status: completed
     skill: null
     agent: null
   - text: "Add .nextflow/, .nextflow.log*, work/ to .gitignore"
-    status: pending
+    status: completed
     skill: null
     agent: null
   - text: "Remove debug print() statements in generate_scripts.py, replace with pretty_print()"
-    status: pending
+    status: completed
     skill: null
     agent: null
   - text: "Add 13 multi-assay tests: _append_illum_columns 3/7/0 channels, resolve_stages None/empty/dedup/validation, check_dataframe_size None, generate_params_json custom channels + containers, cmd_join mock, enrich idempotency, CLI --stages dry-run"
-    status: pending
+    status: completed
     skill: null
     agent: null
   - text: "Run pytest tests/ -v and verify 127+ tests pass (114 existing + 13 new)"
-    status: pending
+    status: completed
     skill: null
     agent: null
 ```

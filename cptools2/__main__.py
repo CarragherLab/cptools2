@@ -34,29 +34,26 @@ def _find_nextflow():
     return shutil.which("nextflow") is not None
 
 
-def cmd_pipeline(args):
-    """Handle the 'pipeline' subcommand."""
-    config_file = _check_config_file(args.config)
+def _prepare_config(config_file, stages_override=None):
+    """Shared config preparation for pipeline and prepare commands."""
+    _check_config_file(config_file)
     pretty_print("parsing config file: {}".format(config_file))
-
     config = parse_yaml.parse_config_file(config_file)
-
-    # Override stages if --stages flag provided
-    if args.stages:
-        config["stages"] = args.stages
-
-    # Expand stage aliases and validate
+    if stages_override:
+        config["stages"] = stages_override
     if config.get("stages"):
         config["stages"] = parse_yaml.resolve_stages(config["stages"])
-
-    # Determine output path for params.json
     cmd_args = config.get("create_command_args") or {}
     location = cmd_args.get("location", os.path.dirname(os.path.abspath(config_file)))
     params_path = os.path.join(location, "params.json")
-
-    # Generate params.json
     parse_yaml.generate_params_json(config, params_path)
     pretty_print("wrote params.json: {}".format(params_path))
+    return config, params_path
+
+
+def cmd_pipeline(args):
+    """Handle the 'pipeline' subcommand."""
+    config, params_path = _prepare_config(args.config, stages_override=args.stages)
 
     if args.dry_run:
         pretty_print("dry-run mode: params.json generated, skipping Nextflow")
@@ -67,8 +64,12 @@ def cmd_pipeline(args):
         print(NEXTFLOW_INSTALL_MSG, file=sys.stderr)
         sys.exit(1)
 
-    # Build nextflow command
-    nf_cmd = ["nextflow", "run", "main.nf", "-params-file", params_path]
+    # Build nextflow command — resolve main.nf relative to the package root
+    nf_main = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "nextflow", "main.nf"
+    )
+    nf_cmd = ["nextflow", "run", nf_main, "-params-file", params_path]
     if args.resume:
         nf_cmd.append("-resume")
 
@@ -78,27 +79,7 @@ def cmd_pipeline(args):
 
 def cmd_prepare(args):
     """Handle the 'prepare' subcommand: data preparation only (no Nextflow)."""
-    config_file = _check_config_file(args.config)
-    pretty_print("parsing config file: {}".format(config_file))
-
-    config = parse_yaml.parse_config_file(config_file)
-
-    # Override stages if --stages flag provided
-    if args.stages:
-        config["stages"] = args.stages
-
-    # Expand stage aliases and validate
-    if config.get("stages"):
-        config["stages"] = parse_yaml.resolve_stages(config["stages"])
-
-    # Determine output path for params.json
-    cmd_args = config.get("create_command_args") or {}
-    location = cmd_args.get("location", os.path.dirname(os.path.abspath(config_file)))
-    params_path = os.path.join(location, "params.json")
-
-    # Generate params.json
-    parse_yaml.generate_params_json(config, params_path)
-    pretty_print("wrote params.json: {}".format(params_path))
+    _prepare_config(args.config, stages_override=args.stages)
     pretty_print("data preparation complete (Nextflow not invoked)")
 
 
@@ -217,10 +198,6 @@ def main():
         sys.exit(1)
 
     args.func(args)
-
-
-class EddieNodeError(Exception):
-    pass
 
 
 if __name__ == "__main__":

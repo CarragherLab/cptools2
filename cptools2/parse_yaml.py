@@ -455,10 +455,10 @@ def generate_params_json(config_dict, output_path):
     if chunk_args is not None:
         params["chunk_size"] = chunk_args["job_size"]
 
-    # stages with alias expansion and validation
+    # stages pass through as-is (CLI expands aliases before calling this)
     stages = config_dict.get("stages")
     if stages is not None:
-        params["stages"] = resolve_stages(stages)
+        params["stages"] = stages
 
     # channels
     if config_dict.get("channels") is not None:

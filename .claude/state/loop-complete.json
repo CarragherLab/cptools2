@@ -1,13 +1,13 @@
 {
-  "loop_name": "Loop 120: Nextflow + Design Fixes",
+  "loop_name": "Loop 130: Cleanup + Multi-Assay Tests",
   "loop_file": ".claude/plans/phase-1-ralph-loops.md",
   "status": "completed",
-  "todos_done": 8,
+  "todos_done": 10,
   "todos_failed": 0,
   "completed_at": "2026-04-06T00:00:00Z",
   "handoff": {
-    "done": "main.nf stage gating fixed (List/String, expanded names); publishDir on all 4 modules; --nv in eddie.config gpu block; illum_apply.nf documented; _append_illum_columns channel-agnostic; cellpose_sam in containers.config and DEFAULT_CONTAINERS; resolved_containers added to parse_config_file/generate_params_json; 128 tests pass",
+    "done": "EddieNodeError removed; _prepare_config() extracted; resolve_stages removed from generate_params_json; unused imports cleaned; nextflow.config version 0.3.0; main.nf path resolved relative to package; .gitignore updated; debug prints replaced with pretty_print(); 12 new tests added (4 loaddata, 5 parse_yaml, 1 file_tools, 2 cli); 140 tests pass",
     "failed": "",
-    "needed": "Loop 130: dead code removal, _prepare_config() helper, version bump to 0.3.0, .gitignore Nextflow entries, 13 new multi-assay tests"
+    "needed": ""
   }
 }
