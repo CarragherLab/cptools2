@@ -76,7 +76,7 @@ todos:
 ```yaml
 loop_id: 220
 name: Staging + Batch Orchestration
-status: pending
+status: completed
 type: implementation
 depends_on: [210]
 key_outputs:
@@ -86,13 +86,17 @@ key_outputs:
   - eddie.config staging label updated with time = 4.h
   - tests/test_batch.py with 6-7 unit tests
   - scripts/install_eddie.sh for shared env deployment
+handoff_summary:
+  done: "stage_in.nf, stage_out.nf, batch.py, test_batch.py (8 tests), scripts/install_eddie.sh created; __main__.py uses subprocess.run batch loop with scratch pre-flight; eddie.config staging time=4h; 148 tests pass."
+  failed: ""
+  needed: "Loop 230: end-to-end Eddie test — deploy via install_eddie.sh, run pipeline on real plate, validate output structure."
 todos:
   - id: "loop-220-1"
     content: "Create nextflow/modules/stage_in.nf: STAGE_IN process with label 'staging', rsync --partial --timeout=300 from DataStore to scratch, output tuple(plate_id, staged_path)"
     skill: "NA"
     agent: "ralph-loop-worker"
     outcome: "nextflow/modules/stage_in.nf exists; contains STAGE_IN process with label 'staging', rsync --partial --timeout=300, and emits tuple(plate_id, staged_path)"
-    status: pending
+    status: completed
     complexity: medium
     priority: high
   - id: "loop-220-2"
@@ -100,7 +104,7 @@ todos:
     skill: "NA"
     agent: "ralph-loop-worker"
     outcome: "nextflow/modules/stage_out.nf exists; contains STAGE_OUT process with label 'staging' and rsync --partial --timeout=300 to DataStore"
-    status: pending
+    status: completed
     complexity: medium
     priority: high
   - id: "loop-220-3"
@@ -108,7 +112,7 @@ todos:
     skill: "NA"
     agent: "ralph-loop-worker"
     outcome: "nextflow/conf/eddie.config withLabel: 'staging' block contains time = '4.h'"
-    status: pending
+    status: completed
     complexity: low
     priority: high
   - id: "loop-220-4"
@@ -116,7 +120,7 @@ todos:
     skill: "NA"
     agent: "ralph-loop-worker"
     outcome: "nextflow/main.nf includes STAGE_IN and STAGE_OUT; workflow calls STAGE_IN before ILLUM_CALCULATE and STAGE_OUT after FEATURE_EXTRACT"
-    status: pending
+    status: completed
     complexity: medium
     priority: high
   - id: "loop-220-5"
@@ -124,7 +128,7 @@ todos:
     skill: "test-driven-development"
     agent: "ralph-loop-worker"
     outcome: "cptools2/batch.py exists; exports compute_plate_sizes, create_batches, get_scratch_quota; 75%/30% constants present; fallback chain implemented"
-    status: pending
+    status: completed
     complexity: high
     priority: high
   - id: "loop-220-6"
@@ -132,7 +136,7 @@ todos:
     skill: "NA"
     agent: "ralph-loop-worker"
     outcome: "__main__.py cmd_pipeline uses subprocess.run; scratch pre-flight warns at 80%; -profile eddie in nf_cmd; completed batches skipped on resume"
-    status: pending
+    status: completed
     complexity: high
     priority: high
   - id: "loop-220-7"
@@ -140,7 +144,7 @@ todos:
     skill: "NA"
     agent: "ralph-loop-worker"
     outcome: "scripts/install_eddie.sh exists; accepts base dir param; creates containers/env/nextflow subdirs; installs conda env; creates activate.sh"
-    status: pending
+    status: completed
     complexity: medium
     priority: medium
   - id: "loop-220-8"
@@ -148,7 +152,7 @@ todos:
     skill: "test-driven-development"
     agent: "ralph-loop-worker"
     outcome: "tests/test_batch.py exists; contains 6-7 test functions covering all specified cases; all tests pass"
-    status: pending
+    status: completed
     complexity: medium
     priority: high
   - id: "loop-220-9"
@@ -156,7 +160,7 @@ todos:
     skill: "verification-before-completion"
     agent: "ralph-loop-worker"
     outcome: "pytest exits 0; 146 or more tests collected and passing; no regressions in existing test suite"
-    status: pending
+    status: completed
     complexity: low
     priority: high
 ```

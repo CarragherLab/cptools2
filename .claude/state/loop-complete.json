@@ -1,14 +1,13 @@
 {
-  "loop_name": "Loop 210: Container Build & Deploy",
-  "loop_id": "210",
-  "status": "partial",
-  "todos_done": 3,
+  "loop_name": "Loop 220: Staging + Batch Orchestration",
+  "loop_file": ".claude/plans/phase-2-ralph-loops.md",
+  "status": "completed",
+  "todos_done": 9,
   "todos_failed": 0,
-  "todos_pending_manual": 9,
   "completed_at": "2026-04-06T00:00:00Z",
   "handoff": {
-    "done": "build_containers.sh parameterized (accepts CONTAINER_DIR arg with default .../cptools2/containers/), eddie_container_dir removed from containers.config, 140 tests pass",
+    "done": "stage_in.nf, stage_out.nf, batch.py, test_batch.py (8 tests), scripts/install_eddie.sh created; __main__.py uses subprocess.run batch loop with scratch pre-flight; eddie.config staging time=4h; 148 tests pass.",
     "failed": "",
-    "needed": "User must manually: build Docker images locally, transfer to Eddie, qsub build_containers.sh, validate containers, deploy manifest. See loop file for details."
+    "needed": "Loop 230: end-to-end Eddie test — deploy via install_eddie.sh, run pipeline on real plate, validate output structure."
   }
 }

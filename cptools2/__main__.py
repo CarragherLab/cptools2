@@ -1,8 +1,10 @@
 import argparse
 import os
 import shutil
+import subprocess
 import sys
 
+from cptools2 import batch as batch_module
 from cptools2 import parse_yaml
 from cptools2.colours import pretty_print
 
@@ -59,22 +61,63 @@ def cmd_pipeline(args):
         pretty_print("dry-run mode: params.json generated, skipping Nextflow")
         return
 
-    # Check for nextflow
     if not _find_nextflow():
         print(NEXTFLOW_INSTALL_MSG, file=sys.stderr)
         sys.exit(1)
 
-    # Build nextflow command — resolve main.nf relative to the package root
+    # Scratch pre-flight check
+    config_quota = config.get("scratch_quota_gb")
+    quota = batch_module.get_scratch_quota(config_quota)
+    if quota.used_pct > 80:
+        pretty_print(
+            "Warning: scratch is {:.0f}% full ({:.1f}GB / {:.1f}GB)".format(
+                quota.used_pct,
+                quota.used / 1024**3,
+                quota.total / 1024**3,
+            )
+        )
+
+    # Compute batches if experiment dir is available
+    exp_args = config.get("experiment_args") or {}
+    input_dir = exp_args.get("exp_dir")
+    if input_dir and os.path.isdir(input_dir):
+        plate_sizes = batch_module.compute_plate_sizes(input_dir)
+        batches = batch_module.create_batches(plate_sizes, quota.available)
+        pretty_print(
+            "Computed {} batch(es) for {} plates".format(
+                len(batches), len(plate_sizes)
+            )
+        )
+    else:
+        # No experiment dir or not accessible, single batch with all plates
+        batches = [{"batch_id": 1, "plates": None, "total_size_gb": 0, "plate_count": 0}]
+
+    # Resolve main.nf path relative to the package root
     nf_main = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         "nextflow", "main.nf"
     )
-    nf_cmd = ["nextflow", "run", nf_main, "-params-file", params_path]
-    if args.resume:
-        nf_cmd.append("-resume")
 
-    pretty_print("running: {}".format(" ".join(nf_cmd)))
-    os.execvp("nextflow", nf_cmd)
+    for batch_info in batches:
+        nf_cmd = ["nextflow", "run", nf_main, "-params-file", params_path,
+                  "-profile", "eddie"]
+        if args.resume:
+            nf_cmd.append("-resume")
+        pretty_print(
+            "Running batch {}: {}".format(
+                batch_info["batch_id"], " ".join(nf_cmd)
+            )
+        )
+        result = subprocess.run(nf_cmd)
+        if result.returncode != 0:
+            pretty_print(
+                "Batch {} failed (exit {}). Fix and re-run with --resume.".format(
+                    batch_info["batch_id"], result.returncode
+                )
+            )
+            sys.exit(result.returncode)
+
+    pretty_print("All batches complete!")
 
 
 def cmd_prepare(args):
