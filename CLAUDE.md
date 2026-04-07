@@ -85,9 +85,9 @@ Key routing rules:
 - loop_file: .claude/plans/phase-1-ralph-loops.md
 - status: in_progress
 - loops_total: 3
-- loops_done: 1
+- loops_done: 2
 - todos_total: 26
-- todos_done: 8
+- todos_done: 16
 
 ## Test conventions
 
