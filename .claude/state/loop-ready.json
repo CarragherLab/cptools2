@@ -1,14 +1,32 @@
 {
-  "loop_name": "Loop 130: Cleanup + Multi-Assay Tests",
-  "loop_id": "130",
-  "loop_file": ".claude/plans/phase-1-ralph-loops.md",
-  "task_name": "Cleanup + Multi-Assay Tests",
-  "todos_count": 10,
+  "loop_name": "Loop 210: Container Build & Deploy",
+  "loop_id": "210",
+  "loop_file": ".claude/plans/phase-2-ralph-loops.md",
+  "task_name": "Container Build & Deploy",
+  "todos_count": 12,
   "prepared_at": "2026-04-06T00:00:00Z",
   "status": "ready",
   "handoff_injected": {
-    "done": "Loops 110+120: parse_yaml improved, bugs fixed, Nextflow stage gating fixed, publishDir added, --nv GPU flag, channel-agnostic illum columns, container resolution. 128 tests pass.",
+    "done": "Phase 1 complete: 140 tests pass, all code review fixes landed, parse_yaml improved, Nextflow stage gating fixed",
     "failed": "",
-    "needed": "Dead code removal, _prepare_config helper, version bump, .gitignore, 13 new multi-assay tests"
+    "needed": "Parameterize build_containers.sh, remove dead eddie_container_dir config, then manual Docker builds + Eddie SSH for container deployment"
+  },
+  "worker_notes": {
+    "executable_by_worker": [
+      "loop-210-1: Parameterize build_containers.sh (code change)",
+      "loop-210-2: Remove dead eddie_container_dir param from nextflow/conf/containers.config (code change)",
+      "loop-210-12: Run pytest tests/ -v and verify 140+ tests pass (local command)"
+    ],
+    "requires_manual_user_execution": [
+      "loop-210-3: Create cptools2/ directory on Eddie (skill: eddie:eddie-login — SSH required)",
+      "loop-210-4: Build Docker images locally (Docker daemon required on user machine)",
+      "loop-210-5: Save Docker archives (Docker daemon required on user machine)",
+      "loop-210-6: Transfer archives to Eddie (rsync to Eddie — SSH required)",
+      "loop-210-7: Submit SGE build job on Eddie (skill: eddie:eddie-login — SSH required)",
+      "loop-210-8: Validate CellProfiler container on Eddie (skill: eddie:eddie-login — SSH required)",
+      "loop-210-9: Validate DeepProfiler container on Eddie (skill: eddie:eddie-login — SSH required)",
+      "loop-210-10: Validate Cellpose-SAM container on Eddie (skill: eddie:eddie-login — SSH required)",
+      "loop-210-11: Deploy container manifest to Eddie (skill: eddie:eddie-login — SSH required)"
+    ]
   }
 }
