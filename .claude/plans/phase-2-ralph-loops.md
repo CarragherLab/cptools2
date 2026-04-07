@@ -87,42 +87,78 @@ key_outputs:
   - tests/test_batch.py with 6-7 unit tests
   - scripts/install_eddie.sh for shared env deployment
 todos:
-  - text: "Create nextflow/modules/stage_in.nf: STAGE_IN process with label 'staging', rsync --partial --timeout=300 from DataStore to scratch, output tuple(plate_id, staged_path)"
+  - id: "loop-220-1"
+    content: "Create nextflow/modules/stage_in.nf: STAGE_IN process with label 'staging', rsync --partial --timeout=300 from DataStore to scratch, output tuple(plate_id, staged_path)"
+    skill: "NA"
+    agent: "ralph-loop-worker"
+    outcome: "nextflow/modules/stage_in.nf exists; contains STAGE_IN process with label 'staging', rsync --partial --timeout=300, and emits tuple(plate_id, staged_path)"
     status: pending
-    skill: null
-    agent: null
-  - text: "Create nextflow/modules/stage_out.nf: STAGE_OUT process with label 'staging', rsync --partial --timeout=300 results from scratch to DataStore output"
+    complexity: medium
+    priority: high
+  - id: "loop-220-2"
+    content: "Create nextflow/modules/stage_out.nf: STAGE_OUT process with label 'staging', rsync --partial --timeout=300 results from scratch to DataStore output"
+    skill: "NA"
+    agent: "ralph-loop-worker"
+    outcome: "nextflow/modules/stage_out.nf exists; contains STAGE_OUT process with label 'staging' and rsync --partial --timeout=300 to DataStore"
     status: pending
-    skill: null
-    agent: null
-  - text: "Update eddie.config: add time = '4.h' to withLabel: 'staging' block"
+    complexity: medium
+    priority: high
+  - id: "loop-220-3"
+    content: "Update eddie.config: add time = '4.h' to withLabel: 'staging' block"
+    skill: "NA"
+    agent: "ralph-loop-worker"
+    outcome: "nextflow/conf/eddie.config withLabel: 'staging' block contains time = '4.h'"
     status: pending
-    skill: null
-    agent: null
-  - text: "Update main.nf: include STAGE_IN and STAGE_OUT modules, wire into workflow (STAGE_IN before ILLUM_CALCULATE, STAGE_OUT after FEATURE_EXTRACT)"
+    complexity: low
+    priority: high
+  - id: "loop-220-4"
+    content: "Update main.nf: include STAGE_IN and STAGE_OUT modules, wire into workflow (STAGE_IN before ILLUM_CALCULATE, STAGE_OUT after FEATURE_EXTRACT)"
+    skill: "NA"
+    agent: "ralph-loop-worker"
+    outcome: "nextflow/main.nf includes STAGE_IN and STAGE_OUT; workflow calls STAGE_IN before ILLUM_CALCULATE and STAGE_OUT after FEATURE_EXTRACT"
     status: pending
-    skill: null
-    agent: null
-  - text: "Create cptools2/batch.py: migrate batch logic from job.py — compute_plate_sizes(input_dir), create_batches(plate_sizes, available_scratch) with 75% util / 30% overhead, get_scratch_quota() with lfs/df/YAML fallback chain"
+    complexity: medium
+    priority: high
+  - id: "loop-220-5"
+    content: "Create cptools2/batch.py: migrate batch logic from job.py — compute_plate_sizes(input_dir), create_batches(plate_sizes, available_scratch) with 75% util / 30% overhead, get_scratch_quota() with lfs/df/YAML fallback chain"
+    skill: "test-driven-development"
+    agent: "ralph-loop-worker"
+    outcome: "cptools2/batch.py exists; exports compute_plate_sizes, create_batches, get_scratch_quota; 75%/30% constants present; fallback chain implemented"
     status: pending
-    skill: null
-    agent: null
-  - text: "Update __main__.py cmd_pipeline: replace os.execvp with subprocess.run batch loop. Add scratch pre-flight check (warn at 80%). Add -profile eddie to nf_cmd. Skip completed batches on resume."
+    complexity: high
+    priority: high
+  - id: "loop-220-6"
+    content: "Update __main__.py cmd_pipeline: replace os.execvp with subprocess.run batch loop. Add scratch pre-flight check (warn at 80%). Add -profile eddie to nf_cmd. Skip completed batches on resume."
+    skill: "NA"
+    agent: "ralph-loop-worker"
+    outcome: "__main__.py cmd_pipeline uses subprocess.run; scratch pre-flight warns at 80%; -profile eddie in nf_cmd; completed batches skipped on resume"
     status: pending
-    skill: null
-    agent: null
-  - text: "Create scripts/install_eddie.sh: parameterized install script that creates cptools2/{containers,env,nextflow} structure, conda env, pip install, nextflow symlink, activate.sh"
+    complexity: high
+    priority: high
+  - id: "loop-220-7"
+    content: "Create scripts/install_eddie.sh: parameterized install script that creates cptools2/{containers,env,nextflow} structure, conda env, pip install, nextflow symlink, activate.sh"
+    skill: "NA"
+    agent: "ralph-loop-worker"
+    outcome: "scripts/install_eddie.sh exists; accepts base dir param; creates containers/env/nextflow subdirs; installs conda env; creates activate.sh"
     status: pending
-    skill: null
-    agent: null
-  - text: "Create tests/test_batch.py: test create_batches (single plate fits, multi-batch, oversized plate, empty list), test get_scratch_quota fallbacks (mock lfs/df), test compute_plate_sizes with tmp_path"
+    complexity: medium
+    priority: medium
+  - id: "loop-220-8"
+    content: "Create tests/test_batch.py: test create_batches (single plate fits, multi-batch, oversized plate, empty list), test get_scratch_quota fallbacks (mock lfs/df), test compute_plate_sizes with tmp_path"
+    skill: "test-driven-development"
+    agent: "ralph-loop-worker"
+    outcome: "tests/test_batch.py exists; contains 6-7 test functions covering all specified cases; all tests pass"
     status: pending
-    skill: null
-    agent: null
-  - text: "Run pytest tests/ -v and verify 146+ tests pass (140 existing + 6 new batch tests)"
+    complexity: medium
+    priority: high
+  - id: "loop-220-9"
+    content: "Run pytest tests/ -v and verify 146+ tests pass (140 existing + 6 new batch tests)"
+    skill: "verification-before-completion"
+    agent: "ralph-loop-worker"
+    outcome: "pytest exits 0; 146 or more tests collected and passing; no regressions in existing test suite"
     status: pending
-    skill: null
-    agent: null
+    complexity: low
+    priority: high
 ```
 
 ## Loop 230: End-to-End Eddie Test
