@@ -80,15 +80,16 @@ Key routing rules:
 ## Planning State
 
 - phase: 2
-- phase_name: Eddie Deployment
+- phase_name: Eddie Deployment (scope expanded 2026-04-09)
 - phase_plan: .claude/plans/phase-2-eddie-deployment.md
 - loop_file: .claude/plans/phase-2-ralph-loops.md
+- design_doc: .claude/plans/2026-04-09-cellpose-deepprofiler-design.md
 - status: in_progress
-- loops_total: 3
+- loops_total: 4
 - loops_done: 2
-- current_loop: 230 (End-to-End Eddie Test)
+- current_loop: 230 (Cellpose + DeepProfiler Bridge — rewritten 2026-04-09)
 - next_loop: 230
-- todos_total: 29
+- todos_total: 39 (21 done in 210+220, 18 new in 230, 10 in 240)
 - todos_done: 21
 
 ## Test conventions
