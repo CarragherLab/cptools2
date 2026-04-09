@@ -85,11 +85,11 @@ Key routing rules:
 - loop_file: .claude/plans/phase-2-ralph-loops.md
 - status: in_progress
 - loops_total: 3
-- loops_done: 1
-- current_loop: 210 (manual Eddie/Docker todos pending)
-- next_loop: 230 (depends on Loop 210 container deploy)
+- loops_done: 2
+- current_loop: 230 (End-to-End Eddie Test)
+- next_loop: 230
 - todos_total: 29
-- todos_done: 12
+- todos_done: 21
 
 ## Test conventions
 
