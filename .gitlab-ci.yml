@@ -1,0 +1,7 @@
+include:
+  - project: 'mharvey2/eddie-for-agents'
+    ref: main
+    file: 'ci/eddie-validate.yml'
+  - project: 'mharvey2/eddie-for-agents'
+    ref: main
+    file: 'ci/eddie-shellcheck.yml'
