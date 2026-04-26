@@ -104,7 +104,7 @@ singularity exec \
 ### DeepProfiler and Cellpose-SAM (GPU node)
 
 ```bash
-qlogin -pe gpu-a100 1 -l gpus=1 -l h_rss=16G -l h_rt=01:00:00
+qlogin -pe gpu-a100 1 -l gpu=1 -l h_rss=16G -l h_rt=01:00:00
 module load singularity
 
 # DeepProfiler
@@ -119,5 +119,5 @@ singularity exec --nv \
 ```
 
 The `--nv` flag maps host NVIDIA drivers into the container. Without it, GPU frameworks
-silently fall back to CPU. Use `-pe gpu-a100 1 -l gpus=1` (not `-l gpu=1`) for Eddie's
-GPU allocation syntax.
+silently fall back to CPU. Use `-pe gpu-a100 1 -l gpu=1`; Eddie exposes `gpus`
+as a non-requestable complex.

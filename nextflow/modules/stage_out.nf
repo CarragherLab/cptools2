@@ -21,7 +21,7 @@ process STAGE_OUT {
         DEST="${params.output_dir}/${plate_id}"
         mkdir -p "\$DEST"
 
-        rsync -av --partial --timeout=300 \
+        rsync -rtl --partial --timeout=300 \
             ${results_dir}/ "\$DEST/" \
             2>&1 | tee stage_out_${plate_id}.log
 

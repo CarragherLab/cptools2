@@ -154,6 +154,27 @@ class TestCmdPipelineDryRun:
         # Only illum stages should be present (overridden)
         assert params["stages"] == ["illum_calculate", "illum_apply"]
 
+    def test_dry_run_creates_missing_output_directory(self, tmp_path):
+        """pipeline --dry-run should create the configured output dir for params.json."""
+        output_dir = tmp_path / "fresh-output"
+        config_content = (
+            "experiment: /path/to/experiment\n"
+            "chunk: 46\n"
+            "pipeline: tests/example_pipeline.cppipe\n"
+            "location: {}\n"
+            "commands location: /home/user\n"
+        ).format(str(output_dir))
+        config_file = tmp_path / "test_config.yaml"
+        config_file.write_text(config_content)
+
+        parser = build_parser()
+        args = parser.parse_args(["pipeline", str(config_file), "--dry-run"])
+        cmd_pipeline(args)
+
+        params_path = output_dir / "params.json"
+        assert output_dir.exists()
+        assert params_path.exists()
+
 
 class TestCmdPrepare:
     """Test the prepare subcommand."""

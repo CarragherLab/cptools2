@@ -1,0 +1,41 @@
+# Loop 230 representative Eddie test.
+#
+# Runtime assets are expected to be copied into the scratch project before
+# execution:
+#   /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/
+#   /exports/eddie/scratch/mharvey2/cptools2-loop230/config/
+
+input_dir: /exports/igmm/datastore/ImageXpress2020/imagexpress/Sarah-screen
+output_dir: /exports/eddie/scratch/mharvey2/cptools2-loop230
+
+plates:
+  - 3723-D-100
+
+stage_data: true
+
+illum_pipeline_calculate: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/illum_calculate.cppipe
+illum_pipeline_apply: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/illum_apply.cppipe
+seg_pipeline: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/nuclear_segmentation.cppipe
+pipeline: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/nuclear_segmentation.cppipe
+
+commands location: /exports/eddie/scratch/mharvey2/cptools2-loop230/commands
+
+channels:
+  - DNA
+  - RNA
+  - ER
+  - AGP
+  - Mito
+
+stages:
+  - illum
+  - segment
+  - extract
+
+segmentation:
+  model: cellprofiler
+
+feature_extraction:
+  tool: deepprofiler
+  config: /exports/eddie/scratch/mharvey2/cptools2-loop230/config/deepprofiler_config.json
+  batch_size: 128

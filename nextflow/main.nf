@@ -18,7 +18,7 @@ params.input_dir        = null      // root directory containing plate subdirs
 params.output_dir       = null      // root output directory
 params.stages           = 'all'     // comma-separated: illum,segment,extract  or 'all'
 params.plates           = null      // comma-separated plate IDs, or null to auto-detect
-params.stage_data       = false     // set true for Eddie DataStore staging
+params.stage_data       = true      // DataStore inputs must be staged before compute
 
 // Channel configuration (Cell Painting defaults)
 params.channels         = ['DNA', 'RNA', 'ER', 'AGP', 'Mito']
@@ -73,7 +73,11 @@ include { STAGE_OUT       } from './modules/stage_out'
 
 def build_plate_channel() {
     if (params.plates) {
-        return Channel.of(params.plates.tokenize(',').collect { it.trim() })
+        def plate_ids = params.plates instanceof List
+            ? params.plates.collect { it.toString().trim() }
+            : params.plates.tokenize(',').collect { it.trim() }
+
+        return Channel.of(plate_ids)
                       .flatten()
                       .map { plate_id ->
                           def plate_dir = file("${params.input_dir}/${plate_id}")

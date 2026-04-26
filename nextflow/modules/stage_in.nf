@@ -11,7 +11,7 @@ process STAGE_IN {
     label 'staging'
 
     input:
-    tuple val(plate_id), path(datastore_path)
+    tuple val(plate_id), val(datastore_path)
 
     output:
     tuple val(plate_id), path("staged_images"), emit: staged_images
@@ -20,7 +20,7 @@ process STAGE_IN {
     """
     mkdir -p staged_images
 
-    rsync -av --partial --timeout=300 \
+    rsync -rtl --partial --timeout=300 \
         ${datastore_path}/ staged_images/ \
         2>&1 | tee stage_in_${plate_id}.log
 

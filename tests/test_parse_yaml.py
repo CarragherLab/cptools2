@@ -153,6 +153,8 @@ def test_generate_params_json(tmp_path):
     assert "illum_calculate" in params["stages"]
     assert "illum_apply" in params["stages"]
     assert params["channels"] == ["DAPI", "GFP", "CY5", "CY3", "BF"]
+    assert params["input_dir"] == "/path/to/experiment"
+    assert params["output_dir"] == "/example/location"
 
 
 def test_generate_params_json_minimal(tmp_path):
@@ -166,6 +168,8 @@ def test_generate_params_json_minimal(tmp_path):
     # should not have stages/channels since legacy config lacks them
     assert "stages" not in params
     assert "channels" not in params
+    assert params["input_dir"] == "/path/to/experiment"
+    assert params["output_dir"] == "/example/location"
 
 
 def test_resolve_stages_none():
@@ -199,4 +203,126 @@ def test_generate_params_json_custom_channels(tmp_path):
     with open(output_path) as f:
         params = json.load(f)
     assert params["channels"] == ["DAPI", "GFP", "mCherry"]
+
+
+def test_parse_config_file_explicit_plates_and_staging(tmp_path):
+    """parse_config_file accepts explicit plates and stage_data for DataStore runs."""
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "input_dir: /exports/igmm/datastore/ImageXpress2020/imagexpress/Sarah-screen\n"
+        "output_dir: /exports/eddie/scratch/mharvey2/cptools2-loop230\n"
+        "pipeline: tests/example_pipeline.cppipe\n"
+        "commands location: /tmp/commands\n"
+        "plates:\n"
+        "  - 3723-D-100\n"
+        "stage_data: true\n"
+    )
+
+    config = parse_yaml.parse_config_file(str(config_file))
+
+    assert config["experiment_args"] == {
+        "exp_dir": "/exports/igmm/datastore/ImageXpress2020/imagexpress/Sarah-screen"
+    }
+    assert config["create_command_args"]["location"] == (
+        "/exports/eddie/scratch/mharvey2/cptools2-loop230"
+    )
+    assert config["plates"] == ["3723-D-100"]
+    assert config["stage_data"] is True
+
+
+def test_generate_params_json_explicit_plates_and_staging(tmp_path):
+    """generate_params_json emits Nextflow plates and stage_data params."""
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "input_dir: /exports/igmm/datastore/ImageXpress2020/imagexpress/Sarah-screen\n"
+        "output_dir: /exports/eddie/scratch/mharvey2/cptools2-loop230\n"
+        "pipeline: tests/example_pipeline.cppipe\n"
+        "commands location: /tmp/commands\n"
+        "plates: 3723-D-100,13738-D-30\n"
+        "stage_data: true\n"
+    )
+    config = parse_yaml.parse_config_file(str(config_file))
+    output_path = str(tmp_path / "params.json")
+    parse_yaml.generate_params_json(config, output_path)
+
+    with open(output_path) as f:
+        params = json.load(f)
+
+    assert params["plates"] == ["3723-D-100", "13738-D-30"]
+    assert params["stage_data"] is True
+    assert params["input_dir"] == (
+        "/exports/igmm/datastore/ImageXpress2020/imagexpress/Sarah-screen"
+    )
+    assert params["output_dir"] == "/exports/eddie/scratch/mharvey2/cptools2-loop230"
+
+
+def test_create_commands_defaults_commands_location_to_output_dir():
+    """commands location defaults to <output_dir>/commands."""
+    yaml_dict = {
+        "pipeline": "tests/example_pipeline.cppipe",
+        "output_dir": "/exports/eddie/scratch/mharvey2/cptools2-loop230",
+    }
+
+    result = parse_yaml.create_commands(yaml_dict)
+
+    assert result["commands_location"] == (
+        "/exports/eddie/scratch/mharvey2/cptools2-loop230/commands"
+    )
+
+
+def test_generate_params_json_nextflow_pipeline_paths(tmp_path):
+    """generate_params_json emits explicit Nextflow CellProfiler pipeline paths."""
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "input_dir: /exports/igmm/datastore/ImageXpress2020/imagexpress/Sarah-screen\n"
+        "output_dir: /exports/eddie/scratch/mharvey2/cptools2-loop230\n"
+        "pipeline: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/nuclear_segmentation.cppipe\n"
+        "illum_pipeline_calculate: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/illum_calculate.cppipe\n"
+        "illum_pipeline_apply: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/illum_apply.cppipe\n"
+        "seg_pipeline: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/nuclear_segmentation.cppipe\n"
+        "stage_data: true\n"
+    )
+    config = parse_yaml.parse_config_file(str(config_file))
+    output_path = str(tmp_path / "params.json")
+    parse_yaml.generate_params_json(config, output_path)
+
+    with open(output_path) as f:
+        params = json.load(f)
+
+    assert params["illum_pipeline_calculate"].endswith("/pipelines/illum_calculate.cppipe")
+    assert params["illum_pipeline_apply"].endswith("/pipelines/illum_apply.cppipe")
+    assert params["seg_pipeline"].endswith("/pipelines/nuclear_segmentation.cppipe")
+
+
+def test_datastore_input_requires_stage_data(tmp_path):
+    """DataStore-backed YAML configs must stage data before compute."""
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "input_dir: /exports/igmm/datastore/ImageXpress2020/imagexpress/Sarah-screen\n"
+        "output_dir: /exports/eddie/scratch/mharvey2/cptools2-loop230\n"
+        "pipeline: tests/example_pipeline.cppipe\n"
+        "stage_data: false\n"
+    )
+
+    with pytest.raises(ValueError, match="DataStore inputs must use stage_data"):
+        parse_yaml.parse_config_file(str(config_file))
+
+
+def test_generate_params_json_feature_extraction_tool_alias(tmp_path):
+    """generate_params_json emits Nextflow feature extraction aliases."""
+    config = parse_yaml.parse_config_file(PIPELINE_CONFIG_PATH)
+    config["feature_extraction"] = {
+        "tool": "deepprofiler",
+        "config": "/models/deepprofiler/config.json",
+        "weights": "/models/deepprofiler/model.ckpt",
+        "batch_size": 32,
+    }
+    output_path = str(tmp_path / "params.json")
+    parse_yaml.generate_params_json(config, output_path)
+    with open(output_path) as f:
+        params = json.load(f)
+    assert params["feature_extraction_tool"] == "deepprofiler"
+    assert params["feature_extraction_config"] == "/models/deepprofiler/config.json"
+    assert params["feature_extraction_weights"] == "/models/deepprofiler/model.ckpt"
+    assert params["feature_extraction_batch_size"] == 32
 

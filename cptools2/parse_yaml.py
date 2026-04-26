@@ -14,6 +14,24 @@ import os
 import yaml
 
 
+def _path_arg(value):
+    """Normalize a scalar-or-list path argument without requiring local existence."""
+    if isinstance(value, list):
+        value = value[0]
+    path = os.path.expandvars(str(value))
+    if not os.path.isabs(path):
+        path = os.path.abspath(path)
+    return path
+
+
+def _join_remote_safe(base, *parts):
+    """Join paths without converting Unix-style Eddie paths to Windows separators."""
+    base = str(base)
+    if base.startswith("/"):
+        return "/".join([base.rstrip("/")] + [str(p).strip("/") for p in parts])
+    return os.path.join(base, *parts)
+
+
 def open_yaml(path_to_yaml):
     """
     return a dictionary representation of a yaml file
@@ -47,8 +65,8 @@ def experiment(yaml_dict):
     -------
     dictionary
     """
-    if "experiment" in yaml_dict:
-        experiment_arg = yaml_dict["experiment"]
+    if "experiment" in yaml_dict or "input_dir" in yaml_dict:
+        experiment_arg = yaml_dict.get("experiment", yaml_dict.get("input_dir"))
         if isinstance(experiment_arg, list):
             experiment_arg = experiment_arg[0]
         return {"exp_dir" : experiment_arg}
@@ -158,22 +176,22 @@ def create_commands(yaml_dict):
     --------
     dictionary
     """
+    pipeline_arg = None
     if "pipeline" in yaml_dict:
-        pipeline_arg = yaml_dict["pipeline"]
-        if isinstance(pipeline_arg, list):
-            pipeline_arg = pipeline_arg[0]
-        pipeline_arg = os.path.abspath(pipeline_arg)
-        if not os.path.isfile(pipeline_arg):
-            raise IOError("'{}' pipeline not found".format(pipeline_arg))
-    if "location" in yaml_dict:
-        location_arg = yaml_dict["location"]
+        pipeline_arg = _path_arg(yaml_dict["pipeline"])
+    if "location" in yaml_dict or "output_dir" in yaml_dict:
+        location_arg = yaml_dict.get("location", yaml_dict.get("output_dir"))
         if isinstance(location_arg, list):
             location_arg = location_arg[0]
+    else:
+        location_arg = os.path.dirname(os.path.abspath("params.json"))
     # TODO more options rather than exactly "commands location"
     if "commands location" in yaml_dict:
         commands_loc_arg = yaml_dict["commands location"]
         if isinstance(commands_loc_arg, list):
             commands_loc_arg = commands_loc_arg[0]
+    else:
+        commands_loc_arg = _join_remote_safe(location_arg, "commands")
     # need the chunk size to check LoadData dataframes are the correct size
     if "chunk" in yaml_dict:
         chunk_arg = yaml_dict["chunk"]
@@ -221,7 +239,12 @@ def check_yaml_args(yaml_dict):
                   "container_path",
                   "output_dir",
                   "input_dir",
-                  "plate_list"]
+                  "plate_list",
+                  "plates",
+                  "stage_data",
+                  "illum_pipeline_calculate",
+                  "illum_pipeline_apply",
+                  "seg_pipeline"]
     bad_arguments = []
     for argument in yaml_dict.keys():
         if argument not in valid_args:
@@ -277,6 +300,45 @@ def data_destination(yaml_dict):
     return None
 
 
+def plates(yaml_dict):
+    """Get explicit plate IDs for Nextflow execution."""
+    plate_arg = yaml_dict.get("plates", yaml_dict.get("plate_list"))
+    if plate_arg is None:
+        return None
+    if isinstance(plate_arg, str):
+        return [p.strip() for p in plate_arg.split(",") if p.strip()]
+    if isinstance(plate_arg, list):
+        return [str(p) for p in plate_arg]
+    return [str(plate_arg)]
+
+
+def stage_data(yaml_dict):
+    """Return whether DataStore staging should be enabled."""
+    return bool(yaml_dict.get("stage_data", True))
+
+
+def validate_staging_contract(yaml_dict):
+    """DataStore-backed runs must stage data before compute."""
+    input_arg = yaml_dict.get("input_dir", yaml_dict.get("experiment"))
+    if isinstance(input_arg, list):
+        input_arg = input_arg[0]
+    input_arg = str(input_arg or "")
+    if "/datastore/" in input_arg.replace("\\", "/") and not stage_data(yaml_dict):
+        raise ValueError(
+            "DataStore inputs must use stage_data: true. "
+            "Staging nodes copy data; compute/GPU nodes process staged data."
+        )
+
+
+def nextflow_pipeline_paths(yaml_dict):
+    """Return explicit Nextflow pipeline template paths from the YAML config."""
+    paths = {}
+    for key in ["illum_pipeline_calculate", "illum_pipeline_apply", "seg_pipeline"]:
+        if key in yaml_dict:
+            paths[key] = _path_arg(yaml_dict[key])
+    return paths
+
+
 def parse_config_file(config_file):
     """
     parse config file, return a plain dict
@@ -304,6 +366,7 @@ def parse_config_file(config_file):
     yaml_dict = open_yaml(config_file)
     # check the arguments in the yaml file are recognised
     check_yaml_args(yaml_dict)
+    validate_staging_contract(yaml_dict)
     config = {
         "experiment_args": experiment(yaml_dict),
         "chunk_args": chunk(yaml_dict),
@@ -318,6 +381,9 @@ def parse_config_file(config_file):
         "containers": yaml_dict.get("containers"),
         "join_files_patterns": join_files(yaml_dict),
         "data_destination_path": data_destination(yaml_dict),
+        "plates": plates(yaml_dict),
+        "stage_data": stage_data(yaml_dict),
+        "nextflow_pipeline_paths": nextflow_pipeline_paths(yaml_dict),
     }
     # Resolve container .sif paths from manifest if available
     from cptools2 import containers as _containers
@@ -442,11 +508,13 @@ def generate_params_json(config_dict, output_path):
     exp_args = config_dict.get("experiment_args")
     if exp_args is not None:
         params["experiment_dir"] = exp_args["exp_dir"]
+        params["input_dir"] = exp_args["exp_dir"]
 
     cmd_args = config_dict.get("create_command_args")
     if cmd_args is not None:
         if "location" in cmd_args:
             params["location"] = cmd_args["location"]
+            params["output_dir"] = cmd_args["location"]
         if "pipeline" in cmd_args:
             params["pipeline"] = cmd_args["pipeline"]
 
@@ -460,6 +528,14 @@ def generate_params_json(config_dict, output_path):
     if stages is not None:
         params["stages"] = stages
 
+    if config_dict.get("plates") is not None:
+        params["plates"] = config_dict["plates"]
+
+    params["stage_data"] = bool(config_dict.get("stage_data", False))
+
+    for key, value in config_dict.get("nextflow_pipeline_paths", {}).items():
+        params[key] = value
+
     # channels
     if config_dict.get("channels") is not None:
         params["channels"] = config_dict["channels"]
@@ -467,10 +543,25 @@ def generate_params_json(config_dict, output_path):
     # segmentation
     if config_dict.get("segmentation") is not None:
         params["segmentation"] = config_dict["segmentation"]
+        segmentation = config_dict["segmentation"]
+        if isinstance(segmentation, dict):
+            if "diameter" in segmentation:
+                params["seg_diameter_min"] = segmentation["diameter"]
+                params["seg_diameter_max"] = segmentation["diameter"]
 
     # feature_extraction
     if config_dict.get("feature_extraction") is not None:
         params["feature_extraction"] = config_dict["feature_extraction"]
+        feature_extraction = config_dict["feature_extraction"]
+        if isinstance(feature_extraction, dict):
+            if "tool" in feature_extraction:
+                params["feature_extraction_tool"] = feature_extraction["tool"]
+            if "config" in feature_extraction:
+                params["feature_extraction_config"] = feature_extraction["config"]
+            if "weights" in feature_extraction:
+                params["feature_extraction_weights"] = feature_extraction["weights"]
+            if "batch_size" in feature_extraction:
+                params["feature_extraction_batch_size"] = feature_extraction["batch_size"]
 
     # containers
     if config_dict.get("containers") is not None:
@@ -479,6 +570,10 @@ def generate_params_json(config_dict, output_path):
     # resolved container .sif paths take precedence if available
     if config_dict.get("resolved_containers"):
         params["containers"] = config_dict["resolved_containers"]
+
+    output_dir = os.path.dirname(os.path.abspath(output_path))
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
 
     with open(output_path, "w") as f:
         json.dump(params, f, indent=2)
