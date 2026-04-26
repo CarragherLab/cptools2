@@ -5,8 +5,8 @@ Three containers are used in the Cell Painting pipeline:
 | Container | Base Image | GPU | Approx Size |
 |---|---|---|---|
 | CellProfiler 4.2.8 | `cellprofiler/cellprofiler:4.2.8` (official) | No | ~1.5 GB |
-| DeepProfiler 1.0 | `tensorflow/tensorflow:2.5.3-gpu` | Yes | ~8-10 GB |
-| Cellpose-SAM 1.0 | `nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04` | Yes | ~5-7 GB |
+| DeepProfiler 1.0 | `nvidia/cuda:11.2.2-cudnn8-runtime-ubuntu20.04` | Yes | ~8-10 GB |
+| Cellpose-SAM 1.0 | `nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04` | Yes | ~20-25 GB |
 
 CellProfiler uses the official Docker Hub image directly (no custom Dockerfile).
 DeepProfiler and Cellpose-SAM have custom Dockerfiles in this directory.
@@ -36,7 +36,7 @@ docker pull cellprofiler/cellprofiler:4.2.8
 docker build -f Dockerfile.deepprofiler -t cptools2/deepprofiler:1.0 .
 
 # Cellpose-SAM
-docker build -f Dockerfile.cellpose -t cptools2/cellpose-sam:1.0 .
+docker build -f Dockerfile.cellpose -t cptools2/cellpose_sam:1.0 .
 ```
 
 ## Step 2: GPU Testing (Local)
@@ -47,10 +47,10 @@ docker run --rm cellprofiler/cellprofiler:4.2.8 cellprofiler --version
 
 # DeepProfiler
 docker run --gpus all --rm cptools2/deepprofiler:1.0 \
-    python -c "import tensorflow as tf; print(f'TF {tf.__version__}, GPUs: {tf.config.list_physical_devices(\"GPU\")}')"
+    python -m deepprofiler --help
 
 # Cellpose-SAM
-docker run --gpus all --rm cptools2/cellpose-sam:1.0 \
+docker run --gpus all --rm cptools2/cellpose_sam:1.0 \
     python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}, GPU: {torch.cuda.get_device_name(0)}')"
 ```
 
@@ -59,7 +59,7 @@ docker run --gpus all --rm cptools2/cellpose-sam:1.0 \
 ```bash
 docker save cellprofiler/cellprofiler:4.2.8 | gzip > cellprofiler_4.2.8.tar.gz
 docker save cptools2/deepprofiler:1.0 | gzip > deepprofiler_1.0.tar.gz
-docker save cptools2/cellpose-sam:1.0 | gzip > cellpose_sam_1.0.tar.gz
+docker save cptools2/cellpose_sam:1.0 | gzip > cellpose_sam_1.0.tar.gz
 ```
 
 ## Step 4: Transfer to Eddie

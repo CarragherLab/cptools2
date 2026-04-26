@@ -3,5 +3,5 @@ ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1
 RUN apt-get update && apt-get install -y python3.10 python3.10-distutils python3-pip libglib2.0-0 libsm6 libxrender1 libxext6 libgl1-mesa-glx && rm -rf /var/lib/apt/lists/*
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1 && update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
 RUN pip install --upgrade pip && pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
-RUN pip install cellpose[gpu] pandas numpy tifffile scikit-image scipy
+RUN pip install cellpose pandas numpy tifffile scikit-image scipy
 WORKDIR /app

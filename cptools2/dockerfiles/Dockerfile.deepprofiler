@@ -11,7 +11,8 @@ RUN pip install --upgrade pip
 # Pin TF to match DeepProfiler's setup.py (tensorflow==2.5.*).
 # Previously based on tensorflow/tensorflow:2.5.3-gpu, but that tag was removed
 # from Docker Hub — so we install TF from PyPI on top of the matching CUDA base.
-RUN pip install tensorflow==2.5.3 \
-    && pip install git+https://github.com/cytomining/DeepProfiler.git \
-       numpy pandas scipy scikit-image tifffile
+RUN git clone --depth 1 https://github.com/cytomining/DeepProfiler.git /opt/DeepProfiler \
+    && pip install tensorflow==2.5.3 \
+    && pip install /opt/DeepProfiler numpy pandas scipy scikit-image tifffile
+ENV PYTHONPATH=/opt/DeepProfiler
 WORKDIR /app

@@ -117,6 +117,27 @@ Needed:
 3. Verify staged and illumination outputs in scratch before running segmentation
    and feature extraction.
 
+### Loop 230D: Local container and architecture smoke
+
+Status: `completed`
+
+Done:
+
+- Built local Docker images:
+  - `cellprofiler/cellprofiler:4.2.8`
+  - `cptools2/deepprofiler:1.0`
+  - `cptools2/cellpose_sam:1.0`
+- Fixed the DeepProfiler container so the upstream source tree is available on
+  `PYTHONPATH`; the packaged wheel omits nested modules required by
+  `python -m deepprofiler`.
+- Aligned the Cellpose image tag with Nextflow config: `cellpose_sam`, not
+  `cellpose-sam`.
+- Removed the unused `cellpose[gpu]` pip extra from the Cellpose Dockerfile.
+- Added smoke tests for the Nextflow/container contract and Loop 230 scratch
+  staging assumptions.
+- Verified Nextflow `test` and `eddie` profiles with Dockerized Nextflow
+  config parsing.
+
 ## Known Operational Constraints
 
 - Staging queue is single-slot copy/list only. Do not request `sharedmem` or GPUs
@@ -130,6 +151,11 @@ Needed:
 
 ```text
 Docker Desktop reachable locally: 29.3.1
+CellProfiler container: 4.2.8
+DeepProfiler container: CLI starts; TensorFlow 2.5.3 sees local RTX 4500 via Docker GPU
+Cellpose-SAM container: Cellpose 4.1.1; Torch 2.7.1+cu118 sees local RTX 4500
+Nextflow config smoke: test and eddie profiles parse with nextflow/nextflow:24.10.4
+Architecture smoke tests: tests/test_nextflow_architecture_smoke.py passed
 Eddie install: completed
 Scratch prep: completed
 Focused parser tests: passed locally where no tmp_path fixture needed

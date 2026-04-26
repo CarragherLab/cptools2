@@ -48,10 +48,12 @@ def active_stages = params.stages instanceof List
     ? params.stages.collect { it.trim().toLowerCase() }
     : params.stages.tokenize(',').collect { it.trim().toLowerCase() }
 
-def run_illum_calc = active_stages.contains('all') || active_stages.contains('illum_calculate')
-def run_illum_app  = active_stages.contains('all') || active_stages.contains('illum_apply')
-def run_segment    = active_stages.contains('all') || active_stages.contains('segmentation')
-def run_extract    = active_stages.contains('all') || active_stages.contains('feature_extract')
+def hasStage = { String name -> active_stages.contains('all') || active_stages.contains(name) }
+
+def run_illum_calc = hasStage('illum') || hasStage('illum_calculate')
+def run_illum_app  = hasStage('illum') || hasStage('illum_apply')
+def run_segment    = hasStage('segment') || hasStage('segmentation')
+def run_extract    = hasStage('extract') || hasStage('feature_extract')
 
 // Convenience: if either illum sub-stage requested, run both
 def run_illum = run_illum_calc || run_illum_app
