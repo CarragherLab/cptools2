@@ -1,6 +1,7 @@
 # Plans Index — cptools2 Nextflow Imaging Pipeline
 
 **Design spec (current)**: [2026-04-06-nextflow-pipeline-design.md](2026-04-06-nextflow-pipeline-design.md)
+**Strategy review (Nextflow AI revamp)**: [2026-04-25-nextflow-ai-revamp-strategy.md](2026-04-25-nextflow-ai-revamp-strategy.md)
 **Prior design spec**: [2026-04-06-container-pipeline-design.md](2026-04-06-container-pipeline-design.md) (superseded)
 **Old phase plans**: [archive/](archive/) (superseded — custom Python orchestrator approach)
 

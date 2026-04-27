@@ -46,3 +46,14 @@ dev_docs/
 .nextflow/
 .nextflow.log*
 work/
+
+# Local smoke/generated artifacts
+.tmp/
+.tmp_cli_check/
+.pytest_cache/
+tmp*/
+cptools2-loop230.tgz
+
+# Local agent runtime assets copied into the project for Codex/Claude access.
+# The tracked project-facing copies live under .claude/.
+.agents/

@@ -1,0 +1,42 @@
+{
+  "date": "2026-04-27",
+  "window": "7d",
+  "branch": "ai-update",
+  "metrics": {
+    "commits": 3,
+    "non_merge_commits": 3,
+    "contributors": 1,
+    "prs_merged": 0,
+    "insertions": 793,
+    "deletions": 39,
+    "net_loc": 754,
+    "tracked_test_files": 25,
+    "tracked_pytest_files": 14,
+    "test_files_changed": 3,
+    "active_days": 2,
+    "sessions": 3,
+    "feat_pct": 0.33,
+    "fix_pct": 0.33,
+    "ci_pct": 0.33,
+    "peak_hour": 21,
+    "ai_assisted_commits": 2
+  },
+  "authors": {
+    "Mungo Harvey": {
+      "commits": 3,
+      "insertions": 793,
+      "deletions": 39,
+      "test_files_changed": 3,
+      "top_area": "nextflow/container architecture"
+    }
+  },
+  "verification": {
+    "cellprofiler": "4.2.8 smoke passed",
+    "deepprofiler": "TensorFlow 2.5.3, CLI starts, source modules import, GPU visible",
+    "cellpose_sam": "Cellpose 4.1.1, Torch 2.7.1+cu118, GPU visible",
+    "nextflow_config": "test and eddie profiles parse with nextflow/nextflow:24.10.4",
+    "pytest": "tests/test_nextflow_architecture_smoke.py passed"
+  },
+  "streak_days": 2,
+  "tweetable": "Week of Apr 20: 3 commits, +793/-39 LOC, 3 container/Nextflow smoke paths validated, Eddie scratch staging defined | Streak: 2d"
+}

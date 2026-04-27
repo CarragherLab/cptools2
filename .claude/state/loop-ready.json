@@ -1,14 +1,13 @@
 {
-  "loop_name": "Loop 220: Staging + Batch Orchestration",
-  "loop_id": "220",
+  "loop_name": "End-to-End Eddie Test",
   "loop_file": ".claude/plans/phase-2-ralph-loops.md",
-  "task_name": "Staging + Batch Orchestration",
-  "todos_count": 9,
-  "prepared_at": "2026-04-06T00:00:00Z",
+  "task_name": "Loop 230: End-to-End Eddie Test",
+  "todos_count": 8,
+  "prepared_at": "2026-04-09T00:00:00Z",
   "status": "ready",
   "handoff_injected": {
-    "done": "Loop 210 partial: build_containers.sh parameterized, dead config removed, 140 tests pass. Docker builds running in background. Eddie cptools2/ dirs created.",
+    "done": "stage_in.nf, stage_out.nf, batch.py, test_batch.py (8 tests), scripts/install_eddie.sh created; __main__.py uses subprocess.run batch loop with scratch pre-flight; eddie.config staging time=4h; 148 tests pass.",
     "failed": "",
-    "needed": "Create stage_in.nf, stage_out.nf, batch.py, update cmd_pipeline with subprocess.run batch loop, eddie.config staging time, install_eddie.sh, test_batch.py"
+    "needed": "Loop 230: end-to-end Eddie test — deploy via install_eddie.sh, run pipeline on real plate, validate output structure."
   }
 }

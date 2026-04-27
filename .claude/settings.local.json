@@ -60,7 +60,13 @@
       "Bash(git commit:*)",
       "Bash(git stash:*)",
       "Skill(plan-eng-review)",
-      "Skill(investigate)"
+      "Skill(investigate)",
+      "WebFetch(domain:cytomining.github.io)",
+      "WebFetch(domain:cellpose.readthedocs.io)",
+      "WebFetch(domain:github.com)",
+      "Skill(office-hours)",
+      "WebFetch(domain:cellprofiler-manual.s3.amazonaws.com)",
+      "WebFetch(domain:forum.image.sc)"
     ]
   }
 }

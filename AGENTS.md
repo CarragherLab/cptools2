@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
 ## What is cptools2
 
@@ -57,6 +57,25 @@ Use `/browse` from gstack for all web browsing. Never use `mcp__claude-in-chrome
 
 Available gstack skills: `/office-hours`, `/plan-ceo-review`, `/plan-eng-review`, `/plan-design-review`, `/design-consultation`, `/design-shotgun`, `/design-html`, `/review`, `/ship`, `/land-and-deploy`, `/canary`, `/benchmark`, `/browse`, `/connect-chrome`, `/qa`, `/qa-only`, `/design-review`, `/setup-browser-cookies`, `/setup-deploy`, `/retro`, `/investigate`, `/document-release`, `/codex`, `/cso`, `/autoplan`, `/plan-devex-review`, `/devex-review`, `/careful`, `/freeze`, `/guard`, `/unfreeze`, `/gstack-upgrade`, `/learn`.
 
+## Eddie for Agents
+
+Eddie plugin assets are mirrored locally for this project:
+
+- Codex-readable skills: `.agents/skills/eddie-*`
+- Codex-readable commands: `.agents/commands/`
+- Codex-readable Eddie agents: `.agents/agents/`
+- Claude agent mirrors: `.claude/agents/eddie-*.md`
+- Eddie reference docs: `docs/reference/`, `docs/applications/`, `docs/general/`
+- Project Eddie config: `config/project.md`, `config/active_pipelines.md`
+
+For Eddie HPC work, prefer the Eddie skills before ad-hoc shell/script advice:
+
+- Use `eddie-orchestrate` for multi-step Eddie pipeline work.
+- Use `eddie-validate` for reviewing Eddie scripts or Nextflow/SGE execution assumptions.
+- Use `eddie-resources` for queue, memory, slot, runtime, and GPU sizing.
+- Use `eddie-script-standards` for SGE directive and shell-script standards.
+- Use `eddie-login` or `eddie-staging-login` for SSH/staging-node workflows.
+
 ## Skill routing
 
 When the user's request matches an available skill, ALWAYS invoke it using the Skill
@@ -81,8 +100,8 @@ Key routing rules:
 
 - phase: 2
 - phase_name: Eddie Deployment
-- phase_plan: .claude/plans/phase-2-eddie-deployment.md
-- loop_file: .claude/plans/phase-2-ralph-loops.md
+- phase_plan: .Codex/plans/phase-2-eddie-deployment.md
+- loop_file: .Codex/plans/phase-2-ralph-loops.md
 - status: in_progress
 - loops_total: 3
 - loops_done: 2
