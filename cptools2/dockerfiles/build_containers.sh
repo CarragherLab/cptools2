@@ -56,11 +56,21 @@ cleanup_scratch() {
   if [[ "$CLEANUP_SCRATCH" == "1" ]]; then
     echo "=== Cleanup: removing scratch tmp + cache ==="
     du -sh "$SINGULARITY_TMPDIR" "$SINGULARITY_CACHEDIR" 2>/dev/null || true
-    rm -rf "$SINGULARITY_TMPDIR" "$SINGULARITY_CACHEDIR"
+    for cleanup_dir in "$SINGULARITY_TMPDIR" "$SINGULARITY_CACHEDIR"; do
+      case "$cleanup_dir" in
+        /exports/eddie/scratch/"$USER"/*)
+          rm -rf "$cleanup_dir" || true
+          ;;
+        *)
+          echo "Skipping non-scratch cleanup path: $cleanup_dir"
+          ;;
+      esac
+    done
   else
     echo "=== Cleanup skipped (CLEANUP_SCRATCH=0); scratch state preserved ==="
     du -sh "$SINGULARITY_TMPDIR" "$SINGULARITY_CACHEDIR" 2>/dev/null || true
   fi
+  return 0
 }
 trap cleanup_scratch EXIT
 

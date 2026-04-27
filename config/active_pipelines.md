@@ -15,6 +15,7 @@ Phase 2, Loop 230: End-to-End Eddie Test.
 | # | Component | Purpose | Status |
 |---|---|---|---|
 | 1 | `scripts/install_eddie.sh` | Install shared cptools2 environment and project structure on Eddie | pending |
+| 1a | `cptools2/dockerfiles/build_containers.sh` | Convert local Docker archives to shared Singularity containers | validated on Eddie |
 | 2 | `cptools2 pipeline <config.yml> --dry-run` | Generate and inspect `params.json` without running Nextflow | pending |
 | 3 | `nextflow/modules/stage_in.nf` | Stage plate data from DataStore to Eddie scratch | implemented, needs Eddie validation |
 | 4 | `nextflow/modules/illum_calculate.nf` | Calculate illumination correction functions | implemented, needs Eddie validation |

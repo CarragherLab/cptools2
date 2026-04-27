@@ -34,6 +34,7 @@
     "cellprofiler": "4.2.8 smoke passed",
     "deepprofiler": "TensorFlow 2.5.3, CLI starts, source modules import, GPU visible",
     "cellpose_sam": "Cellpose 4.1.1, Torch 2.7.1+cu118, GPU visible",
+    "eddie_singularity": "cellprofiler_4.2.8.sif, cellpose_sam_1.0.sif, and deepprofiler_1.0.sif built in the shared ChandranLabs cptools2 container directory; validation job 55198117 passed on NVIDIA L40S",
     "nextflow_config": "test and eddie profiles parse with nextflow/nextflow:24.10.4",
     "pytest": "tests/test_nextflow_architecture_smoke.py passed"
   },

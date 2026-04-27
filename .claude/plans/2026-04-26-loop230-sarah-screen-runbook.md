@@ -50,6 +50,25 @@ current project folder size: 20M
 group mount free space: ~203G
 ```
 
+Container build and validation on 2026-04-27:
+
+```text
+build job: 55197838
+build host: node2a05.ecdf.ed.ac.uk
+cellprofiler_4.2.8.sif: 1.6G
+cellpose_sam_1.0.sif: 7.3G
+deepprofiler_1.0.sif: 3.2G
+validation job: 55198117
+validation host: node1r03.ecdf.ed.ac.uk
+validation status: exit_status 0
+validated GPU: NVIDIA L40S
+```
+
+Note: build job `55197838` created all three `.sif` files but exited `1` during
+post-build cleanup because Singularity/SGE exposed a `/local/...` temp path that
+the job could not remove. The build script now only removes scratch paths under
+`/exports/eddie/scratch/$USER`.
+
 Prepared files:
 
 ```text
@@ -166,7 +185,9 @@ Done:
 - Staging queue is single-slot copy/list only. Do not request `sharedmem` or GPUs
   there.
 - Compute and GPU processes must only touch Eddie filesystem data after staging.
-- Eddie GPU request is `-pe gpu-a100 1 -l gpu=1`; `gpus` is non-requestable.
+- Eddie GPU request is `-q gpu -l gpu=1`; `gpus` is non-requestable. If a GPU
+  task needs multiple CPU slots, use the standard sharedmem PE for those slots,
+  not `gpu-a100` on the `gpu` queue.
 - The representative plate is 103G before derived outputs, so scratch usage must
   be checked before full compute.
 
@@ -177,6 +198,8 @@ Docker Desktop reachable locally: 29.3.1
 CellProfiler container: 4.2.8
 DeepProfiler container: CLI starts; TensorFlow 2.5.3 sees local RTX 4500 via Docker GPU
 Cellpose-SAM container: Cellpose 4.1.1; Torch 2.7.1+cu118 sees local RTX 4500
+Eddie containers: built in /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/containers
+Eddie container validation: job 55198117 passed; Cellpose and DeepProfiler saw NVIDIA L40S
 Nextflow config smoke: test and eddie profiles parse with nextflow/nextflow:24.10.4
 Architecture smoke tests: tests/test_nextflow_architecture_smoke.py passed
 Eddie install: completed

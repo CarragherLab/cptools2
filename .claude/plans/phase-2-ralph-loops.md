@@ -13,14 +13,14 @@ loops_total: 3
 ```yaml
 loop_id: 210
 name: Container Build & Deploy
-status: pending
+status: in_progress
 type: infrastructure
 key_outputs:
-  - 3 .sif containers on Eddie at .../chandranlabs/cptools2/containers/
+  - 3 .sif containers on Eddie at /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/containers/
   - Container manifest deployed and verified
   - build_containers.sh parameterized for reuse
 todos:
-  - text: "Parameterize build_containers.sh: accept CONTAINER_DIR as first argument with default /exports/cmvm/eddie/scs/groups/chandranlabs/cptools2/containers"
+  - text: "Parameterize build_containers.sh: accept CONTAINER_DIR as first argument with default /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/containers"
     status: completed
     skill: null
     agent: null
@@ -29,36 +29,36 @@ todos:
     skill: null
     agent: null
   # AWAITING MANUAL EXECUTION — todos below require Eddie SSH or Docker daemon access
-  - text: "Create cptools2/ directory on Eddie: ssh eddie 'mkdir -p /exports/cmvm/eddie/scs/groups/chandranlabs/cptools2/{containers,env,nextflow}'"
-    status: pending
+  - text: "Create cptools2/ directory on Eddie: ssh eddie 'mkdir -p /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/{containers,env,nextflow}'"
+    status: completed
     skill: eddie:eddie-login
     agent: null
-  - text: "Build Docker images locally: docker pull cellprofiler:4.2.8, docker build deepprofiler:1.0, docker build cellpose-sam:1.0"
-    status: pending
+  - text: "Build Docker images locally: docker pull cellprofiler:4.2.8, docker build deepprofiler:1.0, docker build cellpose_sam:1.0"
+    status: completed
     skill: null
     agent: null
-  - text: "Save Docker archives: docker save | gzip for all 3 images"
-    status: pending
+  - text: "Save Docker archives: docker save for all 3 images"
+    status: completed
     skill: null
     agent: null
-  - text: "Transfer archives to Eddie: rsync -avzP *.tar.gz to chandranlabs/cptools2/containers/"
-    status: pending
+  - text: "Transfer archives to Eddie: scp *.tar to /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/containers/"
+    status: completed
     skill: null
     agent: null
   - text: "Submit SGE build job on Eddie: qsub build_containers.sh (converts docker-archive to .sif)"
-    status: pending
+    status: completed
     skill: eddie:eddie-login
     agent: null
-  - text: "Validate CellProfiler container: qlogin + singularity exec cellprofiler_4.2.8.sif cellprofiler --version"
-    status: pending
+  - text: "Validate CellProfiler container: qlogin/qsub + singularity exec cellprofiler_4.2.8.sif cellprofiler --version"
+    status: completed
     skill: eddie:eddie-login
     agent: null
-  - text: "Validate DeepProfiler container (GPU): qlogin -pe gpu-a100 1 + singularity exec --nv deepprofiler_1.0.sif TF GPU check"
-    status: pending
+  - text: "Validate DeepProfiler container (GPU): qsub -q gpu -l gpu=1 + singularity exec --nv deepprofiler_1.0.sif TF GPU check"
+    status: completed
     skill: eddie:eddie-login
     agent: null
-  - text: "Validate Cellpose-SAM container (GPU): singularity exec --nv cellpose_sam_1.0.sif torch.cuda check"
-    status: pending
+  - text: "Validate Cellpose-SAM container (GPU): qsub -q gpu -l gpu=1 + singularity exec --nv cellpose_sam_1.0.sif torch.cuda check"
+    status: completed
     skill: eddie:eddie-login
     agent: null
   - text: "Deploy manifest: scp container_manifest_template.json to Eddie as cptools2_containers.json, update verified flags"
