@@ -6,7 +6,7 @@
 #
 # Arguments:
 #   BASE_DIR  Base directory for the cptools2 group installation.
-#             Default: /exports/cmvm/eddie/scs/groups/chandranlabs
+#             Default: /exports/cmvm/eddie/smgphs/groups/ChandranLabs
 #
 # What this script does:
 #   1. Creates cptools2/{containers,env,nextflow} directory structure
@@ -22,7 +22,7 @@
 # Example:
 #   ssh eddie
 #   cd /path/to/cptools2
-#   bash scripts/install_eddie.sh /exports/cmvm/eddie/scs/groups/chandranlabs
+#   bash scripts/install_eddie.sh /exports/cmvm/eddie/smgphs/groups/ChandranLabs
 
 set -euo pipefail
 
@@ -30,7 +30,7 @@ set -euo pipefail
 # Configuration
 # ---------------------------------------------------------------------------
 
-BASE_DIR="${1:-/exports/cmvm/eddie/scs/groups/chandranlabs}"
+BASE_DIR="${1:-/exports/cmvm/eddie/smgphs/groups/ChandranLabs}"
 CPTOOLS2_DIR="${BASE_DIR}/cptools2"
 CONTAINERS_DIR="${CPTOOLS2_DIR}/containers"
 ENV_DIR="${CPTOOLS2_DIR}/env"

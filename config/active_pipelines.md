@@ -4,7 +4,7 @@
 
 **Description:** Validate the revamped cptools2 Nextflow pipeline on Eddie using real high-content imaging data.
 **Status:** testing
-**Last updated:** 2026-04-25
+**Last updated:** 2026-04-27
 
 ### Current Phase
 
@@ -39,9 +39,9 @@ install_eddie
 ### Key Paths
 
 ```text
-CONTAINER_DIR=/exports/cmvm/eddie/scs/groups/chandranlabs/cptools2/containers
-PROJECT_ROOT=/exports/cmvm/eddie/scs/groups/chandranlabs/cptools2
-DATASTORE_ROOT=/exports/cmvm/datastore/scs/groups/chandranlabs
+CONTAINER_DIR=/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/containers
+PROJECT_ROOT=/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2
+DATASTORE_ROOT=/exports/cmvm/datastore/smgphs/groups/ChandranLabs
 SCRATCH_PROJECT=/exports/eddie/scratch/$USER/cptools2
 ```
 

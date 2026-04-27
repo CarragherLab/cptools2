@@ -27,6 +27,29 @@ not reliably visible from: login / normal compute nodes
 /exports/eddie/scratch/mharvey2/cptools2-loop230
 ```
 
+## Eddie Project and Container Root
+
+Use the existing ChandranLabs group project folder as the shared Eddie install
+and container location:
+
+```text
+/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2
+```
+
+Container archives and converted `.sif` files should live under:
+
+```text
+/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/containers
+```
+
+Verified on 2026-04-27:
+
+```text
+project folder exists
+current project folder size: 20M
+group mount free space: ~203G
+```
+
 Prepared files:
 
 ```text
@@ -104,7 +127,7 @@ Needed:
 2. Start with staged illumination:
 
    ```bash
-   source /exports/cmvm/eddie/scs/groups/chandranlabs/cptools2/activate.sh
+   source /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/activate.sh
    export NXF_OPTS='-Xms128m -Xmx512m -XX:+UseSerialGC -XX:ActiveProcessorCount=1'
    cd ~/cptools2-loop230
    nextflow run nextflow/main.nf \

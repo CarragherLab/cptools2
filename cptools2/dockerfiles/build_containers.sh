@@ -44,7 +44,7 @@ export SINGULARITY_MKSQUASHFS_PROCS=2
 
 module load singularity
 
-CONTAINER_DIR="${1:-/exports/cmvm/eddie/scs/groups/chandranlabs/cptools2/containers}"
+CONTAINER_DIR="${1:-/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/containers}"
 
 # Cleanup toggles (can be overridden by env at qsub time via `qsub -v VAR=val ...`)
 : "${CLEANUP_SCRATCH:=1}"
