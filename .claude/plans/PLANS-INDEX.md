@@ -2,6 +2,7 @@
 
 **Design spec (current)**: [2026-04-06-nextflow-pipeline-design.md](2026-04-06-nextflow-pipeline-design.md)
 **Strategy review (Nextflow AI revamp)**: [2026-04-25-nextflow-ai-revamp-strategy.md](2026-04-25-nextflow-ai-revamp-strategy.md)
+**Intra-plate batching design**: [2026-04-27-intra-plate-batching-design.md](2026-04-27-intra-plate-batching-design.md)
 **Prior design spec**: [2026-04-06-container-pipeline-design.md](2026-04-06-container-pipeline-design.md) (superseded)
 **Old phase plans**: [archive/](archive/) (superseded — custom Python orchestrator approach)
 
@@ -41,6 +42,7 @@ Phases A-D run in **parallel worktrees**. Phase E runs after all 4 merge.
 | E | Integration & Validation | Complete | [phase-E-integration-validation.md](phase-E-integration-validation.md) | 4 | No (sequential, after A-D) |
 | 1 | Code Review Fixes + Multi-Assay Hardening | Complete | [2026-04-06-code-review-fixes-design.md](2026-04-06-code-review-fixes-design.md) | 3 | No (sequential) |
 | 2 | Eddie Deployment | Active | [phase-2-eddie-deployment.md](phase-2-eddie-deployment.md) | 3 | No (sequential, C1→C2→C3) |
+| 2.5 | Intra-Plate Batching and Fan-Out | Planned | [phase-2.5-intra-plate-batching.md](phase-2.5-intra-plate-batching.md) | 5 | No (sequential, after container/staging substrate) |
 
 ## Loop Summary
 
@@ -51,7 +53,8 @@ Phases A-D run in **parallel worktrees**. Phase E runs after all 4 merge.
 | C | C10, C20, C30 | 3 |
 | D | D10, D20, D30 | 3 |
 | E | E10, E20, E30, E40 | 4 |
-| **Total** | | **19** |
+| 2.5 | 240, 250, 260, 270, 280 | 5 |
+| **Total** | | **24** |
 
 ## File Isolation (No Conflicts Between Parallel Lanes)
 
