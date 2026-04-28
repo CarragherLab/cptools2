@@ -16,6 +16,8 @@ process CHUNK_IMAGESETS {
     script:
     def maxChunksFlag = params.max_chunks ? "--max-chunks ${params.max_chunks}" : ""
     """
+    export PYTHONPATH="${projectDir}:\${PYTHONPATH:-}"
+
     python -m cptools2.nextflow_chunking chunk \
         --index-csv ${image_sets_csv} \
         --output-dir chunks \

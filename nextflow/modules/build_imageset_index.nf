@@ -18,6 +18,8 @@ process BUILD_IMAGESET_INDEX {
         ? params.expected_channels.join(',')
         : params.expected_channels
     """
+    export PYTHONPATH="${projectDir}:\${PYTHONPATH:-}"
+
     python -m cptools2.nextflow_chunking index \
         --plate-id ${plate_id} \
         --plate-dir ${staged_plate_dir} \
