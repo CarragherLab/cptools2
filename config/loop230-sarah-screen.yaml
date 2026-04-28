@@ -22,6 +22,7 @@ seg_pipeline: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/nuclear
 pipeline: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/nuclear_segmentation.cppipe
 
 commands location: /exports/eddie/scratch/mharvey2/cptools2-loop230/commands
+container_path: /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/containers
 
 channels:
   - DNA
