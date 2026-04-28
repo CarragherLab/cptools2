@@ -225,6 +225,59 @@ class TestCmdPipelineDryRun:
         assert batch_1["batch_id"] == 1
         assert batch_2["batch_id"] == 2
 
+    def test_dry_run_uses_configured_plate_sizes_for_inaccessible_input(
+        self, tmp_path, monkeypatch
+    ):
+        """DataStore staging can use measured plate sizes when input is not mounted."""
+        output_dir = tmp_path / "out"
+        config_file = tmp_path / "test_config.yaml"
+        config_file.write_text(
+            "input_dir: /exports/igmm/datastore/ImageXpress2020/imagexpress/Sarah-screen\n"
+            "pipeline: tests/example_pipeline.cppipe\n"
+            "location: {}\n"
+            "plates:\n"
+            "  - 3723-D-100\n"
+            "plate_sizes_gb:\n"
+            "  3723-D-100: 103\n"
+            "stage_data: true\n".format(str(output_dir))
+        )
+        monkeypatch.setattr(
+            batch_module,
+            "get_scratch_quota",
+            lambda config_quota=None: batch_module.ScratchQuota(
+                500 * 1024**3, 0, 500 * 1024**3
+            ),
+        )
+
+        parser = build_parser()
+        args = parser.parse_args(["pipeline", str(config_file), "--dry-run"])
+        cmd_pipeline(args)
+
+        with open(output_dir / "params.batch_1.json") as f:
+            batch_1 = json.load(f)
+        assert batch_1["plates"] == ["3723-D-100"]
+        assert batch_1["batch_plate_count"] == 1
+        assert batch_1["batch_total_size_gb"] == pytest.approx(133.9)
+
+    def test_datastore_dry_run_requires_plate_sizes_when_input_inaccessible(
+        self, tmp_path
+    ):
+        """Do not silently bypass scratch batching for inaccessible DataStore inputs."""
+        config_file = tmp_path / "test_config.yaml"
+        config_file.write_text(
+            "input_dir: /exports/igmm/datastore/ImageXpress2020/imagexpress/Sarah-screen\n"
+            "pipeline: tests/example_pipeline.cppipe\n"
+            "location: {}\n"
+            "plates:\n"
+            "  - 3723-D-100\n"
+            "stage_data: true\n".format(str(tmp_path / "out"))
+        )
+
+        parser = build_parser()
+        args = parser.parse_args(["pipeline", str(config_file), "--dry-run"])
+        with pytest.raises(RuntimeError, match="plate_sizes_gb"):
+            cmd_pipeline(args)
+
 
 class TestCmdPrepare:
     """Test the prepare subcommand."""

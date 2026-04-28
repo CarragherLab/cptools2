@@ -245,6 +245,7 @@ def check_yaml_args(yaml_dict):
                   "expected_channels",
                   "max_chunks",
                   "scratch_quota_gb",
+                  "plate_sizes_gb",
                   "illum_pipeline_calculate",
                   "illum_pipeline_apply",
                   "seg_pipeline"]
@@ -412,6 +413,7 @@ def parse_config_file(config_file):
         "expected_channels": yaml_dict.get("expected_channels"),
         "max_chunks": yaml_dict.get("max_chunks"),
         "scratch_quota_gb": yaml_dict.get("scratch_quota_gb"),
+        "plate_sizes_gb": yaml_dict.get("plate_sizes_gb"),
         "nextflow_pipeline_paths": nextflow_pipeline_paths(yaml_dict),
     }
     # Resolve container .sif paths from manifest if available

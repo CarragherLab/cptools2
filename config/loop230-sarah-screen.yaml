@@ -11,6 +11,9 @@ output_dir: /exports/eddie/scratch/mharvey2/cptools2-loop230
 plates:
   - 3723-D-100
 
+plate_sizes_gb:
+  3723-D-100: 103
+
 stage_data: true
 
 illum_pipeline_calculate: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/illum_calculate.cppipe

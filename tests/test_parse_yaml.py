@@ -41,6 +41,7 @@ def test_check_yaml_args_accepts_chunking_keys():
         "expected_channels": [1, 2, 3, 4, 5],
         "max_chunks": 2,
         "scratch_quota_gb": 500,
+        "plate_sizes_gb": {"plate-a": 12.5},
     }
     parse_yaml.check_yaml_args(yaml_dict)
 
@@ -272,6 +273,8 @@ def test_parse_config_file_explicit_plates_and_staging(tmp_path):
         "commands location: /tmp/commands\n"
         "plates:\n"
         "  - 3723-D-100\n"
+        "plate_sizes_gb:\n"
+        "  3723-D-100: 103\n"
         "stage_data: true\n"
     )
 
@@ -284,6 +287,7 @@ def test_parse_config_file_explicit_plates_and_staging(tmp_path):
         "/exports/eddie/scratch/mharvey2/cptools2-loop230"
     )
     assert config["plates"] == ["3723-D-100"]
+    assert config["plate_sizes_gb"] == {"3723-D-100": 103}
     assert config["stage_data"] is True
 
 

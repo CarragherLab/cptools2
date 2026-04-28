@@ -54,6 +54,77 @@ def _prepare_config(config_file, stages_override=None):
     return config, params_path
 
 
+def _is_datastore_path(path):
+    """Return True for Eddie DataStore-style paths."""
+    return "/datastore/" in str(path or "").replace("\\", "/")
+
+
+def _configured_plate_sizes(config):
+    """Return configured plate sizes as bytes, or None if not supplied."""
+    configured_sizes = config.get("plate_sizes_gb")
+    if configured_sizes is None:
+        return None
+    if not isinstance(configured_sizes, dict):
+        raise ValueError("plate_sizes_gb must be a mapping of plate name to size in GB")
+    return {
+        str(plate): int(float(size_gb) * 1024**3)
+        for plate, size_gb in configured_sizes.items()
+    }
+
+
+def _filter_plate_sizes(plate_sizes, configured_plates):
+    """Apply an explicit plate list to measured/configured plate sizes."""
+    if not configured_plates:
+        return plate_sizes
+    filtered = {
+        plate: size
+        for plate, size in plate_sizes.items()
+        if plate in configured_plates
+    }
+    missing = sorted(set(configured_plates) - set(filtered))
+    if missing:
+        raise ValueError(
+            "No plate size available for configured plate(s): {}".format(
+                ", ".join(missing)
+            )
+        )
+    return filtered
+
+
+def _build_scratch_batches(config, quota):
+    """Compute scratch-safe plate batches for the pipeline run."""
+    exp_args = config.get("experiment_args") or {}
+    input_dir = exp_args.get("exp_dir")
+    configured_plates = config.get("plates")
+    configured_sizes = _configured_plate_sizes(config)
+
+    if configured_sizes is not None:
+        plate_sizes = _filter_plate_sizes(configured_sizes, configured_plates)
+    elif input_dir and os.path.isdir(input_dir):
+        plate_sizes = batch_module.compute_plate_sizes(input_dir)
+        plate_sizes = _filter_plate_sizes(plate_sizes, configured_plates)
+    else:
+        if input_dir and config.get("stage_data") and _is_datastore_path(input_dir):
+            raise RuntimeError(
+                "Cannot compute scratch-safe plate batches because the DataStore "
+                "input directory is not accessible: {}. Run the preflight on a "
+                "staging node that can see the path, or add plate_sizes_gb to the "
+                "config with measured per-plate sizes.".format(input_dir)
+            )
+        return [{"batch_id": 1, "plates": None, "total_size_gb": 0, "plate_count": 0}]
+
+    if not plate_sizes:
+        raise RuntimeError(
+            "No plate sizes were available after applying the configured plate list."
+        )
+
+    batches = batch_module.create_batches(plate_sizes, quota.available)
+    pretty_print(
+        "Computed {} batch(es) for {} plates".format(len(batches), len(plate_sizes))
+    )
+    return batches
+
+
 def cmd_pipeline(args):
     """Handle the 'pipeline' subcommand."""
     config, params_path = _prepare_config(args.config, stages_override=args.stages)
@@ -70,27 +141,7 @@ def cmd_pipeline(args):
             )
         )
 
-    # Compute batches if experiment dir is available
-    exp_args = config.get("experiment_args") or {}
-    input_dir = exp_args.get("exp_dir")
-    if input_dir and os.path.isdir(input_dir):
-        plate_sizes = batch_module.compute_plate_sizes(input_dir)
-        configured_plates = config.get("plates")
-        if configured_plates:
-            plate_sizes = {
-                plate: size
-                for plate, size in plate_sizes.items()
-                if plate in configured_plates
-            }
-        batches = batch_module.create_batches(plate_sizes, quota.available)
-        pretty_print(
-            "Computed {} batch(es) for {} plates".format(
-                len(batches), len(plate_sizes)
-            )
-        )
-    else:
-        # No experiment dir or not accessible, single batch with all plates
-        batches = [{"batch_id": 1, "plates": None, "total_size_gb": 0, "plate_count": 0}]
+    batches = _build_scratch_batches(config, quota)
 
     cmd_args = config.get("create_command_args") or {}
     location = cmd_args.get("location", os.path.dirname(os.path.abspath(args.config)))
