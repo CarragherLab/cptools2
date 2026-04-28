@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -57,14 +58,6 @@ def cmd_pipeline(args):
     """Handle the 'pipeline' subcommand."""
     config, params_path = _prepare_config(args.config, stages_override=args.stages)
 
-    if args.dry_run:
-        pretty_print("dry-run mode: params.json generated, skipping Nextflow")
-        return
-
-    if not _find_nextflow():
-        print(NEXTFLOW_INSTALL_MSG, file=sys.stderr)
-        sys.exit(1)
-
     # Scratch pre-flight check
     config_quota = config.get("scratch_quota_gb")
     quota = batch_module.get_scratch_quota(config_quota)
@@ -82,6 +75,13 @@ def cmd_pipeline(args):
     input_dir = exp_args.get("exp_dir")
     if input_dir and os.path.isdir(input_dir):
         plate_sizes = batch_module.compute_plate_sizes(input_dir)
+        configured_plates = config.get("plates")
+        if configured_plates:
+            plate_sizes = {
+                plate: size
+                for plate, size in plate_sizes.items()
+                if plate in configured_plates
+            }
         batches = batch_module.create_batches(plate_sizes, quota.available)
         pretty_print(
             "Computed {} batch(es) for {} plates".format(
@@ -92,14 +92,37 @@ def cmd_pipeline(args):
         # No experiment dir or not accessible, single batch with all plates
         batches = [{"batch_id": 1, "plates": None, "total_size_gb": 0, "plate_count": 0}]
 
+    cmd_args = config.get("create_command_args") or {}
+    location = cmd_args.get("location", os.path.dirname(os.path.abspath(args.config)))
+    batch_params = [
+        _write_batch_params(params_path, batch_info, location)
+        for batch_info in batches
+    ]
+
+    if args.dry_run:
+        pretty_print("dry-run mode: params.json generated, skipping Nextflow")
+        for batch_info, batch_params_path in zip(batches, batch_params):
+            pretty_print(
+                "Batch {} plates: {} params: {}".format(
+                    batch_info["batch_id"],
+                    batch_info["plates"] or "all configured plates",
+                    batch_params_path,
+                )
+            )
+        return
+
+    if not _find_nextflow():
+        print(NEXTFLOW_INSTALL_MSG, file=sys.stderr)
+        sys.exit(1)
+
     # Resolve main.nf path relative to the package root
     nf_main = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         "nextflow", "main.nf"
     )
 
-    for batch_info in batches:
-        nf_cmd = ["nextflow", "run", nf_main, "-params-file", params_path,
+    for batch_info, batch_params_path in zip(batches, batch_params):
+        nf_cmd = ["nextflow", "run", nf_main, "-params-file", batch_params_path,
                   "-profile", "eddie"]
         if args.resume:
             nf_cmd.append("-resume")
@@ -118,6 +141,22 @@ def cmd_pipeline(args):
             sys.exit(result.returncode)
 
     pretty_print("All batches complete!")
+
+
+def _write_batch_params(base_params_path, batch_info, location):
+    """Write params for one scratch-safe plate batch."""
+    with open(base_params_path) as f:
+        params = json.load(f)
+    if batch_info.get("plates") is not None:
+        params["plates"] = batch_info["plates"]
+    batch_id = batch_info["batch_id"]
+    params["batch_id"] = batch_id
+    params["batch_total_size_gb"] = batch_info.get("total_size_gb", 0)
+    params["batch_plate_count"] = batch_info.get("plate_count", 0)
+    batch_params_path = os.path.join(location, f"params.batch_{batch_id}.json")
+    with open(batch_params_path, "w") as f:
+        json.dump(params, f, indent=2)
+    return batch_params_path
 
 
 def cmd_prepare(args):

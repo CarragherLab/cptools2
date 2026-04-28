@@ -4,6 +4,7 @@ import os
 import pytest
 
 # Import the CLI module directly for unit testing
+from cptools2 import batch as batch_module
 from cptools2.__main__ import build_parser, cmd_generate, cmd_pipeline, cmd_prepare
 
 CURRENT_PATH = os.path.dirname(__file__)
@@ -174,6 +175,55 @@ class TestCmdPipelineDryRun:
         params_path = output_dir / "params.json"
         assert output_dir.exists()
         assert params_path.exists()
+
+    def test_dry_run_writes_batch_specific_params(self, tmp_path, monkeypatch):
+        """Each scratch-safe plate batch gets its own params file."""
+        input_dir = tmp_path / "screen"
+        (input_dir / "plate-a").mkdir(parents=True)
+        (input_dir / "plate-b").mkdir()
+        (input_dir / "plate-a" / "image.tif").write_text("a")
+        (input_dir / "plate-b" / "image.tif").write_text("b")
+        output_dir = tmp_path / "out"
+        config_content = (
+            "experiment: {}\n"
+            "pipeline: tests/example_pipeline.cppipe\n"
+            "location: {}\n"
+            "commands location: /home/user\n"
+            "chunk: 96\n"
+        ).format(str(input_dir), str(output_dir))
+        config_file = tmp_path / "test_config.yaml"
+        config_file.write_text(config_content)
+        monkeypatch.setattr(
+            batch_module,
+            "create_batches",
+            lambda plate_sizes, available: [
+                {
+                    "batch_id": 1,
+                    "plates": ["plate-a"],
+                    "total_size_gb": 0.1,
+                    "plate_count": 1,
+                },
+                {
+                    "batch_id": 2,
+                    "plates": ["plate-b"],
+                    "total_size_gb": 0.1,
+                    "plate_count": 1,
+                },
+            ],
+        )
+
+        parser = build_parser()
+        args = parser.parse_args(["pipeline", str(config_file), "--dry-run"])
+        cmd_pipeline(args)
+
+        with open(output_dir / "params.batch_1.json") as f:
+            batch_1 = json.load(f)
+        with open(output_dir / "params.batch_2.json") as f:
+            batch_2 = json.load(f)
+        assert batch_1["plates"] == ["plate-a"]
+        assert batch_2["plates"] == ["plate-b"]
+        assert batch_1["batch_id"] == 1
+        assert batch_2["batch_id"] == 2
 
 
 class TestCmdPrepare:

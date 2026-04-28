@@ -197,6 +197,18 @@ Default chunk size is `96` image sets. This must be configurable, but `96` is th
 | 270 | Chunked AI Pipeline Stages | Implementation | Chunked apply, Cellpose segmentation, and feature extraction modules |
 | 280 | Eddie Scaling Validation | Validation | Subset run, then representative Sarah-screen plate with multiple SGE jobs |
 
+## Implementation Progress
+
+Updated: 2026-04-27
+
+| Loop | Status | Evidence |
+|------|--------|----------|
+| 240 | Complete | Design and engineering review committed in `c489e11`; stage compatibility rules captured. |
+| 250 | Complete locally | `cptools2.nextflow_chunking` indexes staged plates with parserix and writes 96-image-set chunk manifests. |
+| 260 | Complete locally | CLI dry-run writes `params.batch_N.json` with batch-specific `plates`, `batch_id`, and chunk params. |
+| 270 | Partial | Nextflow graph now includes image-set indexing, chunking, chunked illumination apply, Cellpose AI segmentation stage scaffold, and chunk-aware feature extraction. Final Cellpose model invocation remains to be wired. |
+| 280 | Pending | Eddie subset/scaling validation has not run with the new graph yet. |
+
 ## Deferred Decisions
 
 - Whether `ILLUM_CALCULATE` should remain plate-level permanently or gain a separate chunkable mode.

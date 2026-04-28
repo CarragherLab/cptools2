@@ -19,6 +19,9 @@ params.output_dir       = null      // root output directory
 params.stages           = 'all'     // comma-separated: illum,segment,extract  or 'all'
 params.plates           = null      // comma-separated plate IDs, or null to auto-detect
 params.stage_data       = true      // DataStore inputs must be staged before compute
+params.chunk_size       = 96        // image sets per chunk
+params.max_chunks       = null      // optional smoke-test limit
+params.expected_channels = [1, 2, 3, 4, 5]
 
 // Channel configuration (Cell Painting defaults)
 params.channels         = ['DNA', 'RNA', 'ER', 'AGP', 'Mito']
@@ -68,6 +71,9 @@ include { SEGMENTATION    } from './modules/segmentation'
 include { FEATURE_EXTRACT } from './modules/feature_extract'
 include { STAGE_IN        } from './modules/stage_in'
 include { STAGE_OUT       } from './modules/stage_out'
+include { BUILD_IMAGESET_INDEX } from './modules/build_imageset_index'
+include { CHUNK_IMAGESETS } from './modules/chunk_imagesets'
+include { CELLPOSE_SEGMENT } from './modules/cellpose_segmentation'
 
 // ---------------------------------------------------------------------------
 // Input channel: one entry per plate
@@ -108,27 +114,59 @@ workflow {
         ch_input = ch_plates
     }
 
+    // Build a Nextflow-owned chunk graph after whole-plate staging.
+    BUILD_IMAGESET_INDEX(ch_input)
+    CHUNK_IMAGESETS(BUILD_IMAGESET_INDEX.out.image_sets)
+    ch_chunks_by_plate = CHUNK_IMAGESETS.out.chunks.map { plate_id, staged_plate_dir, chunk_manifest ->
+        tuple(plate_id, staged_plate_dir, chunk_manifest)
+    }
+
     // Stage 1: Illumination correction — calculate
     if (run_illum) {
         ILLUM_CALCULATE(ch_input)
 
         // Stage 2: Illumination correction — apply
-        // Join calculate output with original plates for apply step
-        ILLUM_APPLY(ILLUM_CALCULATE.out.illum_functions)
+        ch_illum_by_plate = ILLUM_CALCULATE.out.illum_functions.map { plate_id, plate_dir, illum_dir ->
+            tuple(plate_id, illum_dir)
+        }
+        ch_chunks_for_apply = ch_chunks_by_plate
+            .combine(ch_illum_by_plate, by: 0)
+            .map { plate_id, staged_plate_dir, chunk_manifest, illum_dir ->
+                tuple(plate_id, staged_plate_dir, chunk_manifest, illum_dir)
+            }
+        ILLUM_APPLY(ch_chunks_for_apply)
 
         ch_corrected = ILLUM_APPLY.out.corrected_images
     }
 
     // Stage 3: Segmentation
     if (run_segment) {
-        if (run_illum) {
-            SEGMENTATION(ch_corrected)
+        def ai_tools = ['deepprofiler', 'dinov2', 'cell-dino', 'celldino', 'unidino']
+        def use_cellpose = ai_tools.contains(params.feature_extraction_tool.toString().toLowerCase())
+        if (use_cellpose) {
+            if (!run_illum) {
+                ch_cellpose_input = ch_chunks_by_plate.map { plate_id, staged_plate_dir, chunk_manifest ->
+                    tuple(plate_id, staged_plate_dir, chunk_manifest)
+                }
+            } else {
+                ch_cellpose_input = ch_corrected
+            }
+            CELLPOSE_SEGMENT(ch_cellpose_input)
+            ch_segmented = CELLPOSE_SEGMENT.out.masks
+        } else if (run_illum) {
+            SEGMENTATION(ch_corrected.map { plate_id, corrected_dir, chunk_manifest ->
+                tuple(plate_id, corrected_dir)
+            })
+            ch_segmented = SEGMENTATION.out.locations.map { plate_id, corrected_dir, locations_dir ->
+                tuple(plate_id, corrected_dir, file("${params.output_dir}/${plate_id}/chunk_manifest.csv"), locations_dir)
+            }
         } else {
             // If skipping illum, assume input images are already corrected
             SEGMENTATION(ch_plates)
+            ch_segmented = SEGMENTATION.out.locations.map { plate_id, corrected_dir, locations_dir ->
+                tuple(plate_id, corrected_dir, file("${params.output_dir}/${plate_id}/chunk_manifest.csv"), locations_dir)
+            }
         }
-
-        ch_segmented = SEGMENTATION.out.locations
     }
 
     // Stage 4: Feature extraction
@@ -141,13 +179,13 @@ workflow {
         } else if (run_illum) {
             // Have corrected images but no segmentation — need pre-existing locations
             ch_extract_input = ch_corrected.map { plate_id, corrected_dir ->
-                tuple(plate_id, corrected_dir, file("${params.output_dir}/${plate_id}/segmentation"))
+                tuple(plate_id, corrected_dir, file("${params.output_dir}/${plate_id}/chunk_manifest.csv"), file("${params.output_dir}/${plate_id}/segmentation"))
             }
             FEATURE_EXTRACT(ch_extract_input)
         } else {
             // Running extraction alone — expect pre-existing corrected images and locations
             ch_extract_input = ch_plates.map { plate_id, plate_dir ->
-                tuple(plate_id, plate_dir, file("${params.output_dir}/${plate_id}/segmentation"))
+                tuple(plate_id, plate_dir, file("${params.output_dir}/${plate_id}/chunk_manifest.csv"), file("${params.output_dir}/${plate_id}/segmentation"))
             }
             FEATURE_EXTRACT(ch_extract_input)
         }

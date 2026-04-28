@@ -3,14 +3,14 @@
 // Runs DeepProfiler, DINOv2, or other feature extraction tool.
 // Container and command are selected via params.feature_extraction_tool.
 //
-// Input:  tuple(plate_id, corrected_dir, locations_dir)
+// Input:  tuple(plate_id, corrected_dir, chunk_manifest, locations_dir)
 // Output: tuple(plate_id, features_dir)
 
 process FEATURE_EXTRACT {
-    tag "${plate_id}"
+    tag "${plate_id}:${chunk_manifest.simpleName}"
     label 'feature_extract'
     label 'gpu'
-    publishDir "${params.output_dir}/${plate_id}/features", mode: 'copy'
+    publishDir "${params.output_dir}/${plate_id}/features/${chunk_manifest.simpleName}", mode: 'copy'
 
     container {
         switch (params.feature_extraction_tool) {
@@ -24,7 +24,7 @@ process FEATURE_EXTRACT {
     }
 
     input:
-    tuple val(plate_id), path(corrected_dir), path(locations_dir)
+    tuple val(plate_id), path(corrected_dir), path(chunk_manifest), path(locations_dir)
 
     output:
     tuple val(plate_id), path("features"), emit: features
@@ -42,6 +42,7 @@ process FEATURE_EXTRACT {
 
         # Link corrected images
         ln -s \$(readlink -f ${corrected_dir})/* dp_project/inputs/images/${plate_id}/
+        cp ${chunk_manifest} dp_project/inputs/metadata/chunk_manifest.csv
 
         # Link location CSVs
         if [ -d "${locations_dir}/locations" ]; then

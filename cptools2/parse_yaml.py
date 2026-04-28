@@ -242,6 +242,9 @@ def check_yaml_args(yaml_dict):
                   "plate_list",
                   "plates",
                   "stage_data",
+                  "expected_channels",
+                  "max_chunks",
+                  "scratch_quota_gb",
                   "illum_pipeline_calculate",
                   "illum_pipeline_apply",
                   "seg_pipeline"]
@@ -330,6 +333,28 @@ def validate_staging_contract(yaml_dict):
         )
 
 
+def validate_ai_segmentation_contract(yaml_dict):
+    """AI feature extraction paths require Cellpose segmentation."""
+    feature_extraction = yaml_dict.get("feature_extraction")
+    if not isinstance(feature_extraction, dict):
+        return
+    tool = str(feature_extraction.get("tool", "")).lower()
+    if tool in {"", "cellprofiler"}:
+        return
+    segmentation = yaml_dict.get("segmentation", {})
+    engine = ""
+    if isinstance(segmentation, dict):
+        engine = str(segmentation.get("engine", "")).lower()
+    elif isinstance(segmentation, str):
+        engine = segmentation.lower()
+    if engine and engine != "cellpose":
+        raise ValueError(
+            "AI feature extraction tool '{}' requires Cellpose segmentation. "
+            "Set segmentation.engine: cellpose or omit segmentation.engine to use "
+            "the AI pipeline default.".format(tool)
+        )
+
+
 def nextflow_pipeline_paths(yaml_dict):
     """Return explicit Nextflow pipeline template paths from the YAML config."""
     paths = {}
@@ -367,6 +392,7 @@ def parse_config_file(config_file):
     # check the arguments in the yaml file are recognised
     check_yaml_args(yaml_dict)
     validate_staging_contract(yaml_dict)
+    validate_ai_segmentation_contract(yaml_dict)
     config = {
         "experiment_args": experiment(yaml_dict),
         "chunk_args": chunk(yaml_dict),
@@ -383,6 +409,9 @@ def parse_config_file(config_file):
         "data_destination_path": data_destination(yaml_dict),
         "plates": plates(yaml_dict),
         "stage_data": stage_data(yaml_dict),
+        "expected_channels": yaml_dict.get("expected_channels"),
+        "max_chunks": yaml_dict.get("max_chunks"),
+        "scratch_quota_gb": yaml_dict.get("scratch_quota_gb"),
         "nextflow_pipeline_paths": nextflow_pipeline_paths(yaml_dict),
     }
     # Resolve container .sif paths from manifest if available
@@ -522,6 +551,16 @@ def generate_params_json(config_dict, output_path):
     chunk_args = config_dict.get("chunk_args")
     if chunk_args is not None:
         params["chunk_size"] = chunk_args["job_size"]
+    else:
+        params["chunk_size"] = 96
+
+    if config_dict.get("max_chunks") is not None:
+        params["max_chunks"] = config_dict["max_chunks"]
+
+    if config_dict.get("expected_channels") is not None:
+        params["expected_channels"] = config_dict["expected_channels"]
+    else:
+        params["expected_channels"] = [1, 2, 3, 4, 5]
 
     # stages pass through as-is (CLI expands aliases before calling this)
     stages = config_dict.get("stages")

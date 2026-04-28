@@ -34,6 +34,37 @@ def test_check_yaml_args_accepts_new_keys():
     parse_yaml.check_yaml_args(yaml_dict)
 
 
+def test_check_yaml_args_accepts_chunking_keys():
+    yaml_dict = {
+        "experiment": "/tmp/input",
+        "location": "/tmp/output",
+        "expected_channels": [1, 2, 3, 4, 5],
+        "max_chunks": 2,
+        "scratch_quota_gb": 500,
+    }
+    parse_yaml.check_yaml_args(yaml_dict)
+
+
+def test_ai_feature_extraction_rejects_non_cellpose_segmentation():
+    yaml_dict = {
+        "experiment": "/tmp/input",
+        "location": "/tmp/output",
+        "feature_extraction": {"tool": "deepprofiler"},
+        "segmentation": {"engine": "cellprofiler"},
+    }
+    with pytest.raises(ValueError, match="requires Cellpose"):
+        parse_yaml.validate_ai_segmentation_contract(yaml_dict)
+
+
+def test_ai_feature_extraction_allows_default_cellpose_path():
+    yaml_dict = {
+        "experiment": "/tmp/input",
+        "location": "/tmp/output",
+        "feature_extraction": {"tool": "deepprofiler"},
+    }
+    parse_yaml.validate_ai_segmentation_contract(yaml_dict)
+
+
 def test_experiment():
     """cptools2.parse_yaml.experiment(yaml_dict)"""
     yaml_dict = parse_yaml.open_yaml(TEST_PATH)
