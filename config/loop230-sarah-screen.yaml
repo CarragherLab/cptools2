@@ -33,7 +33,10 @@ stages:
   - extract
 
 segmentation:
-  model: cellprofiler
+  engine: cellpose
+  model: cpsam
+  channel: 1
+  batch_size: 8
 
 feature_extraction:
   tool: deepprofiler
