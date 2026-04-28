@@ -587,6 +587,15 @@ def generate_params_json(config_dict, output_path):
             if "diameter" in segmentation:
                 params["seg_diameter_min"] = segmentation["diameter"]
                 params["seg_diameter_max"] = segmentation["diameter"]
+                params["cellpose_diameter"] = segmentation["diameter"]
+            if "cellpose_channel" in segmentation:
+                params["cellpose_channel"] = segmentation["cellpose_channel"]
+            if "channel" in segmentation:
+                params["cellpose_channel"] = segmentation["channel"]
+            if "model" in segmentation:
+                params["cellpose_model"] = segmentation["model"]
+            if "batch_size" in segmentation:
+                params["cellpose_batch_size"] = segmentation["batch_size"]
 
     # feature_extraction
     if config_dict.get("feature_extraction") is not None:

@@ -35,6 +35,10 @@ params.illum_pipeline_apply        = "${projectDir}/cptools2/templates/illum_app
 params.seg_pipeline     = "${projectDir}/cptools2/templates/nuclear_segmentation.cppipe"
 params.seg_diameter_min = 20
 params.seg_diameter_max = 80
+params.cellpose_channel = 1
+params.cellpose_model = 'cpsam'
+params.cellpose_diameter = 30
+params.cellpose_batch_size = 8
 
 // Feature extraction
 params.feature_extraction_tool      = 'deepprofiler'   // 'deepprofiler' or 'dinov2'

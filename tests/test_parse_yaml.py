@@ -65,6 +65,32 @@ def test_ai_feature_extraction_allows_default_cellpose_path():
     parse_yaml.validate_ai_segmentation_contract(yaml_dict)
 
 
+def test_generate_params_json_maps_cellpose_segmentation_options(tmp_path):
+    config = {
+        "experiment_args": {"exp_dir": "/tmp/input"},
+        "create_command_args": {"location": str(tmp_path)},
+        "chunk_args": {"job_size": 96},
+        "stage_data": True,
+        "segmentation": {
+            "engine": "cellpose",
+            "diameter": 42,
+            "channel": 1,
+            "model": "cpsam",
+            "batch_size": 4,
+        },
+    }
+    params_path = tmp_path / "params.json"
+
+    parse_yaml.generate_params_json(config, params_path)
+
+    with open(params_path) as handle:
+        params = json.load(handle)
+    assert params["cellpose_diameter"] == 42
+    assert params["cellpose_channel"] == 1
+    assert params["cellpose_model"] == "cpsam"
+    assert params["cellpose_batch_size"] == 4
+
+
 def test_experiment():
     """cptools2.parse_yaml.experiment(yaml_dict)"""
     yaml_dict = parse_yaml.open_yaml(TEST_PATH)
