@@ -43,6 +43,7 @@ Phases A-D run in **parallel worktrees**. Phase E runs after all 4 merge.
 | 1 | Code Review Fixes + Multi-Assay Hardening | Complete | [2026-04-06-code-review-fixes-design.md](2026-04-06-code-review-fixes-design.md) | 3 | No (sequential) |
 | 2 | Eddie Deployment | Active | [phase-2-eddie-deployment.md](phase-2-eddie-deployment.md) | 3 | No (sequential, C1→C2→C3) |
 | 2.5 | Intra-Plate Batching and Fan-Out | Planned | [phase-2.5-intra-plate-batching.md](phase-2.5-intra-plate-batching.md) | 5 | No (sequential, after container/staging substrate) |
+| 2.6 | Loop 230 Blocker Burn-Down | Planned | [phase-2.6-loop230-blocker-burndown.md](phase-2.6-loop230-blocker-burndown.md) | 6 | Mixed: local loops bounded, Eddie loops sequential |
 
 ## Loop Summary
 
@@ -54,7 +55,8 @@ Phases A-D run in **parallel worktrees**. Phase E runs after all 4 merge.
 | D | D10, D20, D30 | 3 |
 | E | E10, E20, E30, E40 | 4 |
 | 2.5 | 240, 250, 260, 270, 280 | 5 |
-| **Total** | | **24** |
+| 2.6 | 290, 300, 310, 320, 330, 340 | 6 |
+| **Total** | | **30** |
 
 ## File Isolation (No Conflicts Between Parallel Lanes)
 
