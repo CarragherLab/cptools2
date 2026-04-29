@@ -61,6 +61,7 @@ def run_illum_calc = hasStage('illum') || hasStage('illum_calculate')
 def run_illum_app  = hasStage('illum') || hasStage('illum_apply')
 def run_segment    = hasStage('segment') || hasStage('segmentation')
 def run_extract    = hasStage('extract') || hasStage('feature_extract')
+def ai_feature_tools = ['deepprofiler', 'dinov2', 'cell-dino', 'celldino', 'unidino']
 
 // Convenience: if either illum sub-stage requested, run both
 def run_illum = run_illum_calc || run_illum_app
@@ -145,8 +146,7 @@ workflow {
 
     // Stage 3: Segmentation
     if (run_segment) {
-        def ai_tools = ['deepprofiler', 'dinov2', 'cell-dino', 'celldino', 'unidino']
-        def use_cellpose = ai_tools.contains(params.feature_extraction_tool.toString().toLowerCase())
+        def use_cellpose = ai_feature_tools.contains(params.feature_extraction_tool.toString().toLowerCase())
         if (use_cellpose) {
             if (!run_illum) {
                 ch_cellpose_input = ch_chunks_by_plate.map { plate_id, staged_plate_dir, chunk_manifest ->
@@ -201,11 +201,16 @@ workflow {
         if (run_extract) {
             STAGE_OUT(FEATURE_EXTRACT.out.features)
         } else if (run_segment) {
-            // Segmentation emits 3-tuple (plate_id, corrected_dir, locations_dir)
-            // Map to 2-tuple: stage the locations dir (the segmentation output)
-            STAGE_OUT(SEGMENTATION.out.locations.map { plate_id, corrected_dir, locations_dir ->
-                tuple(plate_id, locations_dir)
-            })
+            def use_cellpose = ai_feature_tools.contains(params.feature_extraction_tool.toString().toLowerCase())
+            if (use_cellpose) {
+                STAGE_OUT(CELLPOSE_SEGMENT.out.masks.map { plate_id, corrected_dir, chunk_manifest, masks_dir ->
+                    tuple(plate_id, masks_dir)
+                })
+            } else {
+                STAGE_OUT(SEGMENTATION.out.locations.map { plate_id, corrected_dir, locations_dir ->
+                    tuple(plate_id, locations_dir)
+                })
+            }
         } else if (run_illum) {
             STAGE_OUT(ILLUM_APPLY.out.corrected_images)
         }

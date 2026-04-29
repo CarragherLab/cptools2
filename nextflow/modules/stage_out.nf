@@ -16,9 +16,10 @@ process STAGE_OUT {
     tuple val(plate_id), val(true), emit: done
 
     script:
+    def destination = params.data_destination ?: params.output_dir ?: ""
     """
-    if [ -n "${params.output_dir}" ]; then
-        DEST="${params.output_dir}/${plate_id}"
+    if [ -n "${destination}" ]; then
+        DEST="${destination}/${plate_id}"
         mkdir -p "\$DEST"
 
         rsync -rtl --partial --timeout=300 \
@@ -27,7 +28,7 @@ process STAGE_OUT {
 
         echo "Destaged results for plate ${plate_id} to \$DEST"
     else
-        echo "No output_dir specified, skipping destaging for plate ${plate_id}"
+        echo "No data_destination or output_dir specified, skipping destaging for plate ${plate_id}"
     fi
     """
 }

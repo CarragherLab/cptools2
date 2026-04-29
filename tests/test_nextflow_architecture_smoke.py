@@ -25,6 +25,25 @@ def test_nextflow_main_accepts_documented_stage_aliases():
     assert "hasStage('feature_extract')" in main_nf
 
 
+def test_nextflow_publish_dirs_do_not_copy_upstream_image_dirs():
+    illum = (ROOT / "nextflow" / "modules" / "illum_calculate.nf").read_text()
+    cellpose = (
+        ROOT / "nextflow" / "modules" / "cellpose_segmentation.nf"
+    ).read_text()
+
+    assert "pattern: 'illum_functions/**'" in illum
+    assert "pattern: 'cellpose_masks/**'" in cellpose
+
+
+def test_nextflow_stage_out_uses_data_destination_and_cellpose_masks():
+    main_nf = (ROOT / "nextflow" / "main.nf").read_text()
+    stage_out = (ROOT / "nextflow" / "modules" / "stage_out.nf").read_text()
+
+    assert "params.data_destination ?: params.output_dir" in stage_out
+    assert "CELLPOSE_SEGMENT.out.masks.map" in main_nf
+    assert "tuple(plate_id, masks_dir)" in main_nf
+
+
 def test_loop230_config_is_scratch_self_contained_and_staged():
     config_path = ROOT / "config" / "loop230-sarah-screen.yaml"
     config = yaml.safe_load(config_path.read_text())

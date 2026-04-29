@@ -9,7 +9,7 @@
 process ILLUM_CALCULATE {
     tag "${plate_id}"
     label 'illum_calculate'
-    publishDir "${params.output_dir}/${plate_id}/illum_functions", mode: 'copy'
+    publishDir "${params.output_dir}/${plate_id}/illum_functions", mode: 'copy', pattern: 'illum_functions/**'
 
     container params.containers.cellprofiler
 

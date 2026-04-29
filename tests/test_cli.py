@@ -1,9 +1,11 @@
 import json
 import os
+from types import SimpleNamespace
 
 import pytest
 
 # Import the CLI module directly for unit testing
+from cptools2 import __main__ as cli_module
 from cptools2 import batch as batch_module
 from cptools2.__main__ import build_parser, cmd_generate, cmd_pipeline, cmd_prepare
 
@@ -327,6 +329,42 @@ class TestCmdPipelineNoNextflow:
         with pytest.raises(SystemExit) as exc_info:
             cmd_pipeline(args)
         assert exc_info.value.code == 1
+
+    def test_pipeline_invokes_nextflow_with_scratch_work_dir(
+        self, tmp_path, monkeypatch
+    ):
+        """Nextflow work state should live under the configured output location."""
+        config_file = tmp_path / "test_config.yaml"
+        config_file.write_text(
+            "experiment: /path/to/experiment\n"
+            "pipeline: tests/example_pipeline.cppipe\n"
+            "location: {}\n"
+            "commands location: /home/user\n".format(str(tmp_path))
+        )
+        captured = []
+        monkeypatch.setattr(
+            batch_module,
+            "get_scratch_quota",
+            lambda config_quota=None: batch_module.ScratchQuota(
+                500 * 1024**3, 0, 500 * 1024**3
+            ),
+        )
+        monkeypatch.setattr(cli_module, "_find_nextflow", lambda: True)
+        monkeypatch.setattr(
+            cli_module.subprocess,
+            "run",
+            lambda cmd: captured.append(cmd) or SimpleNamespace(returncode=0),
+        )
+
+        parser = build_parser()
+        args = parser.parse_args(["pipeline", str(config_file)])
+        cmd_pipeline(args)
+
+        assert captured
+        assert "-work-dir" in captured[0]
+        assert captured[0][captured[0].index("-work-dir") + 1] == str(
+            tmp_path / "work"
+        )
 
 
 class TestConfigFileValidation:

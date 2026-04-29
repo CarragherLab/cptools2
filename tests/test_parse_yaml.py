@@ -317,6 +317,28 @@ def test_generate_params_json_explicit_plates_and_staging(tmp_path):
     assert params["output_dir"] == "/exports/eddie/scratch/mharvey2/cptools2-loop230"
 
 
+def test_generate_params_json_data_destination(tmp_path):
+    """generate_params_json emits the durable destination for stage-out."""
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "input_dir: /exports/igmm/datastore/ImageXpress2020/imagexpress/Sarah-screen\n"
+        "output_dir: /exports/eddie/scratch/mharvey2/cptools2-loop230\n"
+        "data_destination: /exports/cmvm/eddie/smgphs/groups/ChandranLabs/results\n"
+        "pipeline: tests/example_pipeline.cppipe\n"
+        "stage_data: true\n"
+    )
+    config = parse_yaml.parse_config_file(str(config_file))
+    output_path = str(tmp_path / "params.json")
+    parse_yaml.generate_params_json(config, output_path)
+
+    with open(output_path) as f:
+        params = json.load(f)
+
+    assert params["data_destination"] == (
+        "/exports/cmvm/eddie/smgphs/groups/ChandranLabs/results"
+    )
+
+
 def test_create_commands_defaults_commands_location_to_output_dir():
     """commands location defaults to <output_dir>/commands."""
     yaml_dict = {

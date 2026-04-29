@@ -7,7 +7,7 @@ process CELLPOSE_SEGMENT {
     tag "${plate_id}:${chunk_manifest.simpleName}"
     label 'segmentation'
     label 'gpu'
-    publishDir "${params.output_dir}/${plate_id}/cellpose/${chunk_manifest.simpleName}", mode: 'copy'
+    publishDir "${params.output_dir}/${plate_id}/cellpose/${chunk_manifest.simpleName}", mode: 'copy', pattern: 'cellpose_masks/**'
 
     container params.containers.cellpose_sam
 

@@ -173,8 +173,17 @@ def cmd_pipeline(args):
     )
 
     for batch_info, batch_params_path in zip(batches, batch_params):
-        nf_cmd = ["nextflow", "run", nf_main, "-params-file", batch_params_path,
-                  "-profile", "eddie"]
+        nf_cmd = [
+            "nextflow",
+            "run",
+            nf_main,
+            "-params-file",
+            batch_params_path,
+            "-profile",
+            "eddie",
+            "-work-dir",
+            os.path.join(location, "work"),
+        ]
         if args.resume:
             nf_cmd.append("-resume")
         pretty_print(

@@ -572,6 +572,9 @@ def generate_params_json(config_dict, output_path):
     if config_dict.get("plates") is not None:
         params["plates"] = config_dict["plates"]
 
+    if config_dict.get("data_destination_path") is not None:
+        params["data_destination"] = config_dict["data_destination_path"]
+
     params["stage_data"] = bool(config_dict.get("stage_data", False))
 
     for key, value in config_dict.get("nextflow_pipeline_paths", {}).items():
