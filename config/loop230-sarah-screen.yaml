@@ -15,6 +15,7 @@ plate_sizes_gb:
   3723-D-100: 103
 
 stage_data: true
+data_destination: /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/results/loop230
 
 illum_pipeline_calculate: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/illum_calculate.cppipe
 illum_pipeline_apply: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/illum_apply.cppipe
