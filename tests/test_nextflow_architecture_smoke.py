@@ -44,6 +44,26 @@ def test_nextflow_stage_out_uses_data_destination_and_cellpose_masks():
     assert "tuple(plate_id, masks_dir)" in main_nf
 
 
+def test_nextflow_stage_in_fails_on_rsync_or_empty_staging():
+    stage_in = (ROOT / "nextflow" / "modules" / "stage_in.nf").read_text()
+
+    assert "set -euo pipefail" in stage_in
+    assert "rm -rf staged_images" in stage_in
+    assert "--chmod=Du+rwx,Dg+rx,Do-rwx,Fu+rw,Fg+r,Fo-rwx" in stage_in
+    assert "image_count=\\$(find staged_images -name '*.tif' | wc -l)" in stage_in
+    assert 'if [ "\\$image_count" -eq 0 ]; then' in stage_in
+    assert "exit 1" in stage_in
+
+
+def test_nextflow_index_caps_polars_thread_pools():
+    index = (ROOT / "nextflow" / "modules" / "build_imageset_index.nf").read_text()
+
+    assert "export POLARS_MAX_THREADS=1" in index
+    assert "export RAYON_NUM_THREADS=1" in index
+    assert "export OMP_NUM_THREADS=1" in index
+    assert "export MKL_NUM_THREADS=1" in index
+
+
 def test_loop230_config_is_scratch_self_contained_and_staged():
     config_path = ROOT / "config" / "loop230-sarah-screen.yaml"
     config = yaml.safe_load(config_path.read_text())
@@ -53,6 +73,10 @@ def test_loop230_config_is_scratch_self_contained_and_staged():
     assert "/datastore/" in config["input_dir"]
     assert config["plates"] == ["3723-D-100"]
     assert config["stages"] == ["illum", "segment", "extract"]
+    assert config["data_destination"].startswith(
+        "/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/results/"
+    )
+    assert config["data_destination"].rstrip("/") != output_dir
 
     scratch_bound_paths = [
         config["illum_pipeline_calculate"],

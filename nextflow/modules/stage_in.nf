@@ -18,12 +18,21 @@ process STAGE_IN {
 
     script:
     """
+    set -euo pipefail
+
+    rm -rf staged_images
     mkdir -p staged_images
 
-    rsync -rtl --partial --timeout=300 \
+    rsync -rtl --chmod=Du+rwx,Dg+rx,Do-rwx,Fu+rw,Fg+r,Fo-rwx --partial --timeout=300 \
         ${datastore_path}/ staged_images/ \
         2>&1 | tee stage_in_${plate_id}.log
 
-    echo "Staged \$(find staged_images -name '*.tif' | wc -l) images for plate ${plate_id}"
+    image_count=\$(find staged_images -name '*.tif' | wc -l)
+    if [ "\$image_count" -eq 0 ]; then
+        echo "ERROR: staged 0 .tif images for plate ${plate_id} from ${datastore_path}" >&2
+        exit 1
+    fi
+
+    echo "Staged \$image_count images for plate ${plate_id}"
     """
 }

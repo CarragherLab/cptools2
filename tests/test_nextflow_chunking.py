@@ -10,6 +10,13 @@ CURRENT_PATH = os.path.dirname(__file__)
 PLATE_DIR = os.path.join(CURRENT_PATH, "example_dir", "test-plate-1")
 
 
+def test_nextflow_chunking_caps_polars_thread_pools():
+    assert os.environ["POLARS_MAX_THREADS"] == "1"
+    assert os.environ["RAYON_NUM_THREADS"] == "1"
+    assert os.environ["OMP_NUM_THREADS"] == "1"
+    assert os.environ["MKL_NUM_THREADS"] == "1"
+
+
 def test_build_image_set_index_preserves_complete_channel_groups(tmp_path):
     output_csv = tmp_path / "image_sets.csv"
 

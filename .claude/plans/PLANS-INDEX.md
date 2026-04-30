@@ -43,7 +43,7 @@ Phases A-D run in **parallel worktrees**. Phase E runs after all 4 merge.
 | 1 | Code Review Fixes + Multi-Assay Hardening | Complete | [2026-04-06-code-review-fixes-design.md](2026-04-06-code-review-fixes-design.md) | 3 | No (sequential) |
 | 2 | Eddie Deployment | Active | [phase-2-eddie-deployment.md](phase-2-eddie-deployment.md) | 3 | No (sequential, C1→C2→C3) |
 | 2.5 | Intra-Plate Batching and Fan-Out | Planned | [phase-2.5-intra-plate-batching.md](phase-2.5-intra-plate-batching.md) | 5 | No (sequential, after container/staging substrate) |
-| 2.6 | Loop 230 Blocker Burn-Down | Planned | [phase-2.6-loop230-blocker-burndown.md](phase-2.6-loop230-blocker-burndown.md) | 6 | Mixed: local loops bounded, Eddie loops sequential |
+| 2.6 | Loop 230 Blocker Burn-Down | Active | [phase-2.6-loop230-blocker-burndown.md](phase-2.6-loop230-blocker-burndown.md) | 6 | Loop 320 complete; Loop 330 AI smoke next |
 
 ## Loop Summary
 
@@ -104,3 +104,4 @@ git worktree add ../cptools2-lane-d ai-update
 - **Code review**: completed 2026-04-06 (3 critical bugs, 3 high, 21 additional issues)
 - **Eng review (Phase 1)**: completed 2026-04-07 (2 issues found, 0 critical gaps, CLEARED)
 - **Investigate**: completed 2026-04-07 (root cause: parallel lane interface mismatches, Bug 2 downgraded)
+- **Loop 230 burn-down**: [2026-04-30 report](2026-04-30-loop230-blocker-burndown-report.md) records Eddie staging/index/chunk success for `3723-D-100`; Loop 330 remains next.

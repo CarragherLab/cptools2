@@ -2,7 +2,7 @@
 phase: 2.6
 name: Loop 230 Blocker Burn-Down
 plan: phase-2.6-loop230-blocker-burndown.md
-status: planned
+status: in_progress
 loops_total: 6
 recommended_agent_model: gpt-5.4-mini
 ---
@@ -40,7 +40,7 @@ Rules:
 | Gate 1: Local baseline | Loop 300 edits and Loop 310 sync | 290 | Review-fix commit exists; focused tests pass; full pytest passes; `git diff --check` has no real errors. |
 | Gate 2: Subset ready | Loop 310 dry-run and Loop 320 resume | 300 | Active `plates` are in params; `batch_id` is in params; subset/chunk limit is present or explicitly not needed for the next command. |
 | Gate 3: Eddie params verified | Loop 320 resume | 310 | Eddie checkout matches local commit/files; dry-run exits 0; params are scratch-contained and include `data_destination`. |
-| Gate 4: Chunk fan-out proven | Loop 330 AI smoke | 320 | `BUILD_IMAGESET_INDEX` and `CHUNK_IMAGESETS` complete, or blocker is captured with command/log path. |
+| Gate 4: Chunk fan-out proven | Loop 330 AI smoke | 320 | COMPLETE 2026-04-30: `STAGE_IN` cached successfully with 23040 TIFFs, `BUILD_IMAGESET_INDEX` completed with 11520 image-set rows, and `CHUNK_IMAGESETS` completed with one 480-row bounded chunk. |
 | Gate 5: AI smoke assessed | Loop 340 final report | 330 | One-chunk AI path succeeds, or scaffold/container/model blocker is converted to next-loop task. |
 
 ### Parallel Plan
@@ -342,7 +342,7 @@ prompt: |
 ```yaml
 loop_id: 320
 name: Eddie Submit-Pressure Guard and Resume
-status: pending
+status: completed
 type: validation
 model: gpt-5.4-mini
 parallel_safe: false
@@ -355,9 +355,9 @@ owned_files:
   - .claude/plans/2026-04-26-loop230-sarah-screen-runbook.md
   - .claude/plans/2026-04-29-loop230-blocker-burndown-report.md
 handoff_summary:
-  done: ""
+  done: "Loop 320 completed on Eddie: STAGE_IN cached exit 0, BUILD_IMAGESET_INDEX exit 0, and CHUNK_IMAGESETS exit 0 using --stages none --max_chunks 1."
   failed: ""
-  needed: ""
+  needed: "Proceed to Loop 330 Cellpose and feature extraction smoke."
 handoff_required_fields:
   evidence: "Nextflow process status, chunk manifest path/count, or exact failure text"
   commands: "NXF_OPTS exports and nextflow resume command"
@@ -372,28 +372,28 @@ todos:
     skill: eddie-resources
     agent: gpt-5.4-mini-worker
     outcome: "Report qstat/job/thread context and whether conditions are reasonable for a small resume."
-    status: pending
+    status: completed
     priority: high
   - id: loop-320-2
     content: "Record the constrained NXF_OPTS, queue-size, and resume command that will be used for login-host execution."
     skill: eddie-validate
     agent: gpt-5.4-mini-worker
     outcome: "Runbook/report contains exact environment exports and resume command before execution starts."
-    status: pending
+    status: completed
     priority: high
   - id: loop-320-3
     content: "Resume Loop 230 with constrained NXF_OPTS and subset controls."
     skill: eddie-login
     agent: gpt-5.4-mini-worker
     outcome: "Nextflow resume command starts from scratch work dir and does not create work under group checkout."
-    status: pending
+    status: completed
     priority: high
   - id: loop-320-4
     content: "Verify BUILD_IMAGESET_INDEX and CHUNK_IMAGESETS complete, or capture exact blocker."
     skill: eddie-validate
     agent: gpt-5.4-mini-worker
     outcome: "Chunk manifests exist for 3723-D-100, or report includes command, log path, process name, and failure text."
-    status: pending
+    status: completed
     priority: high
 prompt: |
   ## Objective

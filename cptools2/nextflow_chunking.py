@@ -9,6 +9,13 @@ import argparse
 import os
 from pathlib import Path
 
+# Eddie login/local metadata tasks can hit process/thread limits if Polars/Rayon
+# tries to create a full worker pool for small CSV writes.
+os.environ.setdefault("POLARS_MAX_THREADS", "1")
+os.environ.setdefault("RAYON_NUM_THREADS", "1")
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+
 import polars as pl
 from parserix import parse as _parse
 

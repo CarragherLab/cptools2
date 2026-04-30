@@ -19,6 +19,10 @@ process BUILD_IMAGESET_INDEX {
         : params.expected_channels
     """
     export PYTHONPATH="${projectDir}/..:\${PYTHONPATH:-}"
+    export POLARS_MAX_THREADS=1
+    export RAYON_NUM_THREADS=1
+    export OMP_NUM_THREADS=1
+    export MKL_NUM_THREADS=1
 
     python -m cptools2.nextflow_chunking index \
         --plate-id ${plate_id} \

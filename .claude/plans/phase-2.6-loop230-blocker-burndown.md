@@ -166,7 +166,7 @@ No two GPT-5.4-mini workers may edit the same file at the same time. Eddie loops
 | Local baseline | 290 | GPT-5.4-mini | No | Parent + worker | Establishes clean commit before other edits. |
 | Local validation | 300 | GPT-5.4-mini | Read-only with 290 | Worker | May become editing loop only after 290 lands. |
 | Eddie sync | 310 | GPT-5.4-mini | No | Parent + Eddie worker | Touches shared group checkout. |
-| Eddie resume | 320 | GPT-5.4-mini | No | Eddie worker | Uses scheduler state and cached work. |
+| Eddie resume | 320 | GPT-5.4-mini | No | Eddie worker | Completed 2026-04-30: staged plate indexing and chunk fan-out passed on Eddie. |
 | AI smoke | 330 | GPT-5.4-mini | No | Eddie worker | Depends on chunk subset success. |
 | Handoff | 340 | GPT-5.4-mini | No | Parent + doc worker | Produces final phase verdict. |
 
@@ -177,7 +177,7 @@ No two GPT-5.4-mini workers may edit the same file at the same time. Eddie loops
 | Gate 1: Local clean baseline | Focused tests pass, full pytest passes, `git diff --check` clean, review-fix commit exists | Stop before Eddie sync; fix local patch. |
 | Gate 2: Safe subset run ready | Params expose active plates and chunk limit, default full-run behaviour unchanged | Add subset control or document why existing control is sufficient. |
 | Gate 3: Eddie params verified | Shared checkout matches local commit/files, dry-run writes scratch-contained params | Do not resume; fix sync or params mismatch. |
-| Gate 4: Index/chunk proven | `BUILD_IMAGESET_INDEX` and `CHUNK_IMAGESETS` complete, chunk manifests exist | Capture exact blocker and decide whether to patch or wait for scheduler. |
+| Gate 4: Index/chunk proven | COMPLETE 2026-04-30: `BUILD_IMAGESET_INDEX` and `CHUNK_IMAGESETS` completed; one bounded chunk manifest exists for `3723-D-100`. | Proceed to Loop 330 AI smoke. |
 | Gate 5: AI path executable | One chunk Cellpose/feature smoke succeeds, or exact scaffold/container/model blocker is documented | Convert blocker into next phase/loop item. |
 | Gate 6: Handoff complete | Report exists, PLANS-INDEX current, next action unambiguous | Do not claim Phase 2 complete. |
 
@@ -238,7 +238,7 @@ Phase 2.6 is complete only when all of the following are true:
 - [ ] Loop 290 is complete and committed locally.
 - [ ] Loop 300 confirms active batch params and subset controls, or records a scoped implementation blocker.
 - [ ] Loop 310 confirms Eddie sync and dry-run params, or records a remote access/sync blocker.
-- [ ] Loop 320 proves index/chunk execution, or records an Eddie/runtime blocker with command, host, job id where available, and log path.
+- [x] Loop 320 proves index/chunk execution, or records an Eddie/runtime blocker with command, host, job id where available, and log path.
 - [ ] Loop 330 proves one-chunk Cellpose/feature smoke, or records a scaffold/container/model blocker.
 - [ ] Loop 340 writes `.claude/plans/2026-04-29-loop230-blocker-burndown-report.md`.
 - [ ] `PLANS-INDEX.md` links the phase and loop files.
@@ -251,7 +251,7 @@ Phase 2.6 is complete only when all of the following are true:
 | 290 | Land Local Review Fixes | Implementation | Local commit, full pytest pass, clean diff check |
 | 300 | Batch, Subset, and Chunk Validation Gate | Implementation/Validation | Confirm active batch params and subset controls, tests, dry-run evidence |
 | 310 | Eddie Sync and Dry-Run | Infrastructure | Shared group checkout updated, params verified, Nextflow preview/dry-run evidence |
-| 320 | Eddie Submit-Pressure Guard and Resume | Validation | Resume Loop 230 through index/chunk stages under constrained submit-host settings, or precise blocker report |
+| 320 | Eddie Submit-Pressure Guard and Resume | Validation | COMPLETE 2026-04-30: `STAGE_IN`, `BUILD_IMAGESET_INDEX`, and `CHUNK_IMAGESETS` passed with `--max_chunks 1` |
 | 330 | Cellpose/Feature Extract Smoke | Validation | Small chunk AI path smoke or documented model/container blocker |
 | 340 | Progress Report and Phase Handoff | Documentation | Burn-down report, updated plan status, next recommended phase |
 
