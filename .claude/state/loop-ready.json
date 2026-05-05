@@ -1,60 +1,60 @@
 {
-  "loop_id": 360,
-  "title": "Scratch Sizing Configuration",
+  "loop_id": 370,
+  "title": "Guarded Post-Success Cleanup",
   "phase": "2.7",
   "phase_name": "Scratch Batch Reproducibility Hardening",
   "status": "completed",
-  "loop_name": "ralph-loop-360",
+  "loop_name": "ralph-loop-370",
   "loop_file": ".claude/plans/phase-2.7-ralph-loops.md",
-  "task_name": "Scratch Sizing Configuration",
+  "task_name": "Guarded Post-Success Cleanup",
   "todos_count": 5,
   "todos": [
     {
       "id": "loop-360-1",
-      "content": "Add utilisation_fraction and work_factor parameters to create_batches with defaults preserving current 0.75 and 1.3 behavior",
+      "content": "Add --clean-work CLI flag defaulting to false",
       "skill": "test-driven-development",
       "agent": "ralph-loop-worker",
-      "outcome": "tests/test_batch.py proves create_batches defaults match current grouping and accepts explicit sizing overrides",
+      "outcome": "Parser tests prove --clean-work is accepted and defaults to false",
       "status": "completed",
       "complexity": "medium",
       "priority": "high"
     },
     {
       "id": "loop-360-2",
-      "content": "Parse scratch_utilisation_fraction and scratch_work_factor from config and pass them into _build_scratch_batches",
+      "content": "Run cleanup only after a batch subprocess exits successfully",
       "skill": "test-driven-development",
       "agent": "ralph-loop-worker",
-      "outcome": "tests/test_cli.py proves config overrides are passed to create_batches",
+      "outcome": "Tests prove cleanup is called after returncode 0 and not called after non-zero returncode",
       "status": "completed",
       "complexity": "medium",
       "priority": "high"
     },
     {
       "id": "loop-360-3",
-      "content": "Validate scratch sizing values before batch creation",
+      "content": "Implement cleanup sequence using nextflow clean first and guarded direct deletion fallback for exact batch work dir only",
       "skill": "test-driven-development",
       "agent": "ralph-loop-worker",
-      "outcome": "Tests prove non-positive or nonsensical sizing values raise a clear ValueError",
+      "outcome": "Cleanup helper refuses targets outside work root or without expected batch_### component and only deletes validated batch work dirs",
       "status": "completed",
       "complexity": "medium",
       "priority": "high"
     },
     {
       "id": "loop-360-4",
-      "content": "Show scratch utilisation and work factor values in dry-run output",
+      "content": "Add path-safety tests for cleanup guard rejection cases",
       "skill": "test-driven-development",
       "agent": "ralph-loop-worker",
-      "outcome": "Dry-run test captures both scratch_utilisation_fraction and scratch_work_factor values",
+      "outcome": "Tests cover outside-root, non-batch, failed-batch, and successful-batch cleanup paths",
       "status": "completed",
       "complexity": "low",
       "priority": "medium"
     },
     {
       "id": "loop-360-5",
-      "content": "Run focused batch and CLI tests for scratch sizing behavior",
+      "content": "Run focused cleanup and CLI tests",
       "skill": "verification-before-completion",
       "agent": "ralph-loop-worker",
-      "outcome": "Focused pytest invocation for relevant test_batch and test_cli tests exits 0",
+      "outcome": "Focused pytest invocation for cleanup-related tests exits 0",
       "status": "completed",
       "complexity": "low",
       "priority": "high"
@@ -76,13 +76,13 @@
       "failed",
       "needed"
     ],
-    "focused_verification": "pytest invocation covering the relevant test_batch and test_cli cases"
+    "focused_verification": "pytest tests/test_cli.py -q"
   },
   "notes": [
     "Preserve flat final outputs under params.output_dir; do not introduce batched output directories.",
     "Batch identity belongs only in per-batch work dirs, per-batch params snapshots, and traces/reports/timelines.",
     "Oversized single plate guard is intentionally deferred.",
-    "Guarded deletion of per-batch work dirs after successful batch completion is required in later loops.",
+    "Guarded deletion of per-batch work dirs after successful batch completion is now implemented.",
     "The worker should execute this loop inline without spawning subagents."
   ],
   "constraints": [

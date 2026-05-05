@@ -31,6 +31,7 @@ class TestBuildParser:
         assert args.config == PIPELINE_CONFIG
         assert args.dry_run is False
         assert args.resume is False
+        assert args.clean_work is False
         assert args.stages is None
 
     def test_pipeline_with_stages(self):
@@ -44,6 +45,11 @@ class TestBuildParser:
         parser = build_parser()
         args = parser.parse_args(["pipeline", PIPELINE_CONFIG, "--resume"])
         assert args.resume is True
+
+    def test_pipeline_with_clean_work(self):
+        parser = build_parser()
+        args = parser.parse_args(["pipeline", PIPELINE_CONFIG, "--clean-work"])
+        assert args.clean_work is True
 
     def test_prepare_subcommand(self):
         parser = build_parser()
@@ -198,7 +204,7 @@ class TestCmdPipelineDryRun:
         monkeypatch.setattr(
             batch_module,
             "create_batches",
-            lambda plate_sizes, available: [
+            lambda plate_sizes, available, **kwargs: [
                 {
                     "batch_id": 1,
                     "plates": ["plate-a"],
@@ -249,7 +255,7 @@ class TestCmdPipelineDryRun:
         monkeypatch.setattr(
             batch_module,
             "create_batches",
-            lambda plate_sizes, available: [
+            lambda plate_sizes, available, **kwargs: [
                 {
                     "batch_id": 1,
                     "plates": ["plate-a"],
@@ -547,6 +553,124 @@ class TestCmdPipelineNoNextflow:
         assert captured[0][captured[0].index("-work-dir") + 1] == str(
             tmp_path / "work" / "batch_001"
         )
+
+    def test_pipeline_does_not_clean_failed_batches(
+        self, tmp_path, monkeypatch
+    ):
+        """Cleanup must not run when a batch exits non-zero."""
+        config_file = tmp_path / "test_config.yaml"
+        config_file.write_text(
+            "experiment: /path/to/experiment\n"
+            "pipeline: tests/example_pipeline.cppipe\n"
+            "location: {}\n"
+            "commands location: /home/user\n".format(str(tmp_path))
+        )
+        calls = []
+        monkeypatch.setattr(
+            batch_module,
+            "get_scratch_quota",
+            lambda config_quota=None: batch_module.ScratchQuota(
+                500 * 1024**3, 0, 500 * 1024**3
+            ),
+        )
+        monkeypatch.setattr(cli_module, "_find_nextflow", lambda: True)
+
+        def fake_run(cmd):
+            calls.append(cmd)
+            return SimpleNamespace(returncode=1)
+
+        monkeypatch.setattr(cli_module.subprocess, "run", fake_run)
+
+        parser = build_parser()
+        args = parser.parse_args(["pipeline", str(config_file), "--clean-work"])
+        with pytest.raises(SystemExit) as exc_info:
+            cmd_pipeline(args)
+        assert exc_info.value.code == 1
+        assert len(calls) == 1
+        assert calls[0][0:2] == ["nextflow", "run"]
+        assert not any(cmd[1] == "clean" for cmd in calls)
+
+    def test_pipeline_cleans_work_after_successful_batch(
+        self, tmp_path, monkeypatch
+    ):
+        """Successful batches should trigger nextflow clean on the batch work dir."""
+        config_file = tmp_path / "test_config.yaml"
+        config_file.write_text(
+            "experiment: /path/to/experiment\n"
+            "pipeline: tests/example_pipeline.cppipe\n"
+            "location: {}\n"
+            "commands location: /home/user\n".format(str(tmp_path))
+        )
+        calls = []
+        monkeypatch.setattr(
+            batch_module,
+            "get_scratch_quota",
+            lambda config_quota=None: batch_module.ScratchQuota(
+                500 * 1024**3, 0, 500 * 1024**3
+            ),
+        )
+        monkeypatch.setattr(cli_module, "_find_nextflow", lambda: True)
+
+        def fake_run(cmd):
+            calls.append(cmd)
+            return SimpleNamespace(returncode=0)
+
+        monkeypatch.setattr(cli_module.subprocess, "run", fake_run)
+
+        parser = build_parser()
+        args = parser.parse_args(["pipeline", str(config_file), "--clean-work"])
+        cmd_pipeline(args)
+
+        assert len(calls) == 2
+        assert calls[0][0:2] == ["nextflow", "run"]
+        assert calls[1][0:2] == ["nextflow", "clean"]
+        assert calls[1][calls[1].index("-work-dir") + 1] == str(
+            tmp_path / "work" / "batch_001"
+        )
+
+    def test_cleanup_rejects_targets_outside_work_root(self, tmp_path):
+        """Cleanup helper must refuse paths outside the configured work root."""
+        from cptools2.__main__ import _cleanup_batch_work_dir
+
+        work_root = tmp_path / "work"
+        target = tmp_path / "other" / "batch_001"
+
+        with pytest.raises(ValueError, match="outside"):
+            _cleanup_batch_work_dir(target, work_root)
+
+    def test_cleanup_rejects_non_batch_targets(self, tmp_path):
+        """Cleanup helper must refuse work dirs without a batch_### component."""
+        from cptools2.__main__ import _cleanup_batch_work_dir
+
+        work_root = tmp_path / "work"
+        target = work_root / "scratch"
+
+        with pytest.raises(ValueError, match="batch_###"):
+            _cleanup_batch_work_dir(target, work_root)
+
+    def test_cleanup_falls_back_to_direct_deletion_for_valid_batch_dir(
+        self, tmp_path, monkeypatch
+    ):
+        """If nextflow clean fails, cleanup may fall back only to the exact batch dir."""
+        from cptools2.__main__ import _cleanup_batch_work_dir
+
+        work_root = tmp_path / "work"
+        target = work_root / "batch_001"
+        target.mkdir(parents=True)
+        calls = []
+
+        def fake_run(cmd):
+            calls.append(cmd)
+            return SimpleNamespace(returncode=1)
+
+        monkeypatch.setattr(cli_module.subprocess, "run", fake_run)
+        monkeypatch.setattr(cli_module.shutil, "rmtree", lambda path: calls.append(path))
+
+        _cleanup_batch_work_dir(target, work_root)
+
+        assert calls[0][0:2] == ["nextflow", "clean"]
+        assert calls[0][calls[0].index("-work-dir") + 1] == str(target)
+        assert calls[1] == str(target)
 
 
 class TestConfigFileValidation:

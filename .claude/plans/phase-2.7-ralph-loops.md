@@ -280,9 +280,9 @@ max_iterations: 3
 on_max_iterations: escalate
 
 handoff_summary:
-  done: ""
+  done: "Loop 370 added opt-in post-success cleanup for batch scratch. The pipeline parser now accepts --clean-work and defaults it to false. Successful batch runs attempt nextflow clean -f -work-dir <batch_work_dir> first and fall back only to guarded deletion of the exact validated batch work dir. Cleanup rejects targets outside the configured work root and paths without an exact batch_### component. Focused CLI tests now cover parser defaults, success/failure cleanup gating, path-safety rejection, and the direct-deletion fallback path."
   failed: ""
-  needed: ""
+  needed: "Loop 380 can now handle Eddie calibration and documentation on top of the guarded cleanup path."
 
 todos:
   - id: "loop-370-1"
@@ -290,7 +290,7 @@ todos:
     skill: "test-driven-development"
     agent: "ralph-loop-worker"
     outcome: "Parser tests prove --clean-work is accepted and defaults to false"
-    status: pending
+    status: completed
     complexity: low
     priority: high
   - id: "loop-370-2"
@@ -298,7 +298,7 @@ todos:
     skill: "test-driven-development"
     agent: "ralph-loop-worker"
     outcome: "Tests prove cleanup is called after returncode 0 and not called after non-zero returncode"
-    status: pending
+    status: completed
     complexity: medium
     priority: high
   - id: "loop-370-3"
@@ -306,7 +306,7 @@ todos:
     skill: "careful"
     agent: "ralph-loop-worker"
     outcome: "Cleanup helper refuses targets outside work root or without expected batch_### component and only deletes validated batch work dirs"
-    status: pending
+    status: completed
     complexity: high
     priority: high
   - id: "loop-370-4"
@@ -316,7 +316,7 @@ todos:
       - "careful"
     agent: "ralph-loop-worker"
     outcome: "Tests cover outside-root, non-batch, failed-batch, and successful-batch cleanup paths"
-    status: pending
+    status: completed
     complexity: high
     priority: high
   - id: "loop-370-5"
@@ -324,7 +324,7 @@ todos:
     skill: "verification-before-completion"
     agent: "ralph-loop-worker"
     outcome: "Focused pytest invocation for cleanup-related tests exits 0"
-    status: pending
+    status: completed
     complexity: low
     priority: high
 

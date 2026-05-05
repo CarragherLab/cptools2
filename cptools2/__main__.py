@@ -1,9 +1,11 @@
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 from cptools2 import batch as batch_module
 from cptools2 import parse_yaml
@@ -93,8 +95,12 @@ def _filter_plate_sizes(plate_sizes, configured_plates):
 
 def _scratch_sizing_from_config(config):
     """Return validated scratch sizing values from config or defaults."""
-    utilisation_fraction = config.get("scratch_utilisation_fraction", 0.75)
-    work_factor = config.get("scratch_work_factor", 1.3)
+    utilisation_fraction = config.get("scratch_utilisation_fraction")
+    work_factor = config.get("scratch_work_factor")
+    if utilisation_fraction is None:
+        utilisation_fraction = 0.75
+    if work_factor is None:
+        work_factor = 1.3
     try:
         utilisation_fraction = float(utilisation_fraction)
         work_factor = float(work_factor)
@@ -208,9 +214,60 @@ def _build_nextflow_command(nf_main, batch_params_path, batch_info, resume=False
     return nf_cmd
 
 
+def _validate_batch_cleanup_target(batch_work_dir, work_root):
+    """Return a validated exact batch work dir under the configured work root."""
+    resolved_root = Path(work_root).resolve()
+    resolved_target = Path(batch_work_dir).resolve()
+    try:
+        relative_target = resolved_target.relative_to(resolved_root)
+    except ValueError as exc:
+        raise ValueError(
+            "Cleanup target is outside the configured work root: {}".format(
+                resolved_root
+            )
+        ) from exc
+
+    if len(relative_target.parts) != 1:
+        raise ValueError(
+            "Cleanup target must be the exact batch work dir under {}: {}".format(
+                resolved_root, resolved_target
+            )
+        )
+
+    batch_name = relative_target.parts[0]
+    if not re.fullmatch(r"batch_\d{3}", batch_name):
+        raise ValueError(
+            "Cleanup target must include an expected batch_### component: {}".format(
+                resolved_target
+            )
+        )
+
+    return resolved_target
+
+
+def _cleanup_batch_work_dir(batch_work_dir, work_root):
+    """Clean a validated batch work dir, preferring nextflow clean first."""
+    validated_target = _validate_batch_cleanup_target(batch_work_dir, work_root)
+    clean_cmd = [
+        "nextflow",
+        "clean",
+        "-f",
+        "-work-dir",
+        str(validated_target),
+    ]
+    try:
+        result = subprocess.run(clean_cmd)
+    except OSError:
+        result = None
+    if result is not None and result.returncode == 0:
+        return
+    shutil.rmtree(str(validated_target))
+
+
 def cmd_pipeline(args):
     """Handle the 'pipeline' subcommand."""
     config, params_path = _prepare_config(args.config, stages_override=args.stages)
+    clean_work = getattr(args, "clean_work", False)
 
     # Scratch pre-flight check
     config_quota = config.get("scratch_quota_gb")
@@ -293,6 +350,11 @@ def cmd_pipeline(args):
                 )
             )
             sys.exit(result.returncode)
+        if clean_work:
+            pretty_print("Cleaning batch {} work dir".format(batch_info["batch_id"]))
+            _cleanup_batch_work_dir(
+                batch_info["batch_work_dir"], os.path.join(location, "work")
+            )
 
     pretty_print("All batches complete!")
 
@@ -376,6 +438,12 @@ def build_parser():
         action="store_true",
         default=False,
         help="pass -resume to Nextflow to continue from last checkpoint",
+    )
+    p_pipeline.add_argument(
+        "--clean-work",
+        action="store_true",
+        default=False,
+        help="remove batch work dirs after successful Nextflow batches",
     )
     p_pipeline.add_argument(
         "--stages",
