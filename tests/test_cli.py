@@ -226,6 +226,188 @@ class TestCmdPipelineDryRun:
         assert batch_2["plates"] == ["plate-b"]
         assert batch_1["batch_id"] == 1
         assert batch_2["batch_id"] == 2
+        assert batch_1["batch_name"] == "batch_001"
+        assert batch_2["batch_name"] == "batch_002"
+        assert batch_1["batch_work_dir"].endswith(os.path.join("work", "batch_001"))
+        assert batch_2["batch_work_dir"].endswith(os.path.join("work", "batch_002"))
+        assert batch_1["output_dir"] == str(output_dir)
+        assert batch_2["output_dir"] == str(output_dir)
+
+    def test_dry_run_reports_batch_provenance_paths(self, tmp_path, monkeypatch, capsys):
+        """Dry-run output should show batch work, trace, and params paths."""
+        input_dir = tmp_path / "screen"
+        (input_dir / "plate-a").mkdir(parents=True)
+        (input_dir / "plate-a" / "image.tif").write_text("a")
+        output_dir = tmp_path / "out"
+        config_file = tmp_path / "test_config.yaml"
+        config_file.write_text(
+            "experiment: {}\n"
+            "pipeline: tests/example_pipeline.cppipe\n"
+            "location: {}\n"
+            "commands location: /home/user\n".format(str(input_dir), str(output_dir))
+        )
+        monkeypatch.setattr(
+            batch_module,
+            "create_batches",
+            lambda plate_sizes, available: [
+                {
+                    "batch_id": 1,
+                    "plates": ["plate-a"],
+                    "total_size_gb": 0.1,
+                    "plate_count": 1,
+                }
+            ],
+        )
+
+        parser = build_parser()
+        args = parser.parse_args(["pipeline", str(config_file), "--dry-run"])
+        cmd_pipeline(args)
+
+        captured = capsys.readouterr().out.replace("\\", "/")
+        assert "batch_001" in captured
+        assert "work/batch_001" in captured
+        assert "traces/trace.batch_001.txt" in captured
+        assert "traces/report.batch_001.html" in captured
+        assert "traces/timeline.batch_001.html" in captured
+        assert "params.batch_1.json" in captured
+        assert str(output_dir).replace("\\", "/") in captured
+
+    def test_dry_run_passes_scratch_model_overrides_to_create_batches(
+        self, tmp_path, monkeypatch
+    ):
+        """Config sizing overrides should be forwarded to batch creation."""
+        output_dir = tmp_path / "out"
+        config_file = tmp_path / "test_config.yaml"
+        config_file.write_text(
+            "experiment: /path/to/experiment\n"
+            "pipeline: tests/example_pipeline.cppipe\n"
+            "location: {}\n"
+            "commands location: /home/user\n"
+            "plates:\n"
+            "  - plate-a\n"
+            "plate_sizes_gb:\n"
+            "  plate-a: 100\n"
+            "scratch_utilisation_fraction: 0.6\n"
+            "scratch_work_factor: 1.8\n".format(str(output_dir))
+        )
+
+        monkeypatch.setattr(
+            batch_module,
+            "get_scratch_quota",
+            lambda config_quota=None: batch_module.ScratchQuota(
+                500 * 1024**3, 0, 500 * 1024**3
+            ),
+        )
+        monkeypatch.setattr(cli_module, "_find_nextflow", lambda: True)
+
+        captured = {}
+
+        def fake_create_batches(
+            plate_sizes,
+            available,
+            utilisation_fraction=0.75,
+            work_factor=1.3,
+        ):
+            captured["plate_sizes"] = plate_sizes
+            captured["available"] = available
+            captured["utilisation_fraction"] = utilisation_fraction
+            captured["work_factor"] = work_factor
+            return [
+                {
+                    "batch_id": 1,
+                    "plates": ["plate-a"],
+                    "total_size_gb": 0.1,
+                    "plate_count": 1,
+                }
+            ]
+
+        monkeypatch.setattr(batch_module, "create_batches", fake_create_batches)
+
+        parser = build_parser()
+        args = parser.parse_args(["pipeline", str(config_file), "--dry-run"])
+        cmd_pipeline(args)
+
+        assert captured["plate_sizes"] == {"plate-a": 100 * 1024**3}
+        assert captured["available"] == 500 * 1024**3
+        assert captured["utilisation_fraction"] == 0.6
+        assert captured["work_factor"] == 1.8
+
+    def test_dry_run_reports_scratch_model_values(self, tmp_path, capsys):
+        """Dry-run output should include the scratch sizing model values."""
+        output_dir = tmp_path / "out"
+        config_file = tmp_path / "test_config.yaml"
+        config_file.write_text(
+            "experiment: /path/to/experiment\n"
+            "pipeline: tests/example_pipeline.cppipe\n"
+            "location: {}\n"
+            "commands location: /home/user\n"
+            "plates:\n"
+            "  - plate-a\n"
+            "plate_sizes_gb:\n"
+            "  plate-a: 100\n"
+            "scratch_utilisation_fraction: 0.6\n"
+            "scratch_work_factor: 1.8\n".format(str(output_dir))
+        )
+
+        parser = build_parser()
+        args = parser.parse_args(["pipeline", str(config_file), "--dry-run"])
+        cmd_pipeline(args)
+
+        captured = capsys.readouterr().out.replace("\\", "/")
+        assert "scratch_utilisation_fraction" in captured
+        assert "0.6" in captured
+        assert "scratch_work_factor" in captured
+        assert "1.8" in captured
+
+    def test_invalid_scratch_model_values_are_rejected(self, tmp_path):
+        """Invalid scratch sizing values should fail before batch creation."""
+        output_dir = tmp_path / "out"
+        config_file = tmp_path / "test_config.yaml"
+        config_file.write_text(
+            "experiment: /path/to/experiment\n"
+            "pipeline: tests/example_pipeline.cppipe\n"
+            "location: {}\n"
+            "commands location: /home/user\n"
+            "plates:\n"
+            "  - plate-a\n"
+            "plate_sizes_gb:\n"
+            "  plate-a: 100\n"
+            "scratch_utilisation_fraction: 0\n"
+            "scratch_work_factor: 1.8\n".format(str(output_dir))
+        )
+
+        parser = build_parser()
+        args = parser.parse_args(["pipeline", str(config_file), "--dry-run"])
+        with pytest.raises(ValueError, match="scratch_utilisation_fraction"):
+            cmd_pipeline(args)
+
+    def test_nextflow_command_builder_uses_batch_provenance_paths(self, tmp_path):
+        """The Nextflow command helper should isolate each batch's work and traces."""
+        from cptools2.__main__ import _build_nextflow_command
+
+        batch_info = {
+            "batch_id": 1,
+            "batch_name": "batch_001",
+            "batch_work_dir": str(tmp_path / "work" / "batch_001"),
+            "trace_path": str(tmp_path / "traces" / "trace.batch_001.txt"),
+            "report_path": str(tmp_path / "traces" / "report.batch_001.html"),
+            "timeline_path": str(tmp_path / "traces" / "timeline.batch_001.html"),
+        }
+        command = _build_nextflow_command(
+            nf_main="/path/to/main.nf",
+            batch_params_path=str(tmp_path / "params.batch_1.json"),
+            batch_info=batch_info,
+            resume=True,
+        )
+
+        assert command[:4] == ["nextflow", "run", "/path/to/main.nf", "-params-file"]
+        assert command[4] == str(tmp_path / "params.batch_1.json")
+        assert "-work-dir" in command
+        assert command[command.index("-work-dir") + 1] == batch_info["batch_work_dir"]
+        assert command[command.index("-with-trace") + 1] == batch_info["trace_path"]
+        assert command[command.index("-with-report") + 1] == batch_info["report_path"]
+        assert command[command.index("-with-timeline") + 1] == batch_info["timeline_path"]
+        assert command[-1] == "-resume"
 
     def test_dry_run_uses_configured_plate_sizes_for_inaccessible_input(
         self, tmp_path, monkeypatch
@@ -363,7 +545,7 @@ class TestCmdPipelineNoNextflow:
         assert captured
         assert "-work-dir" in captured[0]
         assert captured[0][captured[0].index("-work-dir") + 1] == str(
-            tmp_path / "work"
+            tmp_path / "work" / "batch_001"
         )
 
 

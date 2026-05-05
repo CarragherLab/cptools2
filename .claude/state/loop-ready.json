@@ -1,13 +1,100 @@
 {
-  "loop_name": "End-to-End Eddie Test",
-  "loop_file": ".claude/plans/phase-2-ralph-loops.md",
-  "task_name": "Loop 230: End-to-End Eddie Test",
-  "todos_count": 8,
-  "prepared_at": "2026-04-09T00:00:00Z",
-  "status": "ready",
+  "loop_id": 360,
+  "title": "Scratch Sizing Configuration",
+  "phase": "2.7",
+  "phase_name": "Scratch Batch Reproducibility Hardening",
+  "status": "completed",
+  "loop_name": "ralph-loop-360",
+  "loop_file": ".claude/plans/phase-2.7-ralph-loops.md",
+  "task_name": "Scratch Sizing Configuration",
+  "todos_count": 5,
+  "todos": [
+    {
+      "id": "loop-360-1",
+      "content": "Add utilisation_fraction and work_factor parameters to create_batches with defaults preserving current 0.75 and 1.3 behavior",
+      "skill": "test-driven-development",
+      "agent": "ralph-loop-worker",
+      "outcome": "tests/test_batch.py proves create_batches defaults match current grouping and accepts explicit sizing overrides",
+      "status": "completed",
+      "complexity": "medium",
+      "priority": "high"
+    },
+    {
+      "id": "loop-360-2",
+      "content": "Parse scratch_utilisation_fraction and scratch_work_factor from config and pass them into _build_scratch_batches",
+      "skill": "test-driven-development",
+      "agent": "ralph-loop-worker",
+      "outcome": "tests/test_cli.py proves config overrides are passed to create_batches",
+      "status": "completed",
+      "complexity": "medium",
+      "priority": "high"
+    },
+    {
+      "id": "loop-360-3",
+      "content": "Validate scratch sizing values before batch creation",
+      "skill": "test-driven-development",
+      "agent": "ralph-loop-worker",
+      "outcome": "Tests prove non-positive or nonsensical sizing values raise a clear ValueError",
+      "status": "completed",
+      "complexity": "medium",
+      "priority": "high"
+    },
+    {
+      "id": "loop-360-4",
+      "content": "Show scratch utilisation and work factor values in dry-run output",
+      "skill": "test-driven-development",
+      "agent": "ralph-loop-worker",
+      "outcome": "Dry-run test captures both scratch_utilisation_fraction and scratch_work_factor values",
+      "status": "completed",
+      "complexity": "low",
+      "priority": "medium"
+    },
+    {
+      "id": "loop-360-5",
+      "content": "Run focused batch and CLI tests for scratch sizing behavior",
+      "skill": "verification-before-completion",
+      "agent": "ralph-loop-worker",
+      "outcome": "Focused pytest invocation for relevant test_batch and test_cli tests exits 0",
+      "status": "completed",
+      "complexity": "low",
+      "priority": "high"
+    }
+  ],
+  "skills": [
+    "test-driven-development",
+    "verification-before-completion"
+  ],
+  "suggested_agents": [
+    "ralph-loop-worker"
+  ],
+  "validation": {
+    "todos_count_gt_zero": true,
+    "loop_file_exists": true,
+    "status": "completed",
+    "required_handoff_fields": [
+      "done",
+      "failed",
+      "needed"
+    ],
+    "focused_verification": "pytest invocation covering the relevant test_batch and test_cli cases"
+  },
+  "notes": [
+    "Preserve flat final outputs under params.output_dir; do not introduce batched output directories.",
+    "Batch identity belongs only in per-batch work dirs, per-batch params snapshots, and traces/reports/timelines.",
+    "Oversized single plate guard is intentionally deferred.",
+    "Guarded deletion of per-batch work dirs after successful batch completion is required in later loops.",
+    "The worker should execute this loop inline without spawning subagents."
+  ],
+  "constraints": [
+    "Do not change params.output_dir.",
+    "Do not add batched output directories.",
+    "Keep output locations batch-scoped only for work dirs, params snapshots, traces, reports, and timelines.",
+    "Leave the oversized single plate guard deferred."
+  ],
+  "prepared_at": "2026-05-05T00:00:00Z",
   "handoff_injected": {
-    "done": "stage_in.nf, stage_out.nf, batch.py, test_batch.py (8 tests), scripts/install_eddie.sh created; __main__.py uses subprocess.run batch loop with scratch pre-flight; eddie.config staging time=4h; 148 tests pass.",
+    "done": "Loop 360 implemented configurable scratch sizing in batch.py and CLI wiring. create_batches now accepts utilisation_fraction and work_factor with defaults preserving current behavior. Config keys scratch_utilisation_fraction and scratch_work_factor are parsed and validated before batch creation, forwarded into scratch batch planning, and shown in dry-run output. Focused tests in tests/test_batch.py and tests/test_cli.py cover defaults, overrides, invalid values, and dry-run reporting.",
     "failed": "",
-    "needed": "Loop 230: end-to-end Eddie test — deploy via install_eddie.sh, run pipeline on real plate, validate output structure."
+    "needed": "Loop 370 can now add guarded cleanup on top of the validated batch work-dir model."
   }
 }

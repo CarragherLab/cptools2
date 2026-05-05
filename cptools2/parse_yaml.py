@@ -246,6 +246,8 @@ def check_yaml_args(yaml_dict):
                   "max_chunks",
                   "scratch_quota_gb",
                   "plate_sizes_gb",
+                  "scratch_utilisation_fraction",
+                  "scratch_work_factor",
                   "illum_pipeline_calculate",
                   "illum_pipeline_apply",
                   "seg_pipeline"]
@@ -414,6 +416,10 @@ def parse_config_file(config_file):
         "max_chunks": yaml_dict.get("max_chunks"),
         "scratch_quota_gb": yaml_dict.get("scratch_quota_gb"),
         "plate_sizes_gb": yaml_dict.get("plate_sizes_gb"),
+        "scratch_utilisation_fraction": yaml_dict.get(
+            "scratch_utilisation_fraction"
+        ),
+        "scratch_work_factor": yaml_dict.get("scratch_work_factor"),
         "nextflow_pipeline_paths": nextflow_pipeline_paths(yaml_dict),
     }
     # Resolve container .sif paths from manifest if available

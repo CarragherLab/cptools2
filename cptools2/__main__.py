@@ -87,15 +87,46 @@ def _filter_plate_sizes(plate_sizes, configured_plates):
             "No plate size available for configured plate(s): {}".format(
                 ", ".join(missing)
             )
-        )
+    )
     return filtered
 
 
-def _build_scratch_batches(config, quota):
+def _scratch_sizing_from_config(config):
+    """Return validated scratch sizing values from config or defaults."""
+    utilisation_fraction = config.get("scratch_utilisation_fraction", 0.75)
+    work_factor = config.get("scratch_work_factor", 1.3)
+    try:
+        utilisation_fraction = float(utilisation_fraction)
+        work_factor = float(work_factor)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "scratch_utilisation_fraction and scratch_work_factor must be numeric"
+        ) from exc
+    if utilisation_fraction <= 0 or utilisation_fraction > 1:
+        raise ValueError(
+            "scratch_utilisation_fraction must be > 0 and <= 1; got {}".format(
+                utilisation_fraction
+            )
+        )
+    if work_factor <= 0:
+        raise ValueError(
+            "scratch_work_factor must be > 0; got {}".format(work_factor)
+        )
+    return utilisation_fraction, work_factor
+
+
+def _build_scratch_batches(
+    config,
+    quota,
+    utilisation_fraction=None,
+    work_factor=None,
+):
     """Compute scratch-safe plate batches for the pipeline run."""
     exp_args = config.get("experiment_args") or {}
     input_dir = exp_args.get("exp_dir")
     configured_plates = config.get("plates")
+    if utilisation_fraction is None or work_factor is None:
+        utilisation_fraction, work_factor = _scratch_sizing_from_config(config)
     configured_sizes = _configured_plate_sizes(config)
 
     if configured_sizes is not None:
@@ -118,11 +149,63 @@ def _build_scratch_batches(config, quota):
             "No plate sizes were available after applying the configured plate list."
         )
 
-    batches = batch_module.create_batches(plate_sizes, quota.available)
+    batches = batch_module.create_batches(
+        plate_sizes,
+        quota.available,
+        utilisation_fraction=utilisation_fraction,
+        work_factor=work_factor,
+    )
     pretty_print(
         "Computed {} batch(es) for {} plates".format(len(batches), len(plate_sizes))
     )
     return batches
+
+
+def _batch_name(batch_info):
+    """Return the stable display/storage name for a batch."""
+    return "batch_{:03d}".format(batch_info["batch_id"])
+
+
+def _annotate_batch_paths(batch_info, location):
+    """Add batch-scoped work and provenance paths without changing output_dir."""
+    annotated = dict(batch_info)
+    batch_name = annotated.get("batch_name") or _batch_name(annotated)
+    annotated["batch_name"] = batch_name
+    annotated["batch_work_dir"] = os.path.join(location, "work", batch_name)
+    annotated["trace_path"] = os.path.join(
+        location, "traces", "trace.{}.txt".format(batch_name)
+    )
+    annotated["report_path"] = os.path.join(
+        location, "traces", "report.{}.html".format(batch_name)
+    )
+    annotated["timeline_path"] = os.path.join(
+        location, "traces", "timeline.{}.html".format(batch_name)
+    )
+    return annotated
+
+
+def _build_nextflow_command(nf_main, batch_params_path, batch_info, resume=False):
+    """Build the Nextflow command for one scratch-safe batch."""
+    nf_cmd = [
+        "nextflow",
+        "run",
+        nf_main,
+        "-params-file",
+        batch_params_path,
+        "-profile",
+        "eddie",
+        "-work-dir",
+        batch_info["batch_work_dir"],
+        "-with-trace",
+        batch_info["trace_path"],
+        "-with-report",
+        batch_info["report_path"],
+        "-with-timeline",
+        batch_info["timeline_path"],
+    ]
+    if resume:
+        nf_cmd.append("-resume")
+    return nf_cmd
 
 
 def cmd_pipeline(args):
@@ -132,6 +215,7 @@ def cmd_pipeline(args):
     # Scratch pre-flight check
     config_quota = config.get("scratch_quota_gb")
     quota = batch_module.get_scratch_quota(config_quota)
+    utilisation_fraction, work_factor = _scratch_sizing_from_config(config)
     if quota.used_pct > 80:
         pretty_print(
             "Warning: scratch is {:.0f}% full ({:.1f}GB / {:.1f}GB)".format(
@@ -141,10 +225,16 @@ def cmd_pipeline(args):
             )
         )
 
-    batches = _build_scratch_batches(config, quota)
+    batches = _build_scratch_batches(
+        config,
+        quota,
+        utilisation_fraction=utilisation_fraction,
+        work_factor=work_factor,
+    )
 
     cmd_args = config.get("create_command_args") or {}
     location = cmd_args.get("location", os.path.dirname(os.path.abspath(args.config)))
+    batches = [_annotate_batch_paths(batch_info, location) for batch_info in batches]
     batch_params = [
         _write_batch_params(params_path, batch_info, location)
         for batch_info in batches
@@ -154,9 +244,20 @@ def cmd_pipeline(args):
         pretty_print("dry-run mode: params.json generated, skipping Nextflow")
         for batch_info, batch_params_path in zip(batches, batch_params):
             pretty_print(
-                "Batch {} plates: {} params: {}".format(
+                "Batch {} ({}) plates: {} scratch: {:.2f}GB "
+                "scratch_utilisation_fraction: {:.2f} scratch_work_factor: {:.2f} "
+                "work: {} output_dir: {} trace: {} report: {} timeline: {} params: {}".format(
                     batch_info["batch_id"],
+                    batch_info["batch_name"],
                     batch_info["plates"] or "all configured plates",
+                    batch_info.get("total_size_gb", 0),
+                    utilisation_fraction,
+                    work_factor,
+                    batch_info["batch_work_dir"],
+                    location,
+                    batch_info["trace_path"],
+                    batch_info["report_path"],
+                    batch_info["timeline_path"],
                     batch_params_path,
                 )
             )
@@ -173,19 +274,12 @@ def cmd_pipeline(args):
     )
 
     for batch_info, batch_params_path in zip(batches, batch_params):
-        nf_cmd = [
-            "nextflow",
-            "run",
-            nf_main,
-            "-params-file",
-            batch_params_path,
-            "-profile",
-            "eddie",
-            "-work-dir",
-            os.path.join(location, "work"),
-        ]
-        if args.resume:
-            nf_cmd.append("-resume")
+        nf_cmd = _build_nextflow_command(
+            nf_main=nf_main,
+            batch_params_path=batch_params_path,
+            batch_info=batch_info,
+            resume=args.resume,
+        )
         pretty_print(
             "Running batch {}: {}".format(
                 batch_info["batch_id"], " ".join(nf_cmd)
@@ -211,6 +305,8 @@ def _write_batch_params(base_params_path, batch_info, location):
         params["plates"] = batch_info["plates"]
     batch_id = batch_info["batch_id"]
     params["batch_id"] = batch_id
+    params["batch_name"] = batch_info["batch_name"]
+    params["batch_work_dir"] = batch_info["batch_work_dir"]
     params["batch_total_size_gb"] = batch_info.get("total_size_gb", 0)
     params["batch_plate_count"] = batch_info.get("plate_count", 0)
     batch_params_path = os.path.join(location, f"params.batch_{batch_id}.json")

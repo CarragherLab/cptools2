@@ -64,6 +64,65 @@ def test_create_batches_empty():
     assert batches == []
 
 
+def test_create_batches_default_sizing_preserves_grouping():
+    """Default sizing should keep the existing batch grouping behavior."""
+    plate_sizes = {
+        "plate_large": 200 * 1024**3,
+        "plate_medium": 150 * 1024**3,
+        "plate_small": 50 * 1024**3,
+    }
+    available = 400 * 1024**3
+
+    batches = create_batches(plate_sizes, available)
+
+    assert len(batches) == 2
+    assert batches[0]["plates"] == ["plate_large"]
+    assert batches[1]["plates"] == ["plate_medium", "plate_small"]
+
+
+def test_create_batches_accepts_sizing_overrides():
+    """Explicit sizing overrides should change batch grouping when tighter."""
+    plate_sizes = {
+        "plate_large": 100 * 1024**3,
+        "plate_small": 50 * 1024**3,
+    }
+    available = 400 * 1024**3
+
+    batches = create_batches(
+        plate_sizes,
+        available,
+        utilisation_fraction=0.5,
+        work_factor=2.0,
+    )
+
+    assert len(batches) == 2
+    assert batches[0]["plates"] == ["plate_large"]
+    assert batches[1]["plates"] == ["plate_small"]
+
+
+@pytest.mark.parametrize(
+    "utilisation_fraction, work_factor, match",
+    [
+        (0, 1.3, "utilisation_fraction"),
+        (-0.1, 1.3, "utilisation_fraction"),
+        (1.1, 1.3, "utilisation_fraction"),
+        (0.75, 0, "work_factor"),
+        (0.75, -1.0, "work_factor"),
+    ],
+)
+def test_create_batches_rejects_invalid_sizing(
+    utilisation_fraction, work_factor, match
+):
+    """Scratch sizing parameters must be positive and sensible."""
+    with pytest.raises(ValueError, match=match):
+        create_batches(
+            {"plate1": 10 * 1024**3},
+            100 * 1024**3,
+            utilisation_fraction=utilisation_fraction,
+            work_factor=work_factor,
+        )
+
+
 def test_scratch_quota_default():
     """get_scratch_quota returns 2TB default when all detection fails."""
     quota = get_scratch_quota()

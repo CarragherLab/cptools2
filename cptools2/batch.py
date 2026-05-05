@@ -44,11 +44,30 @@ def compute_plate_sizes(input_dir):
     return plate_sizes
 
 
-def create_batches(plate_sizes, available_scratch):
+def _validate_scratch_sizing(utilisation_fraction, work_factor):
+    """Validate the scratch sizing model inputs."""
+    if utilisation_fraction <= 0 or utilisation_fraction > 1:
+        raise ValueError(
+            "utilisation_fraction must be > 0 and <= 1; got {}".format(
+                utilisation_fraction
+            )
+        )
+    if work_factor <= 0:
+        raise ValueError(
+            "work_factor must be > 0; got {}".format(work_factor)
+        )
+
+
+def create_batches(
+    plate_sizes,
+    available_scratch,
+    utilisation_fraction=0.75,
+    work_factor=1.3,
+):
     """
     Group plates into batches that fit within available scratch space.
 
-    Uses 75% utilization target with 30% overhead buffer per plate.
+    Uses a configurable utilization target and work expansion factor per plate.
 
     Parameters
     ----------
@@ -56,6 +75,10 @@ def create_batches(plate_sizes, available_scratch):
         Mapping of plate_name -> size_in_bytes.
     available_scratch : int
         Available scratch space in bytes.
+    utilisation_fraction : float
+        Fraction of available scratch considered usable for a batch.
+    work_factor : float
+        Multiplier applied to each plate size to model temporary work expansion.
 
     Returns
     -------
@@ -65,8 +88,7 @@ def create_batches(plate_sizes, available_scratch):
     if not plate_sizes:
         return []
 
-    utilisation_fraction = 0.75
-    overhead_factor = 1.3
+    _validate_scratch_sizing(utilisation_fraction, work_factor)
     max_batch_size = available_scratch * utilisation_fraction
 
     sorted_plates = sorted(
@@ -81,7 +103,7 @@ def create_batches(plate_sizes, available_scratch):
     batch_number = 1
 
     for plate_name, plate_size in sorted_plates:
-        effective_plate_size = plate_size * overhead_factor
+        effective_plate_size = plate_size * work_factor
         if current_batch_size + effective_plate_size <= max_batch_size:
             current_batch.append(plate_name)
             current_batch_size += effective_plate_size
