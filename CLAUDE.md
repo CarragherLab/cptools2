@@ -79,17 +79,17 @@ Key routing rules:
 
 ## Planning State
 
-- phase: 2
-- phase_name: Eddie Deployment
-- phase_plan: .claude/plans/phase-2-eddie-deployment.md
-- loop_file: .claude/plans/phase-2-ralph-loops.md
-- status: in_progress
-- loops_total: 3
-- loops_done: 2
-- current_loop: 230 (End-to-End Eddie Test)
-- next_loop: 230
-- todos_total: 29
-- todos_done: 21
+- phase: 2.7
+- phase_name: Scratch Batch Reproducibility Hardening
+- phase_plan: .claude/plans/phase-2.7-scratch-batch-reproducibility.md
+- loop_file: .claude/plans/phase-2.7-ralph-loops.md
+- status: blocked_on_eddie_validation
+- loops_total: 4
+- loops_done: 3
+- current_loop: 380 (Eddie Calibration and Documentation)
+- next_loop: 380
+- todos_total: 21
+- todos_done: 16
 
 ## Test conventions
 

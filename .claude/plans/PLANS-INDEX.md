@@ -44,6 +44,7 @@ Phases A-D run in **parallel worktrees**. Phase E runs after all 4 merge.
 | 2 | Eddie Deployment | Active | [phase-2-eddie-deployment.md](phase-2-eddie-deployment.md) | 3 | No (sequential, C1→C2→C3) |
 | 2.5 | Intra-Plate Batching and Fan-Out | Planned | [phase-2.5-intra-plate-batching.md](phase-2.5-intra-plate-batching.md) | 5 | No (sequential, after container/staging substrate) |
 | 2.6 | Loop 230 Blocker Burn-Down | Active | [phase-2.6-loop230-blocker-burndown.md](phase-2.6-loop230-blocker-burndown.md) | 6 | Loop 320 complete; Loop 330 AI smoke next |
+| 2.7 | Scratch Batch Reproducibility Hardening | Active | [phase-2.7-scratch-batch-reproducibility.md](phase-2.7-scratch-batch-reproducibility.md) | 4 | No (sequential, 350→360→370→380) |
 
 ## Loop Summary
 
@@ -56,7 +57,8 @@ Phases A-D run in **parallel worktrees**. Phase E runs after all 4 merge.
 | E | E10, E20, E30, E40 | 4 |
 | 2.5 | 240, 250, 260, 270, 280 | 5 |
 | 2.6 | 290, 300, 310, 320, 330, 340 | 6 |
-| **Total** | | **30** |
+| 2.7 | 350, 360, 370, 380 | 4 |
+| **Total** | | **34** |
 
 ## File Isolation (No Conflicts Between Parallel Lanes)
 
@@ -105,3 +107,4 @@ git worktree add ../cptools2-lane-d ai-update
 - **Eng review (Phase 1)**: completed 2026-04-07 (2 issues found, 0 critical gaps, CLEARED)
 - **Investigate**: completed 2026-04-07 (root cause: parallel lane interface mismatches, Bug 2 downgraded)
 - **Loop 230 burn-down**: [2026-04-30 report](2026-04-30-loop230-blocker-burndown-report.md) records Eddie staging/index/chunk success for `3723-D-100`; Loop 330 remains next.
+- **Eng review (Seqera Eddie scratch batching)**: completed 2026-05-01 (cleared for implementation; flat outputs preserved, batch identity limited to work/params/traces, guarded post-success cleanup required).
