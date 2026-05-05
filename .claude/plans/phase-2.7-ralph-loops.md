@@ -403,9 +403,9 @@ max_iterations: 3
 on_max_iterations: checkpoint
 
 handoff_summary:
-  done: ""
-  failed: ""
-  needed: ""
+  done: "Documented the final flat-output and batch-work-dir layout in the phase plan, operational plan, and TODOs."
+  failed: "Local Eddie dry-run could not complete on this Windows workspace: `python -m cptools2 pipeline config/loop230-sarah-screen.yaml --dry-run` failed in `parse_yaml.generate_params_json` with `PermissionError: [WinError 5] Access is denied: 'C:\\exports'` before Nextflow started."
+  needed: "Run the Loop 230 Sarah-screen dry-run and a small Eddie batch on Eddie itself, then record trace/report/timeline, peak scratch usage, and measured scratch_work_factor/maxForks tuning."
 
 todos:
   - id: "loop-380-1"
