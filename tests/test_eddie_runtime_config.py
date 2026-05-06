@@ -45,6 +45,9 @@ def test_eddie_bootstrap_separates_permanent_and_scratch_paths():
     assert 'export CPTOOLS2_TEMP_ROOT="${CPTOOLS2_WORK_ROOT}/tmp"' in text
     assert 'export NXF_HOME="${CPTOOLS2_CACHE_ROOT}/nextflow"' in text
     assert 'export NXF_TEMP="${CPTOOLS2_TEMP_ROOT}/nextflow"' in text
+    assert "export NXF_OPTS=" in text
+    assert "-XX:ActiveProcessorCount=2" in text
+    assert "-Djava.io.tmpdir=${NXF_TEMP}" in text
     assert 'export SINGULARITY_CACHEDIR="${CPTOOLS2_CACHE_ROOT}/singularity"' in text
     assert 'export SINGULARITY_TMPDIR="${CPTOOLS2_TEMP_ROOT}/singularity"' in text
     assert 'export APPTAINER_CACHEDIR="${CPTOOLS2_CACHE_ROOT}/apptainer"' in text

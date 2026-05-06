@@ -33,6 +33,7 @@ export CPTOOLS2_TEMP_ROOT="${CPTOOLS2_WORK_ROOT}/tmp"
 
 export NXF_HOME="${CPTOOLS2_CACHE_ROOT}/nextflow"
 export NXF_TEMP="${CPTOOLS2_TEMP_ROOT}/nextflow"
+export NXF_OPTS="${NXF_OPTS:--Xms64m -Xmx1g -XX:ActiveProcessorCount=2 -Djava.io.tmpdir=${NXF_TEMP}}"
 export SINGULARITY_CACHEDIR="${CPTOOLS2_CACHE_ROOT}/singularity"
 export SINGULARITY_TMPDIR="${CPTOOLS2_TEMP_ROOT}/singularity"
 export APPTAINER_CACHEDIR="${CPTOOLS2_CACHE_ROOT}/apptainer"
@@ -51,6 +52,8 @@ mkdir -p \
     "${CPTOOLS2_LOG_ROOT}" \
     "${CPTOOLS2_TRACE_ROOT}" \
     "${CPTOOLS2_TEMP_ROOT}" \
+    "${NXF_HOME}" \
+    "${NXF_TEMP}" \
     "${SINGULARITY_CACHEDIR}" \
     "${SINGULARITY_TMPDIR}" \
     "${APPTAINER_CACHEDIR}" \
