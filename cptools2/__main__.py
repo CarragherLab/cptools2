@@ -409,6 +409,18 @@ def cmd_generate(args):
     sys.exit(1)
 
 
+def cmd_deepprofiler_package(args):
+    """Build a DeepProfiler input package from chunk and location CSVs."""
+    from cptools2 import nextflow_chunking
+
+    nextflow_chunking.build_deepprofiler_input_package(
+        chunk_manifest=args.chunk_manifest,
+        locations_dir=args.locations_dir,
+        output_root=args.output_root,
+        config_path=args.config_path,
+    )
+
+
 def build_parser():
     """Build the argparse parser with subcommands."""
     parser = argparse.ArgumentParser(
@@ -482,6 +494,17 @@ def build_parser():
         help="filename patterns to match (e.g. Image.csv Cells.csv)",
     )
     p_join.set_defaults(func=cmd_join)
+
+    # --- deepprofiler-package ---
+    p_deepprofiler = subparsers.add_parser(
+        "deepprofiler-package",
+        help="build DeepProfiler inputs from Nextflow chunk and location CSVs",
+    )
+    p_deepprofiler.add_argument("--chunk-manifest", required=True)
+    p_deepprofiler.add_argument("--locations-dir", required=True)
+    p_deepprofiler.add_argument("--output-root", required=True)
+    p_deepprofiler.add_argument("--config-path", required=True)
+    p_deepprofiler.set_defaults(func=cmd_deepprofiler_package)
 
     # --- generate (deprecated) ---
     p_generate = subparsers.add_parser(

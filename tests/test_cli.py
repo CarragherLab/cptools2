@@ -73,6 +73,27 @@ class TestBuildParser:
         assert args.location == "/some/path"
         assert args.patterns == ["Image.csv", "Cells.csv"]
 
+    def test_deepprofiler_package_subcommand(self):
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "deepprofiler-package",
+                "--chunk-manifest",
+                "chunk.csv",
+                "--locations-dir",
+                "locations",
+                "--output-root",
+                "dp_project/inputs",
+                "--config-path",
+                "config.json",
+            ]
+        )
+        assert args.command == "deepprofiler-package"
+        assert args.chunk_manifest == "chunk.csv"
+        assert args.locations_dir == "locations"
+        assert args.output_root == "dp_project/inputs"
+        assert args.config_path == "config.json"
+
     def test_generate_subcommand_exists(self):
         parser = build_parser()
         args = parser.parse_args(["generate", "config.yml"])

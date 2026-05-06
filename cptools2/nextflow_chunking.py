@@ -6,7 +6,9 @@ creation.
 """
 
 import argparse
+import json
 import os
+import shutil
 from pathlib import Path
 
 # Eddie login/local metadata tasks can hit process/thread limits if Polars/Rayon
@@ -23,8 +25,6 @@ from cptools2 import filelist
 
 
 DEFAULT_CHUNK_SIZE = 96
-
-
 class ChunkingError(Exception):
     """Raised when a staged plate cannot be indexed or chunked safely."""
 
@@ -53,6 +53,223 @@ def _parse_channel(filename):
         return int(channel)
     except (TypeError, ValueError):
         return channel
+
+
+def _deepprofiler_image_value(image_path, plate):
+    path = Path(image_path)
+    plate = str(plate)
+    try:
+        parts = path.parts
+        if plate in parts:
+            plate_index = parts.index(plate)
+            return Path(*parts[plate_index:]).as_posix()
+    except (TypeError, ValueError):
+        pass
+    return Path(plate, path.name).as_posix()
+
+
+def _read_json(path):
+    return json.loads(Path(path).read_text())
+
+
+def _normalise_image_format(value):
+    return str(value or "tif").lower().lstrip(".")
+
+
+def _resolve_deepprofiler_config_values(config):
+    dataset = config.get("dataset", {})
+    metadata = dataset.get("metadata", {})
+    images = dataset.get("images", {})
+    channels = images.get("channels") or []
+    if not channels:
+        raise ChunkingError("DeepProfiler config missing dataset.images.channels")
+    config_label_field = metadata.get("label_field")
+    if not config_label_field:
+        raise ChunkingError("DeepProfiler config missing dataset.metadata.label_field")
+    resolved_label_value = metadata.get("control_value")
+    if resolved_label_value is None:
+        raise ChunkingError("DeepProfiler config missing dataset.metadata.control_value")
+    resolved_image_format = _normalise_image_format(images.get("file_format") or "tif")
+    return channels, config_label_field, resolved_label_value, resolved_image_format
+
+
+def _link_or_copy(src, dst):
+    try:
+        if dst.exists() or dst.is_symlink():
+            dst.unlink()
+        os.symlink(src, dst)
+    except (OSError, NotImplementedError, AttributeError):
+        shutil.copy2(src, dst)
+
+
+def _collect_location_files(locations_dir):
+    locations_dir = Path(locations_dir)
+    nested = locations_dir / "locations"
+    search_dir = nested if nested.is_dir() else locations_dir
+    if not search_dir.is_dir():
+        raise ChunkingError(
+            "Cellpose locations directory does not exist: " + str(locations_dir)
+        )
+    return sorted(search_dir.glob("*.csv"))
+
+
+def _is_zero_location_file_for_chunk(location_file, chunk_manifest):
+    return location_file.name == f"{Path(chunk_manifest).stem}_locations.csv"
+
+
+def _write_empty_nuclei_csv(output_file):
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    pl.DataFrame(
+        schema={
+            "Nuclei_Location_Center_X": pl.Float64,
+            "Nuclei_Location_Center_Y": pl.Float64,
+        }
+    ).write_csv(output_file)
+
+
+def build_deepprofiler_input_package(
+    chunk_manifest,
+    locations_dir,
+    output_root,
+    config_path,
+):
+    chunk_manifest = Path(chunk_manifest)
+    locations_dir = Path(locations_dir)
+    output_root = Path(output_root)
+    config_path = Path(config_path)
+
+    config = _read_json(config_path)
+    config_channels, label_field, resolved_label_value, resolved_image_format = (
+        _resolve_deepprofiler_config_values(config)
+    )
+    config_channel_map = {
+        str(index + 1): str(channel_name)
+        for index, channel_name in enumerate(config_channels)
+    }
+
+    df = pl.read_csv(chunk_manifest)
+    required = {"plate", "well", "site", "channel", "image_path", "image_set_id"}
+    missing = sorted(required.difference(df.columns))
+    if missing:
+        raise ChunkingError(
+            "DeepProfiler chunk manifest missing required columns: " + str(missing)
+        )
+    df = df.with_columns(pl.col("channel").cast(str))
+
+    images_root = output_root / "images"
+    metadata_dir = output_root / "metadata"
+    locations_output = output_root / "locations"
+    config_output = output_root / "config"
+    images_root.mkdir(parents=True, exist_ok=True)
+    metadata_dir.mkdir(parents=True, exist_ok=True)
+    locations_output.mkdir(parents=True, exist_ok=True)
+    config_output.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(config_path, config_output / "config.json")
+
+    metadata_rows = []
+    expected_sites = []
+    for image_set_id in df["image_set_id"].unique().sort():
+        group = df.filter(pl.col("image_set_id") == image_set_id)
+        first = group.row(0, named=True)
+        plate = str(first["plate"])
+        well = str(first["well"])
+        site = str(first["site"])
+        expected_sites.append((plate, well, site))
+        image_plate_dir = images_root / plate
+        image_plate_dir.mkdir(parents=True, exist_ok=True)
+        row = {
+            "Metadata_Plate": plate,
+            "Metadata_Well": well,
+            "Metadata_Site": site,
+            label_field: resolved_label_value,
+            "Metadata_ImageSet": image_set_id,
+        }
+        observed = {str(value) for value in group["channel"].to_list()}
+        for manifest_channel, column_name in config_channel_map.items():
+            if manifest_channel not in observed:
+                raise ChunkingError(
+                    f"Missing channel {manifest_channel} for DeepProfiler image set {image_set_id}"
+                )
+            channel_row = group.filter(pl.col("channel") == manifest_channel).row(
+                0, named=True
+            )
+            source_image = Path(channel_row["image_path"])
+            if _normalise_image_format(source_image.suffix) != resolved_image_format:
+                raise ChunkingError(
+                    "DeepProfiler image format mismatch for "
+                    f"{image_set_id}: expected {resolved_image_format}"
+                )
+            dest_image = image_plate_dir / source_image.name
+            _link_or_copy(source_image, dest_image)
+            row[column_name] = _deepprofiler_image_value(
+                dest_image, plate
+            )
+        metadata_rows.append(row)
+
+    metadata_columns = [
+        "Metadata_Plate",
+        "Metadata_Well",
+        "Metadata_Site",
+        label_field,
+        "Metadata_ImageSet",
+        *config_channels,
+    ]
+    pl.DataFrame(metadata_rows).select(metadata_columns).write_csv(
+        metadata_dir / "index.csv"
+    )
+
+    location_files = _collect_location_files(locations_dir)
+    if not location_files:
+        raise ChunkingError(
+            "No Cellpose location CSVs found under: " + str(locations_dir)
+        )
+    location_rows = {}
+    chunk_locations_file_seen = False
+    required_loc = {"plate", "well", "site", "x", "y"}
+    for location_file in location_files:
+        if _is_zero_location_file_for_chunk(location_file, chunk_manifest):
+            chunk_locations_file_seen = True
+        loc_df = pl.read_csv(location_file)
+        missing_loc = sorted(required_loc.difference(loc_df.columns))
+        if missing_loc:
+            raise ChunkingError(
+                "Cellpose location CSV missing required columns: " + str(missing_loc)
+            )
+        if loc_df.height == 0:
+            continue
+        loc_df = loc_df.with_columns(
+            pl.col("plate").cast(str),
+            pl.col("well").cast(str),
+            pl.col("site").cast(str),
+        )
+        for row in loc_df.iter_rows(named=True):
+            key = (row["plate"], row["well"], row["site"])
+            location_rows.setdefault(key, []).append(row)
+    if not chunk_locations_file_seen:
+        raise ChunkingError(
+            "No Cellpose location CSV found for chunk: " + chunk_manifest.stem
+        )
+
+    for plate, well, site in expected_sites:
+        per_site = location_rows.get((plate, well, site), [])
+        output_file = locations_output / plate / f"{well}-f{site}-Nuclei.csv"
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        if per_site:
+            pl.DataFrame(per_site).select(
+                [
+                    pl.col("x").cast(float).alias("Nuclei_Location_Center_X"),
+                    pl.col("y").cast(float).alias("Nuclei_Location_Center_Y"),
+                ]
+            ).write_csv(output_file)
+        elif chunk_locations_file_seen:
+            _write_empty_nuclei_csv(output_file)
+        else:
+            raise ChunkingError(
+                "Missing Cellpose locations for DeepProfiler site: "
+                f"{plate} {well} site {site}"
+            )
+
+    return metadata_dir / "index.csv"
 
 
 def build_image_set_index(
@@ -230,6 +447,15 @@ def _cmd_chunk(args):
     )
 
 
+def _cmd_deepprofiler_package(args):
+    build_deepprofiler_input_package(
+        chunk_manifest=args.chunk_manifest,
+        locations_dir=args.locations_dir,
+        output_root=args.output_root,
+        config_path=args.config_path,
+    )
+
+
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="python -m cptools2.nextflow_chunking",
@@ -251,6 +477,13 @@ def build_parser():
     p_chunk.add_argument("--chunk-size", type=int, default=DEFAULT_CHUNK_SIZE)
     p_chunk.add_argument("--max-chunks", type=int, default=None)
     p_chunk.set_defaults(func=_cmd_chunk)
+
+    p_dp = subparsers.add_parser("deepprofiler-package")
+    p_dp.add_argument("--chunk-manifest", required=True)
+    p_dp.add_argument("--locations-dir", required=True)
+    p_dp.add_argument("--output-root", required=True)
+    p_dp.add_argument("--config-path", required=True)
+    p_dp.set_defaults(func=_cmd_deepprofiler_package)
 
     return parser
 
