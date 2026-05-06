@@ -20,6 +20,7 @@ export CPTOOLS2_SCRATCH_ROOT="/exports/eddie/scratch/${USER}/cptools2-ai-update"
 # Permanent configuration and container references stay on the mirror.
 export CPTOOLS2_CONFIG_ROOT="${CPTOOLS2_PERMANENT_ROOT}/config"
 export CPTOOLS2_CONTAINER_DIR="${CPTOOLS2_PERMANENT_ROOT}/containers"
+export CPTOOLS2_VENV="${CPTOOLS2_PERMANENT_ROOT}/.venv"
 
 # Runtime state stays on scratch, with work kept under scratch/work.
 export CPTOOLS2_RUNTIME_ROOT="${CPTOOLS2_SCRATCH_ROOT}"
@@ -41,6 +42,7 @@ export TEMP="${CPTOOLS2_TEMP_ROOT}"
 export TMP="${CPTOOLS2_TEMP_ROOT}"
 export XDG_CACHE_HOME="${CPTOOLS2_CACHE_ROOT}/xdg"
 export XDG_RUNTIME_DIR="${CPTOOLS2_TEMP_ROOT}/xdg-runtime"
+export PIP_CACHE_DIR="${CPTOOLS2_CACHE_ROOT}/pip"
 
 mkdir -p \
     "${CPTOOLS2_WORK_ROOT}" \
@@ -54,4 +56,10 @@ mkdir -p \
     "${APPTAINER_CACHEDIR}" \
     "${APPTAINER_TMPDIR}" \
     "${XDG_CACHE_HOME}" \
-    "${XDG_RUNTIME_DIR}"
+    "${XDG_RUNTIME_DIR}" \
+    "${PIP_CACHE_DIR}"
+
+if [ -f "${CPTOOLS2_VENV}/bin/activate" ]; then
+    # Keep the Python environment stable in permanent space; runtime caches remain in scratch.
+    . "${CPTOOLS2_VENV}/bin/activate"
+fi

@@ -78,6 +78,8 @@ Scratch root: `/exports/eddie/scratch/mharvey2/cptools2-ai-update`
 - [x] Reconcile container manifest expectations with actual `.sif` files in permanent `containers/`.
 - [x] Verify live Eddie GPU scheduling syntax before changing GPU config.
 - [x] Record exact user approval needed before destructive mirror action, if any.
+- [x] Reset the permanent mirror source/config/docs state to GitHub `origin/ai-update` after explicit approval, preserving `containers/`.
+- [x] Create the permanent project virtualenv at the mirror root with pip cache/build temp under scratch.
 
 ### Loop 420: CellProfiler CPU Container Smoke
 
@@ -93,6 +95,6 @@ Scratch root: `/exports/eddie/scratch/mharvey2/cptools2-ai-update`
 
 ### Loop 440: End-to-End Eddie Smoke and Evidence
 
-- [ ] Run the smallest practical multi-engine dry-run or smoke on Eddie. Candidate config exists at `config/loop440-eddie-smoke.yaml`; tiny staged plate was created and indexed/chunked on Eddie, but cptools2 dry-run is blocked by stale permanent mirror source rejecting scratch sizing keys.
+- [x] Run the smallest practical multi-engine dry-run on Eddie. Candidate config exists at `config/loop440-eddie-smoke.yaml`; tiny staged plate was created and indexed/chunked on Eddie, and the cptools2 dry-run passes from the synced permanent mirror.
 - [ ] Capture trace/report/timeline, scheduler evidence, scratch usage, and cleanup behavior. Captured dry-run failure evidence and no-job-left-running status; real trace/report/timeline still pending.
 - [x] Update docs with final evidence, blockers, and recommended next production gate.

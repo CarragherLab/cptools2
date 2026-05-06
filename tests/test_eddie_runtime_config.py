@@ -36,6 +36,7 @@ def test_eddie_bootstrap_separates_permanent_and_scratch_paths():
     assert f'export CPTOOLS2_SCRATCH_ROOT="{SCRATCH_ROOT}"' in text
     assert 'export CPTOOLS2_CONFIG_ROOT="${CPTOOLS2_PERMANENT_ROOT}/config"' in text
     assert 'export CPTOOLS2_CONTAINER_DIR="${CPTOOLS2_PERMANENT_ROOT}/containers"' in text
+    assert 'export CPTOOLS2_VENV="${CPTOOLS2_PERMANENT_ROOT}/.venv"' in text
     assert 'export CPTOOLS2_WORK_ROOT="${CPTOOLS2_SCRATCH_ROOT}/work"' in text
     assert 'export CPTOOLS2_PARAMS_ROOT="${CPTOOLS2_SCRATCH_ROOT}/params"' in text
     assert 'export CPTOOLS2_CACHE_ROOT="${CPTOOLS2_WORK_ROOT}/cache"' in text
@@ -53,6 +54,9 @@ def test_eddie_bootstrap_separates_permanent_and_scratch_paths():
     assert 'export TMP="${CPTOOLS2_TEMP_ROOT}"' in text
     assert 'export XDG_CACHE_HOME="${CPTOOLS2_CACHE_ROOT}/xdg"' in text
     assert 'export XDG_RUNTIME_DIR="${CPTOOLS2_TEMP_ROOT}/xdg-runtime"' in text
+    assert 'export PIP_CACHE_DIR="${CPTOOLS2_CACHE_ROOT}/pip"' in text
+    assert '[ -f "${CPTOOLS2_VENV}/bin/activate" ]' in text
+    assert '. "${CPTOOLS2_VENV}/bin/activate"' in text
     assert "mkdir -p" in text
 
 

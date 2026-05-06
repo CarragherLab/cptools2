@@ -157,24 +157,28 @@ Local candidate config:
 
 - `config/loop440-eddie-smoke.yaml`
 
-Current blocker:
+Current evidence:
 
 - The tiny staged plate exists in scratch and indexes/chunks successfully on Eddie:
   `/exports/eddie/scratch/mharvey2/cptools2-ai-update/staging/tiny-plate-set/tiny-plate-001`.
-- A lowest-risk cptools2 dry-run was attempted from the permanent mirror against
-  `/exports/eddie/scratch/mharvey2/cptools2-ai-update/loop440-eddie-smoke.yaml`.
-  It failed before Nextflow submission because the permanent mirror code is stale
-  and rejects the newer `scratch_utilisation_fraction` and `scratch_work_factor`
-  keys. No Eddie jobs were left running.
-- Stable template/config assets were additively copied into permanent space under
-  `/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/cptools2/templates/`.
+- User explicitly approved resetting the shared permanent mirror source/config/docs
+  state to GitHub `origin/ai-update`; `containers/` was preserved as permanent
+  untracked asset storage.
+- The permanent mirror is now on `ai-update` at `5e952d5`.
+- A permanent project virtualenv was created at
+  `/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/.venv`; pip cache and
+  temporary build work were kept under
+  `/exports/eddie/scratch/mharvey2/cptools2-ai-update/work`.
+- The Loop 440 dry-run now passes from the permanent mirror using
+  `config/loop440-eddie-smoke.yaml`. It writes params and batch metadata under
+  `/exports/eddie/scratch/mharvey2/cptools2-ai-update/results/loop440` and skips
+  Nextflow submission as intended.
 
 Next decision:
 
-- Do a conservative permanent mirror source sync before the Loop 440 cptools2
-  dry-run, or create a temporary scratch-only code checkout for validation. The
-  former is closer to the stated permanent-mirror goal; the latter avoids
-  touching the dirty mirror but proves a less representative runtime layout.
+- Decide whether to submit the tiny Loop 440 Nextflow smoke after reviewing the
+  dry-run output, or stop at dry-run evidence until functional CellProfiler,
+  Cellpose, and DeepProfiler tiny inputs/configs are reviewed.
 
 ## Out of Scope
 
