@@ -1,0 +1,58 @@
+{
+  "type": "repo",
+  "date": "2026-05-06",
+  "window": "7d",
+  "branch": "ai-update",
+  "summary": {
+    "commits": 8,
+    "contributors": 1,
+    "insertions": 3194,
+    "deletions": 116,
+    "active_commit_days": 3,
+    "test_files": 16,
+    "focused_runtime_tests": "57 passed",
+    "current_phase": "2.8 Eddie Container Validation and Runtime Certification",
+    "current_loop": "440 End-to-End Eddie Smoke and Evidence"
+  },
+  "validation_jobs": [
+    {
+      "job": "55264527",
+      "name": "cptools2_cp_smoke",
+      "container": "cellprofiler_4.2.8.sif",
+      "result": "success",
+      "version": "4.2.8",
+      "wallclock_seconds": 404.182,
+      "maxvmem": "12.096G"
+    },
+    {
+      "job": "55264576",
+      "name": "cptools2_cellpose_smoke",
+      "container": "cellpose_sam_1.0.sif",
+      "result": "success",
+      "version": "4.1.1",
+      "gpu": "NVIDIA H200 NVL",
+      "wallclock_seconds": 226.879,
+      "maxvmem": "17.010G"
+    },
+    {
+      "job": "55269157",
+      "name": "cptools2_dp_smoke",
+      "container": "deepprofiler_1.0.sif",
+      "result": "success",
+      "version": "TensorFlow 2.5.3",
+      "gpu": "NVIDIA H200 NVL",
+      "wallclock_seconds": 210.269,
+      "maxvmem": "16.212G"
+    }
+  ],
+  "blockers": [
+    "Permanent mirror source is stale at 062a0da and rejects scratch_utilisation_fraction and scratch_work_factor.",
+    "Permanent mirror has dirty tracked and untracked state, so destructive sync needs explicit approval.",
+    "Loop 440 functional smoke needs a safe mirror strategy before a representative cptools2 dry-run can proceed."
+  ],
+  "next_actions": [
+    "Choose conservative permanent mirror sync versus scratch-only checkout.",
+    "After sync, rerun cptools2 pipeline --dry-run with config/loop440-eddie-smoke.yaml.",
+    "Only then submit the smallest Nextflow smoke and capture trace/report/timeline evidence."
+  ]
+}
