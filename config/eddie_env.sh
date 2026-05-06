@@ -9,6 +9,7 @@
 
 source /etc/profile.d/modules.sh
 module purge
+module load uge/2024.1.0
 module load roslin/nextflow/25.10.2
 module load singularity/4.3.4
 module load miniforge/25.3.1-0

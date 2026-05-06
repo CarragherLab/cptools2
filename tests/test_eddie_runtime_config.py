@@ -23,6 +23,7 @@ def test_eddie_bootstrap_loads_pinned_modules():
     assert text.startswith("#!/usr/bin/env bash")
     assert "source /etc/profile.d/modules.sh" in text
     assert "module purge" in text
+    assert "module load uge/2024.1.0" in text
     assert "module load roslin/nextflow/25.10.2" in text
     assert "module load singularity/4.3.4" in text
     assert "module load miniforge/25.3.1-0" in text
@@ -81,6 +82,7 @@ def test_nextflow_eddie_config_uses_permanent_containers_and_scratch_cache():
     assert 'deepprofiler_1.0.sif' in text
     assert 'cellpose_sam_1.0.sif' in text
     assert 'module load roslin/nextflow/25.10.2' in text
+    assert 'module load uge/2024.1.0' in text
     assert 'module load singularity/4.3.4' in text
     assert 'module load miniforge/25.3.1-0' in text
     assert 'CPTOOLS2_SCRATCH_ROOT' in text
