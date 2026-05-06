@@ -3,7 +3,7 @@ phase: 2.8
 name: Eddie Container Validation and Runtime Certification
 plan: phase-2.8-eddie-container-validation.md
 status: active
-loops_total: 6
+loops_total: 7
 ---
 
 # Phase 2.8: Eddie Container Validation and Runtime Certification Ralph Loops
@@ -271,5 +271,60 @@ todos:
 prompt: |
   ## Objective
   Exercise the integrated runtime path just far enough to certify the architecture and leave a clear evidence trail.
+---
+```
+
+## Loop 450: DeepProfiler Input Package Handoff
+
+```yaml
+---
+name: "ralph-loop-450"
+task_name: "DeepProfiler Input Package Handoff"
+max_iterations: 3
+on_max_iterations: checkpoint
+
+handoff_summary:
+  done: "Loop 440 reached DeepProfiler after successful local indexing/chunking, SGE submission, and Cellpose GPU execution. DeepProfiler failed because FEATURE_EXTRACT did not create the required dp_project/inputs/metadata/index.csv package contract."
+  failed: ""
+  needed: "Implement the robust DeepProfiler input package builder described in docs/superpowers/plans/2026-05-06-deepprofiler-metadata-bridge.md, then rerun Loop 440 with --resume from the Eddie permanent mirror."
+
+todos:
+  - id: "loop-450-1"
+    content: "Add failing tests for DeepProfiler input package generation from chunk manifests and Cellpose locations"
+    status: pending
+    complexity: medium
+    priority: high
+  - id: "loop-450-2"
+    content: "Implement build_deepprofiler_input_package in cptools2.nextflow_chunking, including zero-location support"
+    status: pending
+    complexity: high
+    priority: high
+  - id: "loop-450-3"
+    content: "Wire FEATURE_EXTRACT to call the DeepProfiler package helper and validate package artifacts before launching DeepProfiler"
+    status: pending
+    complexity: medium
+    priority: high
+  - id: "loop-450-4"
+    content: "Rerun Loop 440 on Eddie with --resume and capture trace/report/timeline plus any new blocker"
+    status: pending
+    complexity: high
+    priority: high
+
+prompt: |
+  ## Objective
+  Make the Cellpose-to-DeepProfiler handoff explicit and reproducible by building a complete DeepProfiler input package before FEATURE_EXTRACT runs.
+
+  ## Success criteria
+  - [ ] Package builder creates image links, metadata/index.csv, locations, and config under dp_project/inputs
+  - [ ] Zero Cellpose locations produce empty per-site nuclei CSVs with headers and do not fail the package build
+  - [ ] FEATURE_EXTRACT invokes the package builder and checks package artifacts before DeepProfiler
+  - [ ] Focused local tests pass
+  - [ ] Eddie Loop 440 rerun reaches beyond the missing-index.csv blocker
+
+  ## Constraints
+  - Do not publish bulky linked image directories
+  - Keep runtime package artifacts in scratch/Nextflow work
+  - Treat .tif as the default image format for now
+  - Capture model/checkpoint failures as separate blockers if they appear after package generation
 ---
 ```

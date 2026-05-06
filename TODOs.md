@@ -98,3 +98,11 @@ Scratch root: `/exports/eddie/scratch/mharvey2/cptools2-ai-update`
 - [x] Run the smallest practical multi-engine dry-run on Eddie. Candidate config exists at `config/loop440-eddie-smoke.yaml`; tiny staged plate was created and indexed/chunked on Eddie, and the cptools2 dry-run passes from the synced permanent mirror.
 - [ ] Capture trace/report/timeline, scheduler evidence, scratch usage, and cleanup behavior. Captured dry-run failure evidence and no-job-left-running status; real trace/report/timeline still pending.
 - [x] Update docs with final evidence, blockers, and recommended next production gate.
+
+### Loop 450: DeepProfiler Input Package Handoff
+
+- [ ] Add failing tests for a robust DeepProfiler input package built from a Nextflow chunk manifest, DeepProfiler config, and Cellpose centroids.
+- [ ] Implement `build_deepprofiler_input_package(...)` in `cptools2.nextflow_chunking`, including valid zero-location output.
+- [ ] Wire `nextflow/modules/feature_extract.nf` to call the package builder and validate package artifacts before launching DeepProfiler.
+- [ ] Keep bulky `dp_project` internals in Nextflow work while publishing only small audit artifacts and final features.
+- [ ] Rerun Loop 440 on Eddie with `--resume` and capture whether the run passes or reaches a new model/checkpoint blocker.

@@ -5,7 +5,7 @@ status: active
 source_plans:
   - phase-2.7-scratch-batch-reproducibility.md
   - ../../docs/plans/seqera-eddie-scratch-batching-plan.md
-loops_total: 6
+loops_total: 7
 ---
 
 # Phase 2.8: Eddie Container Validation and Runtime Certification
@@ -76,6 +76,7 @@ Prove that cptools2 can run controlled Eddie dry-runs and small smoke tests for 
 | 420 | CellProfiler CPU Container Smoke | pending | Validate CellProfiler startup and a minimal CPU execution path |
 | 430 | Cellpose and DeepProfiler GPU Smoke | pending | Validate GPU container startup, CUDA visibility, and minimal engine commands |
 | 440 | End-to-End Eddie Smoke and Evidence | pending | Run the smallest practical multi-engine dry-run/smoke and document evidence, blockers, and tuning |
+| 450 | DeepProfiler Input Package Handoff | pending | Build the robust Cellpose-to-DeepProfiler handoff package required to complete the integrated smoke |
 
 ## Current Evidence
 
@@ -179,6 +180,80 @@ Next decision:
 - Decide whether to submit the tiny Loop 440 Nextflow smoke after reviewing the
   dry-run output, or stop at dry-run evidence until functional CellProfiler,
   Cellpose, and DeepProfiler tiny inputs/configs are reviewed.
+
+## Loop 450 DeepProfiler Input Package Handoff
+
+Loop 450 is part of Phase 2.8, not a new phase. It exists because the Loop 440
+smoke reached DeepProfiler and exposed a data-contract blocker rather than an
+Eddie/container blocker.
+
+Objective:
+
+- Build a reusable DeepProfiler input package builder so the handoff from
+  `CELLPOSE_SEGMENT` to `FEATURE_EXTRACT` is explicit, testable, and complete.
+
+Why this fits here:
+
+- Loop 420 and Loop 430 proved container startup/runtime compatibility.
+- Loop 440 proved Nextflow can dry-run, submit via SGE, run Cellpose on GPU, and
+  reach DeepProfiler.
+- The remaining blocker is the internal input package expected by DeepProfiler:
+  `dp_project/inputs/images`, `dp_project/inputs/metadata/index.csv`,
+  `dp_project/inputs/locations`, and `dp_project/inputs/config/config.json`.
+
+Contract:
+
+```text
+CHUNK_IMAGESETS
+  chunk_manifest.csv
+        |
+        v
+CELLPOSE_SEGMENT
+  cellpose_masks/
+  cellpose_masks/locations/*_locations.csv
+        |
+        v
+cptools2.nextflow_chunking deepprofiler-package
+  dp_project/inputs/images/<plate>/*.tif
+  dp_project/inputs/metadata/index.csv
+  dp_project/inputs/locations/<plate>/<well>-f<site>-Nuclei.csv
+  dp_project/inputs/config/config.json
+        |
+        v
+FEATURE_EXTRACT
+  DeepProfiler features
+```
+
+Decisions:
+
+- Treat `.tif` as the default image format for this handoff.
+- Use the DeepProfiler config as the source of truth for channel names and label
+  defaults where possible.
+- Zero Cellpose locations is valid. The package builder should emit correctly
+  shaped empty nuclei CSVs and allow the pipeline to continue.
+- Keep bulky package internals in the Nextflow work directory; publish only small
+  audit artifacts and final features under scratch results.
+
+Plan:
+
+- Implementation plan:
+  `docs/superpowers/plans/2026-05-06-deepprofiler-metadata-bridge.md`.
+- Add failing tests for the DeepProfiler input package contract.
+- Implement `build_deepprofiler_input_package(...)` in
+  `cptools2.nextflow_chunking`.
+- Wire `nextflow/modules/feature_extract.nf` to invoke the helper before
+  launching DeepProfiler.
+- Fast-forward the Eddie mirror and rerun Loop 440 with `--resume`.
+
+Success criteria:
+
+- Unit tests prove package generation for non-empty and zero-location Cellpose
+  output.
+- Static Nextflow tests prove `FEATURE_EXTRACT` calls the helper and uses the
+  DeepProfiler package layout.
+- Loop 440 rerun reaches beyond the current missing `index.csv` blocker.
+- If DeepProfiler then fails on checkpoint/model assumptions, that is captured as
+  the next blocker rather than conflated with the handoff package.
 
 ## Out of Scope
 
