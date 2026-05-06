@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a reusable DeepProfiler metadata bridge so cptools2 can convert Nextflow chunk manifests and Cellpose centroids into the project layout DeepProfiler expects.
+**Goal:** Build a reusable DeepProfiler input package builder so cptools2 can convert Nextflow chunk manifests and Cellpose centroids into the project layout DeepProfiler expects.
 
-**Architecture:** Add focused Python helpers to `cptools2.nextflow_chunking` for generating DeepProfiler `index.csv` and per-site nuclei location CSVs. Update `nextflow/modules/feature_extract.nf` to call those helpers before running `python -m deepprofiler`, keeping the conversion testable outside Nextflow and reusable for Eddie smoke tests and production runs.
+**Architecture:** Add focused Python helpers to `cptools2.nextflow_chunking` for generating a complete DeepProfiler `dp_project/inputs` package: image links, `metadata/index.csv`, per-site nuclei location CSVs, and copied config. Update `nextflow/modules/feature_extract.nf` to call those helpers before running `python -m deepprofiler`, keeping the conversion testable outside Nextflow and reusable for Eddie smoke tests and production runs.
 
 **Tech Stack:** Python stdlib CSV/path handling, existing `cptools2.nextflow_chunking`, Nextflow DSL2 module scripts, pytest, Eddie Singularity/SGE runtime.
 
@@ -28,17 +28,19 @@ Use option 2 from brainstorming: add a reusable Python helper in `cptools2.nextf
 
 This is better than embedding a long ad hoc Python heredoc inside Nextflow because the conversion has a real data contract, should be unit tested, and will likely be reused for production DeepProfiler runs.
 
+Important runtime rule: zero Cellpose locations is not an error. A field can contain no cells, especially in a tiny smoke or sparse biological condition. The package builder must still emit a valid DeepProfiler package with `index.csv` and correctly shaped empty nuclei-location CSVs so the pipeline can continue and downstream feature output can represent "no objects" explicitly.
+
 ## File Structure
 
 - Modify `cptools2/nextflow_chunking.py`
-  - Add `build_deepprofiler_project_metadata(...)`.
-  - Add CLI subcommand `deepprofiler-metadata`.
+  - Add `build_deepprofiler_input_package(...)`.
+  - Add CLI subcommand `deepprofiler-package`.
   - Keep all CSV conversion logic here.
 - Modify `nextflow/modules/feature_extract.nf`
   - Replace ad hoc metadata setup with a call to `python -m cptools2.nextflow_chunking deepprofiler-metadata`.
   - Create `dp_project/inputs/images`, `dp_project/inputs/metadata`, `dp_project/inputs/locations`, config, checkpoint, and output directories.
 - Modify `tests/test_nextflow_chunking.py`
-  - Add unit tests for DeepProfiler `index.csv` generation and location file generation.
+  - Add unit tests for DeepProfiler image links, `index.csv` generation, config copying, non-empty location file generation, and zero-location file generation.
 - Modify `tests/test_nextflow_architecture_smoke.py`
   - Add static checks that `FEATURE_EXTRACT` uses the helper and the correct DeepProfiler paths.
 - Optional docs update after Eddie verification:
@@ -213,6 +215,47 @@ pytest tests/test_nextflow_chunking.py::test_build_deepprofiler_project_metadata
 
 Expected: both fail because `build_deepprofiler_project_metadata` does not exist.
 
+- [ ] **Step 7: Add failing zero-location continuation test**
+
+Add this test:
+
+```python
+def test_build_deepprofiler_input_package_allows_zero_locations(tmp_path):
+    chunk_manifest = tmp_path / "tiny-plate-001_chunk_0001.csv"
+    image_root = tmp_path / "staging" / "tiny-plate-001"
+    locations_dir = tmp_path / "cellpose_masks" / "locations"
+    output_root = tmp_path / "dp_project" / "inputs"
+    config_path = tmp_path / "deepprofiler_config.json"
+
+    _write_deepprofiler_manifest(chunk_manifest, image_root)
+    _write_deepprofiler_config(config_path)
+    locations_dir.mkdir(parents=True)
+    (locations_dir / "tiny-plate-001_chunk_0001_locations.csv").write_text(
+        "plate,well,site,image_path,image_set_id,object_id,x,y,mask_path\n"
+    )
+
+    nextflow_chunking.build_deepprofiler_input_package(
+        chunk_manifest=chunk_manifest,
+        locations_dir=locations_dir,
+        output_root=output_root,
+        config_path=config_path,
+    )
+
+    nuclei_path = output_root / "locations" / "tiny-plate-001" / "B02-f1-Nuclei.csv"
+    assert nuclei_path.exists()
+    assert nuclei_path.read_text().strip() == (
+        "Nuclei_Location_Center_X,Nuclei_Location_Center_Y"
+    )
+```
+
+Run:
+
+```bash
+pytest tests/test_nextflow_chunking.py::test_build_deepprofiler_input_package_allows_zero_locations -q
+```
+
+Expected: fails because `build_deepprofiler_input_package` does not exist.
+
 ---
 
 ### Task 2: Implement The Reusable DeepProfiler Metadata Helper
@@ -280,14 +323,15 @@ def _deepprofiler_image_value(image_path, plate):
 Add before `_cmd_index`:
 
 ```python
-def build_deepprofiler_project_metadata(
+def build_deepprofiler_input_package(
     chunk_manifest,
     locations_dir,
     output_root,
+    config_path,
     channel_map=None,
-    label_value="DMSO",
+    label_value=None,
 ):
-    """Write DeepProfiler metadata and location files for one chunk.
+    """Write a complete DeepProfiler inputs package for one chunk.
 
     Parameters
     ----------
@@ -297,10 +341,12 @@ def build_deepprofiler_project_metadata(
         Cellpose masks directory or its nested locations directory.
     output_root : str or Path
         DeepProfiler inputs directory, usually dp_project/inputs.
+    config_path : str or Path
+        DeepProfiler JSON config copied to inputs/config/config.json.
     channel_map : dict or str, optional
         Mapping from manifest channel values to DeepProfiler channel columns.
-    label_value : str
-        Value for Metadata_Compound, matching deepprofiler_config.json.
+    label_value : str, optional
+        Value for the configured label field. Defaults to the config control value.
     """
     chunk_manifest = Path(chunk_manifest)
     locations_dir = Path(locations_dir)
@@ -349,7 +395,7 @@ def build_deepprofiler_project_metadata(
         source_locations = locations_dir
     location_files = sorted(source_locations.glob("*.csv"))
     if not location_files:
-        raise ChunkingError(f"No Cellpose location CSVs found in {locations_dir}")
+        location_files = []
 
     for location_file in location_files:
         loc_df = pl.read_csv(location_file)
@@ -381,16 +427,20 @@ def build_deepprofiler_project_metadata(
     return metadata_dir / "index.csv"
 ```
 
+The implementation must write empty per-site nuclei files with headers when Cellpose
+produced no rows for an image set. Do not raise an error for zero locations.
+
 - [ ] **Step 5: Add CLI command implementation**
 
 Add:
 
 ```python
-def _cmd_deepprofiler_metadata(args):
-    build_deepprofiler_project_metadata(
+def _cmd_deepprofiler_package(args):
+    build_deepprofiler_input_package(
         chunk_manifest=args.chunk_manifest,
         locations_dir=args.locations_dir,
         output_root=args.output_root,
+        config_path=args.config_path,
         channel_map=args.channel_map,
         label_value=args.label_value,
     )
@@ -401,17 +451,18 @@ def _cmd_deepprofiler_metadata(args):
 Add before `return parser` in `build_parser()`:
 
 ```python
-    p_dp = subparsers.add_parser("deepprofiler-metadata")
+    p_dp = subparsers.add_parser("deepprofiler-package")
     p_dp.add_argument("--chunk-manifest", required=True)
     p_dp.add_argument("--locations-dir", required=True)
     p_dp.add_argument("--output-root", required=True)
+    p_dp.add_argument("--config-path", required=True)
     p_dp.add_argument(
         "--channel-map",
         default="1=DNA,2=RNA,3=ER,4=AGP,5=Mito",
         help="Comma-separated mapping from manifest channel id to DeepProfiler column",
     )
     p_dp.add_argument("--label-value", default="DMSO")
-    p_dp.set_defaults(func=_cmd_deepprofiler_metadata)
+    p_dp.set_defaults(func=_cmd_deepprofiler_package)
 ```
 
 - [ ] **Step 7: Run new unit tests**
@@ -461,7 +512,7 @@ def test_feature_extract_builds_deepprofiler_metadata_contract():
         ROOT / "nextflow" / "modules" / "feature_extract.nf"
     ).read_text()
 
-    assert "deepprofiler-metadata" in feature_extract
+    assert "deepprofiler-package" in feature_extract
     assert "dp_project/inputs/metadata/index.csv" in feature_extract
     assert "dp_project/inputs/locations" in feature_extract
     assert "inputs/metadata/locations" not in feature_extract
@@ -495,10 +546,11 @@ In `nextflow/modules/feature_extract.nf`, replace the DeepProfiler script body w
         # Link corrected images. DeepProfiler metadata uses paths relative to inputs/images.
         ln -s \$(readlink -f ${corrected_dir})/* dp_project/inputs/images/${plate_id}/
 
-        python -m cptools2.nextflow_chunking deepprofiler-metadata \\
+        python -m cptools2.nextflow_chunking deepprofiler-package \\
             --chunk-manifest ${chunk_manifest} \\
             --locations-dir ${locations_dir} \\
             --output-root dp_project/inputs \\
+            --config-path ${params.feature_extraction_config} \\
             --channel-map "1=DNA,2=RNA,3=ER,4=AGP,5=Mito" \\
             --label-value "DMSO"
 
