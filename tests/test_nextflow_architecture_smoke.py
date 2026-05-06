@@ -35,6 +35,26 @@ def test_nextflow_publish_dirs_do_not_copy_upstream_image_dirs():
     assert "pattern: 'cellpose_masks/**'" in cellpose
 
 
+def test_nextflow_feature_extract_deepprofiler_uses_packager_contract():
+    feature_extract = (
+        ROOT / "nextflow" / "modules" / "feature_extract.nf"
+    ).read_text()
+
+    assert "deepprofiler-package" in feature_extract
+    assert 'export PYTHONPATH="\\${CPTOOLS2_PROJECT_ROOT}:\\${PYTHONPATH:-}"' in feature_extract
+    assert "--metadata index.csv" in feature_extract
+    assert "--output-root dp_project/inputs" in feature_extract
+    assert "dp_project/inputs/metadata/index.csv" in feature_extract
+    assert "dp_project/inputs/locations" in feature_extract
+    assert "dp_project/inputs/images/${plate_id}" in feature_extract
+    assert "dp_project/inputs/config/config.json" in feature_extract
+    assert "DeepProfiler completed but produced no feature files" in feature_extract
+    assert "cp -r dp_project/outputs/cell_painting/features/* features/" in feature_extract
+    assert "cp -r dp_project/outputs/cell_painting/features/* features/ 2>/dev/null || true" not in feature_extract
+    assert "dp_project/inputs/metadata/locations" not in feature_extract
+    assert "cp ${chunk_manifest} dp_project/inputs/metadata/chunk_manifest.csv" not in feature_extract
+
+
 def test_nextflow_stage_out_uses_data_destination_and_cellpose_masks():
     main_nf = (ROOT / "nextflow" / "main.nf").read_text()
     stage_out = (ROOT / "nextflow" / "modules" / "stage_out.nf").read_text()

@@ -35,24 +35,22 @@ process FEATURE_EXTRACT {
         mkdir -p features
 
         # Set up DeepProfiler project structure
-        mkdir -p dp_project/inputs/images/${plate_id}
-        mkdir -p dp_project/inputs/metadata/locations
-        mkdir -p dp_project/inputs/config
         mkdir -p dp_project/outputs/cell_painting/checkpoint
 
-        # Link corrected images
-        ln -s \$(readlink -f ${corrected_dir})/* dp_project/inputs/images/${plate_id}/
-        cp ${chunk_manifest} dp_project/inputs/metadata/chunk_manifest.csv
-
-        # Link location CSVs
-        if [ -d "${locations_dir}/locations" ]; then
-            ln -s \$(readlink -f ${locations_dir}/locations)/* dp_project/inputs/metadata/locations/
-        else
-            ln -s \$(readlink -f ${locations_dir})/*.csv dp_project/inputs/metadata/locations/ 2>/dev/null || true
+        if [ -n "\${CPTOOLS2_PROJECT_ROOT:-}" ]; then
+            export PYTHONPATH="\${CPTOOLS2_PROJECT_ROOT}:\${PYTHONPATH:-}"
         fi
 
-        # Copy config
-        cp ${params.feature_extraction_config} dp_project/inputs/config/config.json
+        python -m cptools2.nextflow_chunking deepprofiler-package \\
+            --chunk-manifest ${chunk_manifest} \\
+            --locations-dir ${locations_dir} \\
+            --output-root dp_project/inputs \\
+            --config-path ${params.feature_extraction_config}
+
+        test -f dp_project/inputs/metadata/index.csv
+        test -d dp_project/inputs/locations
+        test -d dp_project/inputs/images/${plate_id}
+        test -f dp_project/inputs/config/config.json
 
         # Link model weights if provided
         if [ -n "${params.feature_extraction_weights}" ] && [ -f "${params.feature_extraction_weights}" ]; then
@@ -63,12 +61,19 @@ process FEATURE_EXTRACT {
         python -m deepprofiler \\
             --root dp_project/ \\
             --config config.json \\
+            --metadata index.csv \\
             --exp cell_painting \\
             --gpu 0 \\
             profile
 
         # Move output features to standard location
-        cp -r dp_project/outputs/cell_painting/features/* features/ 2>/dev/null || true
+        test -d dp_project/outputs/cell_painting/features
+        feature_count=\$(find dp_project/outputs/cell_painting/features -type f | wc -l)
+        if [ "\$feature_count" -eq 0 ]; then
+            echo "DeepProfiler completed but produced no feature files" >&2
+            exit 1
+        fi
+        cp -r dp_project/outputs/cell_painting/features/* features/
         """
     else if (params.feature_extraction_tool == 'dinov2')
         """

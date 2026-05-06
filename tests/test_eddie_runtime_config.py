@@ -142,6 +142,9 @@ def test_gpu_smoke_scripts_request_gpu_and_use_nv():
 
 def test_loop440_smoke_config_uses_tiny_scratch_input_and_permanent_assets():
     text = LOOP440_CONFIG.read_text()
+    deepprofiler_config = (
+        ROOT / "cptools2" / "templates" / "deepprofiler_config.json"
+    ).read_text()
 
     assert "/exports/eddie/scratch/mharvey2/cptools2-ai-update/staging/tiny-plate-set" in text
     assert "/exports/eddie/scratch/mharvey2/cptools2-ai-update/results/loop440" in text
@@ -151,6 +154,7 @@ def test_loop440_smoke_config_uses_tiny_scratch_input_and_permanent_assets():
     assert f"container_path: {PERMANENT_ROOT}/containers" in text
     assert f"{PERMANENT_ROOT}/cptools2/templates/deepprofiler_config.json" in text
     assert "/exports/eddie/scratch/mharvey2/cptools2-loop230" not in text
+    assert '"file_format": "tif"' in deepprofiler_config
 
 
 def test_loop440_tiny_plate_builder_creates_indexable_real_tiffs(tmp_path):

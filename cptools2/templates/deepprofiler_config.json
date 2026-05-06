@@ -6,7 +6,7 @@
     },
     "images": {
       "channels": ["DNA", "RNA", "ER", "AGP", "Mito"],
-      "file_format": "png",
+      "file_format": "tif",
       "bits": 16,
       "width": 1080,
       "height": 1080
