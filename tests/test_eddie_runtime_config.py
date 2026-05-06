@@ -91,6 +91,8 @@ def test_nextflow_eddie_config_uses_permanent_containers_and_scratch_cache():
     assert '. "\\$CPTOOLS2_VENV/bin/activate"' in text
     assert 'CPTOOLS2_HOME' in text
     assert 'export HOME="\\$CPTOOLS2_HOME"' in text
+    assert "CPTOOLS2_HOME,HOME" not in text
+    assert "--bind \\$CPTOOLS2_HOME:/home/\\$USER" in text
     assert 'cptools2-ai-update' in text
     assert 'SINGULARITY_CACHEDIR' in text
 
