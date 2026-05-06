@@ -84,6 +84,8 @@ def test_nextflow_eddie_config_uses_permanent_containers_and_scratch_cache():
     assert 'module load singularity/4.3.4' in text
     assert 'module load miniforge/25.3.1-0' in text
     assert 'CPTOOLS2_SCRATCH_ROOT' in text
+    assert 'CPTOOLS2_VENV' in text
+    assert '. "\\$CPTOOLS2_VENV/bin/activate"' in text
     assert 'cptools2-ai-update' in text
     assert 'SINGULARITY_CACHEDIR' in text
 
