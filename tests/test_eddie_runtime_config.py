@@ -44,6 +44,7 @@ def test_eddie_bootstrap_separates_permanent_and_scratch_paths():
     assert 'export CPTOOLS2_LOG_ROOT="${CPTOOLS2_SCRATCH_ROOT}/logs"' in text
     assert 'export CPTOOLS2_TRACE_ROOT="${CPTOOLS2_SCRATCH_ROOT}/traces"' in text
     assert 'export CPTOOLS2_TEMP_ROOT="${CPTOOLS2_WORK_ROOT}/tmp"' in text
+    assert 'export CPTOOLS2_HOME="${CPTOOLS2_WORK_ROOT}/home/${USER}"' in text
     assert 'export NXF_HOME="${CPTOOLS2_CACHE_ROOT}/nextflow"' in text
     assert 'export NXF_TEMP="${CPTOOLS2_TEMP_ROOT}/nextflow"' in text
     assert "export NXF_OPTS=" in text
@@ -88,6 +89,8 @@ def test_nextflow_eddie_config_uses_permanent_containers_and_scratch_cache():
     assert 'CPTOOLS2_SCRATCH_ROOT' in text
     assert 'CPTOOLS2_VENV' in text
     assert '. "\\$CPTOOLS2_VENV/bin/activate"' in text
+    assert 'CPTOOLS2_HOME' in text
+    assert 'export HOME="\\$CPTOOLS2_HOME"' in text
     assert 'cptools2-ai-update' in text
     assert 'SINGULARITY_CACHEDIR' in text
 
