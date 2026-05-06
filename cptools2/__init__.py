@@ -1,5 +1,5 @@
-from cptools2 import filelist
-from cptools2 import splitter
-from cptools2 import parse_yaml
-from cptools2 import utils
-from cptools2 import colours
+"""cptools2 package.
+
+Submodules are intentionally imported lazily so lightweight helpers can run in
+runtime containers that do not include every development dependency.
+"""
