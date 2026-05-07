@@ -45,8 +45,12 @@
         "batch_size": 128,
         "conv_blocks": 0,
         "feature_dim": 256,
-        "pooling": "avg"
-      }
+        "pooling": "avg",
+        "label_smoothing": 0.0,
+        "online_label_smoothing": 0.0,
+        "online_lambda": 0.0
+      },
+      "lr_schedule": "cosine"
     },
     "sampling": {
       "factor": 0.5,

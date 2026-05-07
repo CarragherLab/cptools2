@@ -253,6 +253,9 @@ def test_deepprofiler_config_uses_documented_profile_and_train_sections():
     assert config["train"]["partition"]["targets"] == ["Metadata_Compound"]
     assert config["train"]["partition"]["split_field"] == "Metadata_Plate"
     assert config["train"]["model"]["name"] == "efficientnet"
+    assert config["train"]["model"]["params"]["label_smoothing"] == 0.0
+    assert config["train"]["model"]["params"]["online_label_smoothing"] == 0.0
+    assert config["train"]["model"]["params"]["online_lambda"] == 0.0
     assert "model" not in config
 
 
