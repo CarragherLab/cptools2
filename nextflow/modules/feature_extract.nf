@@ -55,6 +55,22 @@ process FEATURE_EXTRACT {
         test -d dp_project/inputs/images/${plate_id}
         test -f dp_project/inputs/config/config.json
 
+        location_count=\$(python - <<'PY'
+import csv
+from pathlib import Path
+
+count = 0
+for path in Path("dp_project/inputs/locations").rglob("*.csv"):
+    with path.open(newline="") as handle:
+        count += sum(1 for _ in csv.DictReader(handle))
+print(count)
+PY
+)
+        if [ "\$location_count" -eq 0 ]; then
+            printf 'plate_id\\tchunk_id\\treason\\n%s\\t%s\\tno_cells\\n' "${plate_id}" "${chunk_manifest.simpleName}" > features/no_cells.tsv
+            exit 0
+        fi
+
         # Link model weights if configured
         if [ -n "${weights_path}" ]; then
             if [ ! -f "${weights_path}" ]; then

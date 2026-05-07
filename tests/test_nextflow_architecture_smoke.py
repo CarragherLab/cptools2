@@ -48,6 +48,9 @@ def test_nextflow_feature_extract_deepprofiler_uses_packager_contract():
     assert "dp_project/inputs/locations" in feature_extract
     assert "dp_project/inputs/images/${plate_id}" in feature_extract
     assert "dp_project/inputs/config/config.json" in feature_extract
+    assert "location_count=\\$(python" in feature_extract
+    assert "features/no_cells.tsv" in feature_extract
+    assert "no_cells" in feature_extract
     assert "Configured DeepProfiler weights do not exist" in feature_extract
     assert "params.feature_extraction_weights.toString() != 'null'" in feature_extract
     assert "DeepProfiler completed but produced no feature files" in feature_extract
