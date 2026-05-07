@@ -10,7 +10,7 @@ from pathlib import Path
 DEFAULT_PLATE = "tiny-plate-001"
 DEFAULT_WELL = "B02"
 DEFAULT_SITE = 1
-DEFAULT_CHANNELS = ("DNA", "RNA", "ER", "AGP", "Mito")
+DEFAULT_CHANNELS = (1, 2, 3, 4, 5)
 DEFAULT_SIZE = 64
 
 
@@ -43,11 +43,12 @@ def _write_uint16_tiff(path, width=DEFAULT_SIZE, height=DEFAULT_SIZE, value=1000
 def create_plate(root, plate=DEFAULT_PLATE, well=DEFAULT_WELL, site=DEFAULT_SITE):
     plate_dir = Path(root) / plate / "2015-07-31" / "4016"
     plate_dir.mkdir(parents=True, exist_ok=True)
-    for index, channel in enumerate(DEFAULT_CHANNELS, start=1):
-        filename = f"val screen_{well}_s{site}_{channel}.tif"
+    for channel in DEFAULT_CHANNELS:
+        suffix = f"{channel:032X}"
+        filename = f"val screen_{well}_s{site}_w{channel}{suffix}.tif"
         _write_uint16_tiff(
             plate_dir / filename,
-            value=1000 + index,
+            value=1000 + channel,
         )
     return plate_dir
 

@@ -241,6 +241,13 @@ def test_loop440_tiny_plate_builder_creates_indexable_real_tiffs(tmp_path):
     tiffs = sorted(plate_root.rglob("*.tif"))
     assert len(tiffs) == 5
     assert all(path.stat().st_size > 0 for path in tiffs)
+    assert [path.name for path in tiffs] == [
+        "val screen_B02_s1_w100000000000000000000000000000001.tif",
+        "val screen_B02_s1_w200000000000000000000000000000002.tif",
+        "val screen_B02_s1_w300000000000000000000000000000003.tif",
+        "val screen_B02_s1_w400000000000000000000000000000004.tif",
+        "val screen_B02_s1_w500000000000000000000000000000005.tif",
+    ]
 
     index_csv = tmp_path / "image_sets.csv"
     nextflow_chunking.build_image_set_index(
