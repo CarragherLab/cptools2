@@ -443,3 +443,8 @@ def test_build_parser_registers_deepprofiler_package_subcommand():
         ]
     )
     assert args.command == "deepprofiler-package"
+
+
+def test_parse_channel_falls_back_to_cellprofiler_channel_names():
+    assert nextflow_chunking._parse_channel("val screen_B02_s1_DNA.tif") == 1
+    assert nextflow_chunking._parse_channel("val screen_B02_s1_Mito.tif") == 5

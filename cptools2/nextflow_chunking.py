@@ -23,6 +23,15 @@ from parserix import parse as _parse
 
 
 DEFAULT_CHUNK_SIZE = 96
+CHANNEL_NAME_TO_INDEX = {
+    "DNA": 1,
+    "RNA": 2,
+    "ER": 3,
+    "AGP": 4,
+    "MITO": 5,
+}
+
+
 class ChunkingError(Exception):
     """Raised when a staged plate cannot be indexed or chunked safely."""
 
@@ -52,7 +61,11 @@ def _normalise_expected_channels(expected_channels):
 
 
 def _parse_channel(filename):
-    channel = _parse.img_channel(filename)
+    try:
+        channel = _parse.img_channel(filename)
+    except Exception:
+        channel = Path(filename).stem.rsplit("_", 1)[-1]
+        channel = CHANNEL_NAME_TO_INDEX.get(str(channel).upper(), channel)
     try:
         return int(channel)
     except (TypeError, ValueError):
