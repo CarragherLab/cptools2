@@ -4,8 +4,7 @@
 # Source this file before running a dry-run or submitting work from the mirror.
 #
 # Example:
-#   cp config/eddie_paths.example.env local/eddie_paths.env
-#   # edit local/eddie_paths.env for your Eddie project
+#   bash scripts/configure_eddie_paths.sh --project-root /exports/<...>/cptools2
 #   source config/eddie_env.sh
 #   cptools2 pipeline config/loop440-eddie-smoke.yaml --dry-run
 
@@ -16,14 +15,22 @@ module load roslin/nextflow/25.10.2
 module load singularity/4.3.4
 module load miniforge/25.3.1-0
 
-if [ -f "local/eddie_paths.env" ]; then
+_CPTOOLS2_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_CPTOOLS2_DEFAULT_PROJECT_ROOT="$(cd "${_CPTOOLS2_ENV_DIR}/.." && pwd)"
+_CPTOOLS2_DEFAULT_PATHS_FILE="${_CPTOOLS2_DEFAULT_PROJECT_ROOT%/}-local/eddie_paths.env"
+
+if [ -n "${CPTOOLS2_PATHS_FILE:-}" ] && [ -f "${CPTOOLS2_PATHS_FILE}" ]; then
+    . "${CPTOOLS2_PATHS_FILE}"
+elif [ -f "${_CPTOOLS2_DEFAULT_PATHS_FILE}" ]; then
+    . "${_CPTOOLS2_DEFAULT_PATHS_FILE}"
+elif [ -f "local/eddie_paths.env" ]; then
     . "local/eddie_paths.env"
 elif [ -f "${CPTOOLS2_PROJECT_ROOT:-}/local/eddie_paths.env" ]; then
     . "${CPTOOLS2_PROJECT_ROOT}/local/eddie_paths.env"
 fi
 
-: "${CPTOOLS2_PROJECT_ROOT:?Set CPTOOLS2_PROJECT_ROOT or create local/eddie_paths.env from config/eddie_paths.example.env}"
-: "${CPTOOLS2_SCRATCH_ROOT:?Set CPTOOLS2_SCRATCH_ROOT or create local/eddie_paths.env from config/eddie_paths.example.env}"
+: "${CPTOOLS2_PROJECT_ROOT:?Set CPTOOLS2_PROJECT_ROOT or create a paths file with scripts/configure_eddie_paths.sh}"
+: "${CPTOOLS2_SCRATCH_ROOT:?Set CPTOOLS2_SCRATCH_ROOT or create a paths file with scripts/configure_eddie_paths.sh}"
 
 export CPTOOLS2_PERMANENT_ROOT="${CPTOOLS2_PROJECT_ROOT}"
 
@@ -54,6 +61,7 @@ export TEMP="${CPTOOLS2_TEMP_ROOT}"
 export TMP="${CPTOOLS2_TEMP_ROOT}"
 export XDG_CACHE_HOME="${CPTOOLS2_CACHE_ROOT}/xdg"
 export XDG_RUNTIME_DIR="${CPTOOLS2_TEMP_ROOT}/xdg-runtime"
+export MPLCONFIGDIR="${CPTOOLS2_CACHE_ROOT}/matplotlib"
 export PIP_CACHE_DIR="${CPTOOLS2_CACHE_ROOT}/pip"
 
 mkdir -p \
@@ -72,6 +80,7 @@ mkdir -p \
     "${APPTAINER_TMPDIR}" \
     "${XDG_CACHE_HOME}" \
     "${XDG_RUNTIME_DIR}" \
+    "${MPLCONFIGDIR}" \
     "${PIP_CACHE_DIR}"
 
 if [ -f "${CPTOOLS2_VENV}/bin/activate" ]; then

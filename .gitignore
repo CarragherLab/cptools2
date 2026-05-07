@@ -25,6 +25,9 @@ venv/
 
 # Local/private deployment paths and run configs
 local/
+activate.sh
+containers/
+logs/
 
 # Large test data (keep if present; move heavy data out of repo)
 tests/example_dir/

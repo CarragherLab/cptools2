@@ -34,7 +34,8 @@ def test_eddie_bootstrap_loads_pinned_modules():
 def test_eddie_bootstrap_separates_permanent_and_scratch_paths():
     text = BOOTSTRAP.read_text()
 
-    assert "local/eddie_paths.env" in text
+    assert "CPTOOLS2_PATHS_FILE" in text
+    assert "-local/eddie_paths.env" in text
     assert ": \"${CPTOOLS2_PROJECT_ROOT:?" in text
     assert ": \"${CPTOOLS2_SCRATCH_ROOT:?" in text
     assert 'export CPTOOLS2_PERMANENT_ROOT="${CPTOOLS2_PROJECT_ROOT}"' in text
@@ -62,6 +63,7 @@ def test_eddie_bootstrap_separates_permanent_and_scratch_paths():
     assert 'export TMP="${CPTOOLS2_TEMP_ROOT}"' in text
     assert 'export XDG_CACHE_HOME="${CPTOOLS2_CACHE_ROOT}/xdg"' in text
     assert 'export XDG_RUNTIME_DIR="${CPTOOLS2_TEMP_ROOT}/xdg-runtime"' in text
+    assert 'export MPLCONFIGDIR="${CPTOOLS2_CACHE_ROOT}/matplotlib"' in text
     assert 'export PIP_CACHE_DIR="${CPTOOLS2_CACHE_ROOT}/pip"' in text
     assert '[ -f "${CPTOOLS2_VENV}/bin/activate" ]' in text
     assert '. "${CPTOOLS2_VENV}/bin/activate"' in text
@@ -73,7 +75,7 @@ def test_eddie_bootstrap_documents_dry_run_usage():
 
     assert "cptools2 pipeline" in text
     assert "--dry-run" in text
-    assert "config/eddie_paths.example.env" in text
+    assert "scripts/configure_eddie_paths.sh" in text
 
 
 def test_eddie_installer_configures_paths_install_and_containers():
@@ -85,13 +87,16 @@ def test_eddie_installer_configures_paths_install_and_containers():
     assert "scripts/configure_eddie_paths.sh" in text
     assert "REPO_ROOT=\"$(pwd -P)\"" in text
     assert "run this script from the cptools2 repository root" in text
-    assert '--output "${PROJECT_ROOT}/local/eddie_paths.env"' in text
+    assert '--output "$PATHS_FILE"' in text
+    assert 'PATHS_FILE="${PROJECT_ROOT%/}-local/eddie_paths.env"' in text
+    assert 'ACTIVATE_SCRIPT="${expanded_scratch_root}/activate.sh"' in text
     assert 'python -m pip install -e "$REPO_ROOT"' in text
     assert "NEXTFLOW_VERSION" in text
     assert "cellprofiler_4.2.8.sif" in text
     assert "cellpose_sam_1.0.sif" in text
     assert "deepprofiler_1.0.sif" in text
     assert "qsub -v" in text
+    assert "CPTOOLS2_SCRATCH_ROOT=${expanded_scratch_root}" in text
     assert '${REPO_ROOT}/cptools2/dockerfiles/build_containers.sh' in text
     assert "/exports/<college>/eddie/<school>/groups/<group>" in text
     assert "/exports/cmvm/eddie/" not in text
@@ -100,7 +105,7 @@ def test_eddie_installer_configures_paths_install_and_containers():
 def test_eddie_path_configurator_writes_ignored_env_file():
     text = EDDIE_PATH_CONFIGURATOR.read_text()
 
-    assert "local/eddie_paths.env" in text
+    assert "<project-root>-local/eddie_paths.env" in text
     assert "CPTOOLS2_PROJECT_ROOT" in text
     assert "CPTOOLS2_SCRATCH_ROOT" in text
     assert "CPTOOLS2_CONTAINER_DIR" in text
@@ -149,6 +154,9 @@ def test_cellprofiler_smoke_script_is_cpu_sge_and_scratch_only():
     assert "tee " not in text
     assert 'exit "${status}"' in text
     assert "cptools2-ai-update" in text
+    assert "config/eddie_env.sh" in text
+    assert '"logs"' not in text
+    assert "/exports/eddie/scratch/$USER/cptools2-ai-update/logs" in text
     assert "SINGULARITY_CACHEDIR" in text
     assert "SINGULARITY_TMPDIR" in text
 
@@ -173,6 +181,9 @@ def test_gpu_smoke_scripts_request_gpu_and_use_nv():
         assert "tee " not in text
         assert 'exit "${status}"' in text
         assert "cptools2-ai-update" in text
+        assert "config/eddie_env.sh" in text
+        assert '"logs"' not in text
+        assert "/exports/eddie/scratch/$USER/cptools2-ai-update/logs" in text
         assert "SINGULARITY_CACHEDIR" in text
         assert "SINGULARITY_TMPDIR" in text
 

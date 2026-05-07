@@ -10,16 +10,18 @@
 #$ -l gpu=1
 #$ -l h_rt=00:30:00
 #$ -l h_rss=16G
-#$ -o logs/cellpose_$JOB_ID.log
-#$ -e logs/cellpose_$JOB_ID.err
+#$ -o /exports/eddie/scratch/$USER/cptools2-ai-update/logs/cellpose_$JOB_ID.log
+#$ -e /exports/eddie/scratch/$USER/cptools2-ai-update/logs/cellpose_$JOB_ID.err
 
 set -eu
 
-if [ -f "local/eddie_paths.env" ]; then
-    . "local/eddie_paths.env"
+if [ -f "config/eddie_env.sh" ]; then
+    . "config/eddie_env.sh"
+elif [ -n "${CPTOOLS2_PROJECT_ROOT:-}" ] && [ -f "${CPTOOLS2_PROJECT_ROOT}/config/eddie_env.sh" ]; then
+    . "${CPTOOLS2_PROJECT_ROOT}/config/eddie_env.sh"
 fi
 
-: "${CPTOOLS2_PROJECT_ROOT:?Set CPTOOLS2_PROJECT_ROOT or create local/eddie_paths.env from config/eddie_paths.example.env}"
+: "${CPTOOLS2_PROJECT_ROOT:?Set CPTOOLS2_PROJECT_ROOT or create a paths file with scripts/configure_eddie_paths.sh}"
 
 PROJECT_ROOT="${CPTOOLS2_PROJECT_ROOT}"
 SCRATCH_ROOT="${CPTOOLS2_SCRATCH_ROOT:-/exports/eddie/scratch/${USER}/cptools2-ai-update}"
@@ -31,7 +33,7 @@ mkdir -p \
     "${WORK_ROOT}/singularity_tmp" \
     "${WORK_ROOT}/singularity_cache" \
     "${SMOKE_ROOT}" \
-    "logs"
+    "${CPTOOLS2_LOG_ROOT:-${SCRATCH_ROOT}/logs}"
 
 echo "Job ${JOB_ID:-manual} started: $(date)"
 echo "Host: $(hostname)"

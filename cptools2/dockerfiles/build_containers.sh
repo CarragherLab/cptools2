@@ -3,8 +3,8 @@
 #$ -l h_rss=16G
 #$ -l h_rt=02:00:00
 #$ -cwd
-#$ -o build_containers.$JOB_ID.log
-#$ -e build_containers.$JOB_ID.err
+#$ -o /exports/eddie/scratch/$USER/cptools2-ai-update/logs/build_containers.$JOB_ID.log
+#$ -e /exports/eddie/scratch/$USER/cptools2-ai-update/logs/build_containers.$JOB_ID.err
 
 # SGE jobs run in a non-login shell, so `module` is not a function yet.
 # Source the Environment Modules init before any `module load`.
@@ -33,9 +33,9 @@ set -euo pipefail
 # CRITICAL: Singularity needs large temp AND cache space during OCI layer
 # extraction. Eddie's /tmp is a small tmpfs and $HOME has a small quota —
 # GPU images are 8-10GB and will blow past both. Redirect to scratch.
-SCRATCH_BASE="/exports/eddie/scratch/$USER"
-export SINGULARITY_TMPDIR="$SCRATCH_BASE/singularity_tmp"
-export SINGULARITY_CACHEDIR="$SCRATCH_BASE/singularity_cache"
+SCRATCH_BASE="${CPTOOLS2_SCRATCH_ROOT:-/exports/eddie/scratch/$USER/cptools2-ai-update}"
+export SINGULARITY_TMPDIR="$SCRATCH_BASE/work/tmp/singularity-build"
+export SINGULARITY_CACHEDIR="$SCRATCH_BASE/work/cache/singularity-build"
 mkdir -p "$SINGULARITY_TMPDIR" "$SINGULARITY_CACHEDIR"
 
 # Cap mksquashfs parallelism. Eddie compute slots are limited and mksquashfs
@@ -63,7 +63,7 @@ cleanup_scratch() {
     du -sh "$SINGULARITY_TMPDIR" "$SINGULARITY_CACHEDIR" 2>/dev/null || true
     for cleanup_dir in "$SINGULARITY_TMPDIR" "$SINGULARITY_CACHEDIR"; do
       case "$cleanup_dir" in
-        /exports/eddie/scratch/"$USER"/*)
+        /exports/eddie/scratch/"$USER"/cptools2-ai-update/*)
           rm -rf "$cleanup_dir" || true
           ;;
         *)

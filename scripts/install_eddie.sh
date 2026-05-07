@@ -23,16 +23,16 @@ Legacy form is also accepted:
   bash scripts/install_eddie.sh /exports/<college>/eddie/<school>/groups/<group>
 
 What it does:
-  1. Writes ignored local/eddie_paths.env with real paths.
+  1. Writes a permanent local path config outside the Git checkout.
   2. Creates permanent mirror and scratch runtime directories.
   3. Creates/reuses a conda environment and installs cptools2 editable.
   4. Installs or reuses Nextflow in the environment.
-  5. Writes activate.sh for the permanent mirror.
+  5. Writes a scratch activation helper.
   6. Checks required .sif containers and can submit the SGE build job if
      archives are present.
 
-The generated local/eddie_paths.env overrides placeholder paths in public repo
-configs through config/eddie_env.sh.
+The generated path config overrides placeholder paths in public repo configs
+through config/eddie_env.sh without dirtying the permanent Git mirror.
 EOF
 }
 
@@ -142,10 +142,11 @@ fi
 
 ENV_DIR="${PROJECT_ROOT}/env"
 NEXTFLOW_DIR="${PROJECT_ROOT}/nextflow"
-ACTIVATE_SCRIPT="${PROJECT_ROOT}/activate.sh"
 
 expanded_scratch_root="${SCRATCH_ROOT//\$\{USER\}/${USER}}"
 expanded_scratch_root="${expanded_scratch_root//\$USER/${USER}}"
+PATHS_FILE="${PROJECT_ROOT%/}-local/eddie_paths.env"
+ACTIVATE_SCRIPT="${expanded_scratch_root}/activate.sh"
 
 log "Project root: ${PROJECT_ROOT}"
 log "Group root: ${GROUP_ROOT}"
@@ -163,7 +164,7 @@ configure_args=(
     --group-root "$GROUP_ROOT"
     --scratch-root "$SCRATCH_ROOT"
     --container-dir "$CONTAINER_DIR"
-    --output "${PROJECT_ROOT}/local/eddie_paths.env"
+    --output "$PATHS_FILE"
     --create-dirs
 )
 if [ "$FORCE_PATHS" -eq 1 ]; then
@@ -181,6 +182,7 @@ mkdir -p \
     "${PROJECT_ROOT}/config" \
     "${PROJECT_ROOT}/nextflow" \
     "${PROJECT_ROOT}/cptools2/templates" \
+    "$(dirname "$PATHS_FILE")" \
     "${expanded_scratch_root}/work" \
     "${expanded_scratch_root}/params" \
     "${expanded_scratch_root}/logs" \
@@ -224,31 +226,31 @@ else
     log "Skipping Nextflow install"
 fi
 
-cat > "$ACTIVATE_SCRIPT" <<'ACTIVATE_EOF'
+cat > "$ACTIVATE_SCRIPT" <<ACTIVATE_EOF
 # cptools2 activation script.
-# Source this file from the Eddie mirror:
-#   source /path/to/cptools2/activate.sh
+# This generated helper lives in scratch so the permanent Git mirror stays clean.
 
-_CPTOOLS2_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$_CPTOOLS2_DIR"
+export CPTOOLS2_PROJECT_ROOT="\${CPTOOLS2_PROJECT_ROOT:-${PROJECT_ROOT}}"
+export CPTOOLS2_PATHS_FILE="\${CPTOOLS2_PATHS_FILE:-${PATHS_FILE}}"
 
-if [ -f "local/eddie_paths.env" ]; then
-    . "local/eddie_paths.env"
+cd "\$CPTOOLS2_PROJECT_ROOT"
+
+if [ -f "\${CPTOOLS2_PATHS_FILE}" ]; then
+    . "\${CPTOOLS2_PATHS_FILE}"
 fi
 
-export CPTOOLS2_PROJECT_ROOT="${CPTOOLS2_PROJECT_ROOT:-${_CPTOOLS2_DIR}}"
-export CPTOOLS2_CONTAINER_DIR="${CPTOOLS2_CONTAINER_DIR:-${CPTOOLS2_PROJECT_ROOT}/containers}"
-export CPTOOLS2_VENV="${CPTOOLS2_VENV:-${CPTOOLS2_PROJECT_ROOT}/env}"
+export CPTOOLS2_CONTAINER_DIR="\${CPTOOLS2_CONTAINER_DIR:-\${CPTOOLS2_PROJECT_ROOT}/containers}"
+export CPTOOLS2_VENV="\${CPTOOLS2_VENV:-\${CPTOOLS2_PROJECT_ROOT}/env}"
 
 if command -v conda >/dev/null 2>&1; then
     # shellcheck disable=SC1090
-    . "$(conda info --base)/etc/profile.d/conda.sh"
-    conda activate "$CPTOOLS2_VENV"
+    . "\$(conda info --base)/etc/profile.d/conda.sh"
+    conda activate "\$CPTOOLS2_VENV"
 fi
 
-echo "[cptools2] Project root: ${CPTOOLS2_PROJECT_ROOT}"
-echo "[cptools2] Container dir: ${CPTOOLS2_CONTAINER_DIR}"
-echo "[cptools2] Version: $(cptools2 --version 2>/dev/null || echo unknown)"
+echo "[cptools2] Project root: \${CPTOOLS2_PROJECT_ROOT}"
+echo "[cptools2] Container dir: \${CPTOOLS2_CONTAINER_DIR}"
+echo "[cptools2] Version: \$(cptools2 --version 2>/dev/null || echo unknown)"
 ACTIVATE_EOF
 chmod +x "$ACTIVATE_SCRIPT"
 log "Wrote activation script: ${ACTIVATE_SCRIPT}"
@@ -286,7 +288,7 @@ else
     if [ "$archives_present" -eq 1 ]; then
         require_command qsub
         log "Submitting SGE container build job"
-        qsub -v "CPTOOLS2_CONTAINER_DIR=${CONTAINER_DIR}" \
+        qsub -v "CPTOOLS2_CONTAINER_DIR=${CONTAINER_DIR},CPTOOLS2_SCRATCH_ROOT=${expanded_scratch_root}" \
             "${REPO_ROOT}/cptools2/dockerfiles/build_containers.sh"
     elif [ "$CONTAINER_ACTION" = "build" ]; then
         die "Container archives are missing from ${CONTAINER_DIR}; expected cellprofiler_4.2.8.tar, cellpose_sam_1.0.tar, deepprofiler_1.0.tar"
@@ -299,5 +301,6 @@ fi
 log "Installation/configuration complete"
 log "Next:"
 log "  source ${ACTIVATE_SCRIPT}"
+log "  export CPTOOLS2_PATHS_FILE=${PATHS_FILE}"
 log "  source config/eddie_env.sh"
 log "  cptools2 pipeline config/loop440-eddie-smoke.yaml --dry-run"

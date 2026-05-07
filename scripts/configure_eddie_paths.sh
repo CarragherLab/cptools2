@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
-# Create the ignored local Eddie path config consumed by config/eddie_env.sh.
+# Create the local Eddie path config consumed by config/eddie_env.sh.
 #
 # This script is safe to commit because it contains no site-specific defaults.
-# The generated file, local/eddie_paths.env, is ignored by git.
+# By default, the generated file is written next to the checkout as
+# <project-root>-local/eddie_paths.env so the permanent Git mirror stays clean.
 
 set -euo pipefail
 
@@ -15,15 +16,15 @@ Usage:
     [--group-root /exports/<college>/eddie/<school>/groups/<group>] \
     [--scratch-root /exports/eddie/scratch/${USER}/cptools2-ai-update] \
     [--container-dir /path/to/containers] \
-    [--output local/eddie_paths.env] \
+    [--output /path/to/eddie_paths.env] \
     [--create-dirs] \
     [--force]
 
-Creates:
-  local/eddie_paths.env
+Creates by default:
+  <project-root>-local/eddie_paths.env
 
-The generated file is intentionally ignored by git and should contain the real
-Eddie project paths for the current checkout or mirror.
+The generated file should live in permanent storage but outside the Git checkout
+because it contains site/user-specific paths.
 
 This config only supplies paths. The Eddie profile still assumes Eddie modules,
 SGE/UGE queues, Singularity, and /exports/eddie scratch. Other HPC sites need an
@@ -35,7 +36,7 @@ PROJECT_ROOT=""
 GROUP_ROOT=""
 SCRATCH_ROOT='/exports/eddie/scratch/${USER}/cptools2-ai-update'
 CONTAINER_DIR=""
-OUTPUT="local/eddie_paths.env"
+OUTPUT=""
 CREATE_DIRS=0
 FORCE=0
 
@@ -95,6 +96,10 @@ if [ -z "$CONTAINER_DIR" ]; then
     CONTAINER_DIR='${CPTOOLS2_PROJECT_ROOT}/containers'
 fi
 
+if [ -z "$OUTPUT" ]; then
+    OUTPUT="${PROJECT_ROOT%/}-local/eddie_paths.env"
+fi
+
 if [ -e "$OUTPUT" ] && [ "$FORCE" -ne 1 ]; then
     echo "ERROR: $OUTPUT already exists. Use --force to overwrite." >&2
     exit 3
@@ -104,8 +109,8 @@ mkdir -p "$(dirname "$OUTPUT")"
 
 cat > "$OUTPUT" <<EOF
 # Local Eddie paths for this checkout.
-# This file is ignored by git. Keep site/user-specific paths here rather than
-# committing them to the public repository.
+# Keep this site/user-specific file in permanent storage outside the public Git
+# checkout.
 
 export CPTOOLS2_PROJECT_ROOT="$PROJECT_ROOT"
 export CPTOOLS2_GROUP_ROOT="$GROUP_ROOT"
