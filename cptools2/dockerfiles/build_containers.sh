@@ -15,7 +15,7 @@
 # ============================================================
 # Submit from Eddie login node:
 #   qsub build_containers.sh
-#   qsub build_containers.sh /path/to/other/group/space/cptools2/containers
+#   qsub build_containers.sh "$CPTOOLS2_CONTAINER_DIR"
 #
 # Prerequisites:
 #   - Docker archives (.tar) already transferred to CONTAINER_DIR
@@ -44,7 +44,12 @@ export SINGULARITY_MKSQUASHFS_PROCS=2
 
 module load singularity
 
-CONTAINER_DIR="${1:-/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/containers}"
+CONTAINER_DIR="${1:-${CPTOOLS2_CONTAINER_DIR:-}}"
+if [[ -z "$CONTAINER_DIR" ]]; then
+  echo "ERROR: pass CONTAINER_DIR or set CPTOOLS2_CONTAINER_DIR."
+  echo "Example: qsub build_containers.sh /exports/<college>/eddie/<school>/groups/<group>/cptools2/containers"
+  exit 2
+fi
 
 # Cleanup toggles (can be overridden by env at qsub time via `qsub -v VAR=val ...`)
 : "${CLEANUP_SCRATCH:=1}"
@@ -75,16 +80,28 @@ cleanup_scratch() {
 trap cleanup_scratch EXIT
 
 echo "=== Building CellProfiler ==="
-singularity build --force "$CONTAINER_DIR/cellprofiler_4.2.8.sif" \
-  oci-archive://"$CONTAINER_DIR/cellprofiler_4.2.8.tar"
+if [[ -s "$CONTAINER_DIR/cellprofiler_4.2.8.sif" ]]; then
+  echo "CellProfiler SIF already present; skipping"
+else
+  singularity build --force "$CONTAINER_DIR/cellprofiler_4.2.8.sif" \
+    oci-archive://"$CONTAINER_DIR/cellprofiler_4.2.8.tar"
+fi
 
 echo "=== Building Cellpose-SAM ==="
-singularity build --force "$CONTAINER_DIR/cellpose_sam_1.0.sif" \
-  oci-archive://"$CONTAINER_DIR/cellpose_sam_1.0.tar"
+if [[ -s "$CONTAINER_DIR/cellpose_sam_1.0.sif" ]]; then
+  echo "Cellpose-SAM SIF already present; skipping"
+else
+  singularity build --force "$CONTAINER_DIR/cellpose_sam_1.0.sif" \
+    oci-archive://"$CONTAINER_DIR/cellpose_sam_1.0.tar"
+fi
 
 echo "=== Building DeepProfiler ==="
-singularity build --force "$CONTAINER_DIR/deepprofiler_1.0.sif" \
-  oci-archive://"$CONTAINER_DIR/deepprofiler_1.0.tar"
+if [[ -s "$CONTAINER_DIR/deepprofiler_1.0.sif" ]]; then
+  echo "DeepProfiler SIF already present; skipping"
+else
+  singularity build --force "$CONTAINER_DIR/deepprofiler_1.0.sif" \
+    oci-archive://"$CONTAINER_DIR/deepprofiler_1.0.tar"
+fi
 
 echo "=== All containers built successfully ==="
 ls -lh "$CONTAINER_DIR"/*.sif

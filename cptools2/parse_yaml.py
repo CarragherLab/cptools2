@@ -67,9 +67,7 @@ def experiment(yaml_dict):
     """
     if "experiment" in yaml_dict or "input_dir" in yaml_dict:
         experiment_arg = yaml_dict.get("experiment", yaml_dict.get("input_dir"))
-        if isinstance(experiment_arg, list):
-            experiment_arg = experiment_arg[0]
-        return {"exp_dir" : experiment_arg}
+        return {"exp_dir" : _path_arg(experiment_arg)}
     else:
         return None
 
@@ -183,6 +181,7 @@ def create_commands(yaml_dict):
         location_arg = yaml_dict.get("location", yaml_dict.get("output_dir"))
         if isinstance(location_arg, list):
             location_arg = location_arg[0]
+        location_arg = _path_arg(location_arg)
     else:
         location_arg = os.path.dirname(os.path.abspath("params.json"))
     # TODO more options rather than exactly "commands location"
@@ -190,6 +189,7 @@ def create_commands(yaml_dict):
         commands_loc_arg = yaml_dict["commands location"]
         if isinstance(commands_loc_arg, list):
             commands_loc_arg = commands_loc_arg[0]
+        commands_loc_arg = _path_arg(commands_loc_arg)
     else:
         commands_loc_arg = _join_remote_safe(location_arg, "commands")
     # need the chunk size to check LoadData dataframes are the correct size
@@ -300,9 +300,9 @@ def data_destination(yaml_dict):
     if "data_destination" in yaml_dict:
         dest_arg = yaml_dict["data_destination"]
         if isinstance(dest_arg, list):
-            return str(dest_arg[0])
+            return _path_arg(dest_arg[0])
         elif isinstance(dest_arg, str):
-            return dest_arg
+            return _path_arg(dest_arg)
     return None
 
 
@@ -616,9 +616,13 @@ def generate_params_json(config_dict, output_path):
             if "tool" in feature_extraction:
                 params["feature_extraction_tool"] = feature_extraction["tool"]
             if "config" in feature_extraction:
-                params["feature_extraction_config"] = feature_extraction["config"]
+                params["feature_extraction_config"] = _path_arg(
+                    feature_extraction["config"]
+                )
             if "weights" in feature_extraction:
-                params["feature_extraction_weights"] = feature_extraction["weights"]
+                params["feature_extraction_weights"] = _path_arg(
+                    feature_extraction["weights"]
+                )
             if "batch_size" in feature_extraction:
                 params["feature_extraction_batch_size"] = feature_extraction["batch_size"]
 

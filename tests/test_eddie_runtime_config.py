@@ -12,9 +12,11 @@ EDDIE_CONFIG = ROOT / "nextflow" / "conf" / "eddie.config"
 CELLPROFILER_SMOKE = ROOT / "scripts" / "eddie_smoke_cellprofiler.sh"
 CELLPOSE_SMOKE = ROOT / "scripts" / "eddie_smoke_cellpose.sh"
 DEEPPROFILER_SMOKE = ROOT / "scripts" / "eddie_smoke_deepprofiler.sh"
+EDDIE_INSTALL = ROOT / "scripts" / "install_eddie.sh"
+EDDIE_PATH_CONFIGURATOR = ROOT / "scripts" / "configure_eddie_paths.sh"
 LOOP440_CONFIG = ROOT / "config" / "loop440-eddie-smoke.yaml"
-PERMANENT_ROOT = "/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2"
-SCRATCH_ROOT = "/exports/eddie/scratch/${USER}/cptools2-ai-update"
+PROJECT_ROOT_VAR = "${CPTOOLS2_PROJECT_ROOT}"
+SCRATCH_ROOT_VAR = "${CPTOOLS2_SCRATCH_ROOT}"
 
 
 def test_eddie_bootstrap_loads_pinned_modules():
@@ -32,11 +34,12 @@ def test_eddie_bootstrap_loads_pinned_modules():
 def test_eddie_bootstrap_separates_permanent_and_scratch_paths():
     text = BOOTSTRAP.read_text()
 
-    assert f'export CPTOOLS2_PROJECT_ROOT="{PERMANENT_ROOT}"' in text
+    assert "local/eddie_paths.env" in text
+    assert ": \"${CPTOOLS2_PROJECT_ROOT:?" in text
+    assert ": \"${CPTOOLS2_SCRATCH_ROOT:?" in text
     assert 'export CPTOOLS2_PERMANENT_ROOT="${CPTOOLS2_PROJECT_ROOT}"' in text
-    assert f'export CPTOOLS2_SCRATCH_ROOT="{SCRATCH_ROOT}"' in text
     assert 'export CPTOOLS2_CONFIG_ROOT="${CPTOOLS2_PERMANENT_ROOT}/config"' in text
-    assert 'export CPTOOLS2_CONTAINER_DIR="${CPTOOLS2_PERMANENT_ROOT}/containers"' in text
+    assert 'export CPTOOLS2_CONTAINER_DIR="${CPTOOLS2_CONTAINER_DIR:-${CPTOOLS2_PERMANENT_ROOT}/containers}"' in text
     assert 'export CPTOOLS2_VENV="${CPTOOLS2_PERMANENT_ROOT}/.venv"' in text
     assert 'export CPTOOLS2_WORK_ROOT="${CPTOOLS2_SCRATCH_ROOT}/work"' in text
     assert 'export CPTOOLS2_PARAMS_ROOT="${CPTOOLS2_SCRATCH_ROOT}/params"' in text
@@ -68,16 +71,50 @@ def test_eddie_bootstrap_separates_permanent_and_scratch_paths():
 def test_eddie_bootstrap_documents_dry_run_usage():
     text = BOOTSTRAP.read_text()
 
-    assert "cptools2 generate" in text
+    assert "cptools2 pipeline" in text
     assert "--dry-run" in text
-    assert PERMANENT_ROOT in text
+    assert "config/eddie_paths.example.env" in text
+
+
+def test_eddie_installer_configures_paths_install_and_containers():
+    text = EDDIE_INSTALL.read_text()
+
+    assert "--project-root" in text
+    assert "--scratch-root" in text
+    assert "--container-action auto|check|build|skip" in text
+    assert "scripts/configure_eddie_paths.sh" in text
+    assert "REPO_ROOT=\"$(pwd -P)\"" in text
+    assert "run this script from the cptools2 repository root" in text
+    assert '--output "${PROJECT_ROOT}/local/eddie_paths.env"' in text
+    assert 'python -m pip install -e "$REPO_ROOT"' in text
+    assert "NEXTFLOW_VERSION" in text
+    assert "cellprofiler_4.2.8.sif" in text
+    assert "cellpose_sam_1.0.sif" in text
+    assert "deepprofiler_1.0.sif" in text
+    assert "qsub -v" in text
+    assert '${REPO_ROOT}/cptools2/dockerfiles/build_containers.sh' in text
+    assert "/exports/<college>/eddie/<school>/groups/<group>" in text
+    assert "/exports/cmvm/eddie/" not in text
+
+
+def test_eddie_path_configurator_writes_ignored_env_file():
+    text = EDDIE_PATH_CONFIGURATOR.read_text()
+
+    assert "local/eddie_paths.env" in text
+    assert "CPTOOLS2_PROJECT_ROOT" in text
+    assert "CPTOOLS2_SCRATCH_ROOT" in text
+    assert "CPTOOLS2_CONTAINER_DIR" in text
+    assert "--create-dirs" in text
+    assert "/exports/<college>/eddie/<school>/groups/<group>/cptools2" in text
+    assert "/exports/cmvm/eddie/" not in text
 
 
 def test_nextflow_eddie_config_uses_permanent_containers_and_scratch_cache():
     text = EDDIE_CONFIG.read_text()
 
-    assert "def cptools2ProjectRoot = System.getenv('CPTOOLS2_PROJECT_ROOT')" in text
-    assert PERMANENT_ROOT in text
+    assert "def requireEnv" in text
+    assert "def cptools2ProjectRoot = requireEnv('CPTOOLS2_PROJECT_ROOT')" in text
+    assert "Source config/eddie_env.sh after creating local/eddie_paths.env" in text
     assert "def cptools2ContainerDir = System.getenv('CPTOOLS2_CONTAINER_DIR')" in text
     assert 'cellprofiler_4.2.8.sif' in text
     assert 'deepprofiler_1.0.sif' in text
@@ -93,7 +130,7 @@ def test_nextflow_eddie_config_uses_permanent_containers_and_scratch_cache():
     assert 'export HOME="\\$CPTOOLS2_HOME"' in text
     assert "CPTOOLS2_HOME,HOME" not in text
     assert "--bind \\$CPTOOLS2_HOME:/home/\\$USER" in text
-    assert 'cptools2-ai-update' in text
+    assert "requireEnv('CPTOOLS2_SCRATCH_ROOT')" in text
     assert 'SINGULARITY_CACHEDIR' in text
 
 
@@ -146,14 +183,15 @@ def test_loop440_smoke_config_uses_tiny_scratch_input_and_permanent_assets():
         ROOT / "cptools2" / "templates" / "deepprofiler_config.json"
     ).read_text()
 
-    assert "/exports/eddie/scratch/mharvey2/cptools2-ai-update/staging/tiny-plate-set" in text
-    assert "/exports/eddie/scratch/mharvey2/cptools2-ai-update/results/loop440" in text
+    assert f"input_dir: {SCRATCH_ROOT_VAR}/staging/tiny-plate-set" in text
+    assert f"output_dir: {SCRATCH_ROOT_VAR}/results/loop440" in text
     assert "stage_data: false" in text
     assert "max_chunks: 1" in text
     assert "tiny-plate-001: 1" in text
-    assert f"container_path: {PERMANENT_ROOT}/containers" in text
-    assert f"{PERMANENT_ROOT}/cptools2/templates/deepprofiler_config.json" in text
-    assert "/exports/eddie/scratch/mharvey2/cptools2-loop230" not in text
+    assert f"container_path: {PROJECT_ROOT_VAR}/containers" not in text
+    assert "container_path: ${CPTOOLS2_CONTAINER_DIR}" in text
+    assert f"{PROJECT_ROOT_VAR}/cptools2/templates/deepprofiler_config.json" in text
+    assert "/exports/eddie/scratch/" not in text
     assert '"file_format": "tif"' in deepprofiler_config
 
 

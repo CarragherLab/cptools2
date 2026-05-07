@@ -15,7 +15,13 @@
 
 set -eu
 
-PROJECT_ROOT="${CPTOOLS2_PROJECT_ROOT:-/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2}"
+if [ -f "local/eddie_paths.env" ]; then
+    . "local/eddie_paths.env"
+fi
+
+: "${CPTOOLS2_PROJECT_ROOT:?Set CPTOOLS2_PROJECT_ROOT or create local/eddie_paths.env from config/eddie_paths.example.env}"
+
+PROJECT_ROOT="${CPTOOLS2_PROJECT_ROOT}"
 SCRATCH_ROOT="${CPTOOLS2_SCRATCH_ROOT:-/exports/eddie/scratch/${USER}/cptools2-ai-update}"
 WORK_ROOT="${CPTOOLS2_WORK_ROOT:-${SCRATCH_ROOT}/work}"
 SMOKE_ROOT="${SCRATCH_ROOT}/smoke/deepprofiler"

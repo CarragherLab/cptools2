@@ -4,8 +4,10 @@
 # Source this file before running a dry-run or submitting work from the mirror.
 #
 # Example:
-#   source /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/config/eddie_env.sh
-#   cptools2 generate /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/config/loop400.yaml --dry-run
+#   cp config/eddie_paths.example.env local/eddie_paths.env
+#   # edit local/eddie_paths.env for your Eddie project
+#   source config/eddie_env.sh
+#   cptools2 pipeline config/loop440-eddie-smoke.yaml --dry-run
 
 source /etc/profile.d/modules.sh
 module purge
@@ -14,13 +16,20 @@ module load roslin/nextflow/25.10.2
 module load singularity/4.3.4
 module load miniforge/25.3.1-0
 
-export CPTOOLS2_PROJECT_ROOT="/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2"
+if [ -f "local/eddie_paths.env" ]; then
+    . "local/eddie_paths.env"
+elif [ -f "${CPTOOLS2_PROJECT_ROOT:-}/local/eddie_paths.env" ]; then
+    . "${CPTOOLS2_PROJECT_ROOT}/local/eddie_paths.env"
+fi
+
+: "${CPTOOLS2_PROJECT_ROOT:?Set CPTOOLS2_PROJECT_ROOT or create local/eddie_paths.env from config/eddie_paths.example.env}"
+: "${CPTOOLS2_SCRATCH_ROOT:?Set CPTOOLS2_SCRATCH_ROOT or create local/eddie_paths.env from config/eddie_paths.example.env}"
+
 export CPTOOLS2_PERMANENT_ROOT="${CPTOOLS2_PROJECT_ROOT}"
-export CPTOOLS2_SCRATCH_ROOT="/exports/eddie/scratch/${USER}/cptools2-ai-update"
 
 # Permanent configuration and container references stay on the mirror.
 export CPTOOLS2_CONFIG_ROOT="${CPTOOLS2_PERMANENT_ROOT}/config"
-export CPTOOLS2_CONTAINER_DIR="${CPTOOLS2_PERMANENT_ROOT}/containers"
+export CPTOOLS2_CONTAINER_DIR="${CPTOOLS2_CONTAINER_DIR:-${CPTOOLS2_PERMANENT_ROOT}/containers}"
 export CPTOOLS2_VENV="${CPTOOLS2_PERMANENT_ROOT}/.venv"
 
 # Runtime state stays on scratch, with work kept under scratch/work.
