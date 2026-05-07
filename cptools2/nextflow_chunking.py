@@ -6,6 +6,7 @@ creation.
 """
 
 import argparse
+import csv
 import json
 import os
 import shutil
@@ -18,15 +19,18 @@ os.environ.setdefault("RAYON_NUM_THREADS", "1")
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("MKL_NUM_THREADS", "1")
 
-import polars as pl
 from parserix import parse as _parse
-
-from cptools2 import filelist
 
 
 DEFAULT_CHUNK_SIZE = 96
 class ChunkingError(Exception):
     """Raised when a staged plate cannot be indexed or chunked safely."""
+
+
+def _pl():
+    import polars as pl
+
+    return pl
 
 
 def _normalise_expected_channels(expected_channels):
@@ -119,12 +123,31 @@ def _is_zero_location_file_for_chunk(location_file, chunk_manifest):
 
 def _write_empty_nuclei_csv(output_file):
     output_file.parent.mkdir(parents=True, exist_ok=True)
-    pl.DataFrame(
-        schema={
-            "Nuclei_Location_Center_X": pl.Float64,
-            "Nuclei_Location_Center_Y": pl.Float64,
-        }
-    ).write_csv(output_file)
+    with output_file.open("w", newline="") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=[
+                "Nuclei_Location_Center_X",
+                "Nuclei_Location_Center_Y",
+            ],
+        )
+        writer.writeheader()
+
+
+def _read_csv_dicts(path):
+    with Path(path).open(newline="") as handle:
+        reader = csv.DictReader(handle)
+        fieldnames = reader.fieldnames or []
+        return fieldnames, list(reader)
+
+
+def _write_csv_dicts(path, rows, fieldnames):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
 
 
 def build_deepprofiler_input_package(
@@ -147,14 +170,13 @@ def build_deepprofiler_input_package(
         for index, channel_name in enumerate(config_channels)
     }
 
-    df = pl.read_csv(chunk_manifest)
+    manifest_columns, manifest_rows = _read_csv_dicts(chunk_manifest)
     required = {"plate", "well", "site", "channel", "image_path", "image_set_id"}
-    missing = sorted(required.difference(df.columns))
+    missing = sorted(required.difference(manifest_columns))
     if missing:
         raise ChunkingError(
             "DeepProfiler chunk manifest missing required columns: " + str(missing)
         )
-    df = df.with_columns(pl.col("channel").cast(str))
 
     images_root = output_root / "images"
     metadata_dir = output_root / "metadata"
@@ -168,9 +190,13 @@ def build_deepprofiler_input_package(
 
     metadata_rows = []
     expected_sites = []
-    for image_set_id in df["image_set_id"].unique().sort():
-        group = df.filter(pl.col("image_set_id") == image_set_id)
-        first = group.row(0, named=True)
+    groups = {}
+    for row in manifest_rows:
+        row["channel"] = str(row["channel"])
+        groups.setdefault(row["image_set_id"], []).append(row)
+    for image_set_id in sorted(groups):
+        group = groups[image_set_id]
+        first = group[0]
         plate = str(first["plate"])
         well = str(first["well"])
         site = str(first["site"])
@@ -184,14 +210,14 @@ def build_deepprofiler_input_package(
             label_field: resolved_label_value,
             "Metadata_ImageSet": image_set_id,
         }
-        observed = {str(value) for value in group["channel"].to_list()}
+        observed = {str(value["channel"]) for value in group}
         for manifest_channel, column_name in config_channel_map.items():
             if manifest_channel not in observed:
                 raise ChunkingError(
                     f"Missing channel {manifest_channel} for DeepProfiler image set {image_set_id}"
                 )
-            channel_row = group.filter(pl.col("channel") == manifest_channel).row(
-                0, named=True
+            channel_row = next(
+                value for value in group if value["channel"] == manifest_channel
             )
             source_image = Path(channel_row["image_path"])
             if _normalise_image_format(source_image.suffix) != resolved_image_format:
@@ -214,9 +240,7 @@ def build_deepprofiler_input_package(
         "Metadata_ImageSet",
         *config_channels,
     ]
-    pl.DataFrame(metadata_rows).select(metadata_columns).write_csv(
-        metadata_dir / "index.csv"
-    )
+    _write_csv_dicts(metadata_dir / "index.csv", metadata_rows, metadata_columns)
 
     location_files = _collect_location_files(locations_dir)
     if not location_files:
@@ -229,21 +253,16 @@ def build_deepprofiler_input_package(
     for location_file in location_files:
         if _is_zero_location_file_for_chunk(location_file, chunk_manifest):
             chunk_locations_file_seen = True
-        loc_df = pl.read_csv(location_file)
-        missing_loc = sorted(required_loc.difference(loc_df.columns))
+        loc_columns, loc_rows = _read_csv_dicts(location_file)
+        missing_loc = sorted(required_loc.difference(loc_columns))
         if missing_loc:
             raise ChunkingError(
                 "Cellpose location CSV missing required columns: " + str(missing_loc)
             )
-        if loc_df.height == 0:
+        if not loc_rows:
             continue
-        loc_df = loc_df.with_columns(
-            pl.col("plate").cast(str),
-            pl.col("well").cast(str),
-            pl.col("site").cast(str),
-        )
-        for row in loc_df.iter_rows(named=True):
-            key = (row["plate"], row["well"], row["site"])
+        for row in loc_rows:
+            key = (str(row["plate"]), str(row["well"]), str(row["site"]))
             location_rows.setdefault(key, []).append(row)
     if not chunk_locations_file_seen:
         raise ChunkingError(
@@ -255,12 +274,21 @@ def build_deepprofiler_input_package(
         output_file = locations_output / plate / f"{well}-f{site}-Nuclei.csv"
         output_file.parent.mkdir(parents=True, exist_ok=True)
         if per_site:
-            pl.DataFrame(per_site).select(
+            nuclei_rows = [
+                {
+                    "Nuclei_Location_Center_X": float(row["x"]),
+                    "Nuclei_Location_Center_Y": float(row["y"]),
+                }
+                for row in per_site
+            ]
+            _write_csv_dicts(
+                output_file,
+                nuclei_rows,
                 [
-                    pl.col("x").cast(float).alias("Nuclei_Location_Center_X"),
-                    pl.col("y").cast(float).alias("Nuclei_Location_Center_Y"),
-                ]
-            ).write_csv(output_file)
+                    "Nuclei_Location_Center_X",
+                    "Nuclei_Location_Center_Y",
+                ],
+            )
         elif chunk_locations_file_seen:
             _write_empty_nuclei_csv(output_file)
         else:
@@ -295,6 +323,9 @@ def build_image_set_index(
         Image extension to discover.
     """
     plate_dir = os.path.abspath(plate_dir)
+    pl = _pl()
+    from cptools2 import filelist
+
     expected_channels = _normalise_expected_channels(expected_channels)
     _is_new_ix, image_paths = filelist.detect_plate_layout(
         plate_dir,
@@ -333,6 +364,7 @@ def build_image_set_index(
 
 
 def _validate_complete_image_sets(df, expected_channels=None):
+    pl = _pl()
     groups = df.group_by("image_set_id", maintain_order=True).agg(
         pl.col("channel").unique().alias("channels")
     )
@@ -378,6 +410,7 @@ def split_image_set_index(
     if max_chunks is not None and max_chunks <= 0:
         raise ValueError("max_chunks must be greater than zero when provided")
 
+    pl = _pl()
     df = pl.read_csv(index_csv)
     required = {
         "plate",
