@@ -18,15 +18,6 @@
       "mask_objects": false
     }
   },
-  "model": {
-    "name": "efficientnet",
-    "augmentation": false,
-    "profile": {
-      "feature_layer": "block6a_activation",
-      "checkpoint": "combinedset_cellsout_e30.hdf5",
-      "batch_size": 128
-    }
-  },
   "prepare": {
     "illumination_correction": {
       "down_scale_factor": 8,
@@ -35,5 +26,44 @@
     "compression": {
       "implement": false
     }
+  },
+  "train": {
+    "partition": {
+      "targets": ["Metadata_Compound"],
+      "split_field": "Metadata_Plate",
+      "training": [],
+      "validation": []
+    },
+    "model": {
+      "name": "efficientnet",
+      "crop_generator": "sampled_crop_generator",
+      "metrics": ["accuracy", "top_k"],
+      "epochs": 1,
+      "initialization": "ImageNet",
+      "params": {
+        "learning_rate": 0.005,
+        "batch_size": 128,
+        "conv_blocks": 0,
+        "feature_dim": 256,
+        "pooling": "avg"
+      }
+    },
+    "sampling": {
+      "factor": 0.5,
+      "workers": 1,
+      "cache_size": 256
+    },
+    "validation": {
+      "frequency": 1,
+      "top_k": 5,
+      "batch_size": 32,
+      "frame": "val",
+      "sample_first_crops": true
+    }
+  },
+  "profile": {
+    "feature_layer": "block6a_activation",
+    "checkpoint": "combinedset_cellsout_e30.hdf5",
+    "batch_size": 128
   }
 }

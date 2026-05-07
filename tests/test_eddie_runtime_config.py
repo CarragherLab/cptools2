@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import polars as pl
@@ -232,6 +233,27 @@ def test_loop440_smoke_config_uses_tiny_scratch_input_and_permanent_assets():
     assert f"{PROJECT_ROOT_VAR}/cptools2/templates/deepprofiler_config.json" in text
     assert "/exports/eddie/scratch/" not in text
     assert '"file_format": "tif"' in deepprofiler_config
+
+
+def test_deepprofiler_config_uses_documented_profile_and_train_sections():
+    config = json.loads(
+        (ROOT / "cptools2" / "templates" / "deepprofiler_config.json").read_text()
+    )
+
+    assert config["dataset"]["images"]["channels"] == [
+        "DNA",
+        "RNA",
+        "ER",
+        "AGP",
+        "Mito",
+    ]
+    assert "profile" in config
+    assert config["profile"]["feature_layer"] == "block6a_activation"
+    assert config["profile"]["checkpoint"] == "combinedset_cellsout_e30.hdf5"
+    assert config["train"]["partition"]["targets"] == ["Metadata_Compound"]
+    assert config["train"]["partition"]["split_field"] == "Metadata_Plate"
+    assert config["train"]["model"]["name"] == "efficientnet"
+    assert "model" not in config
 
 
 def test_loop440_tiny_plate_builder_creates_indexable_real_tiffs(tmp_path):
