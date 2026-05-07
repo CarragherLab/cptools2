@@ -43,6 +43,7 @@ expected_channels:
   - 5
 
 stages:
+  - illum
   - segment
   - extract
 
