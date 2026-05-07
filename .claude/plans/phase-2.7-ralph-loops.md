@@ -405,7 +405,7 @@ on_max_iterations: checkpoint
 handoff_summary:
   done: "Documented the final flat-output and batch-work-dir layout in the phase plan, operational plan, and TODOs."
   failed: "Local Eddie dry-run could not complete on this Windows workspace: `python -m cptools2 pipeline config/loop230-sarah-screen.yaml --dry-run` failed in `parse_yaml.generate_params_json` with `PermissionError: [WinError 5] Access is denied: 'C:\\exports'` before Nextflow started."
-  needed: "Run the Loop 230 Sarah-screen dry-run and a small Eddie batch on Eddie itself, then record trace/report/timeline, peak scratch usage, and measured scratch_work_factor/maxForks tuning."
+  needed: "Run the Loop 230 example-screen dry-run and a small Eddie batch on Eddie itself, then record trace/report/timeline, peak scratch usage, and measured scratch_work_factor/maxForks tuning."
 
 todos:
   - id: "loop-380-1"
@@ -417,7 +417,7 @@ todos:
     complexity: low
     priority: high
   - id: "loop-380-2"
-    content: "Run or prepare Eddie dry-run for the Loop 230 Sarah-screen config and inspect batch paths"
+    content: "Run or prepare Eddie dry-run for the Loop 230 example-screen config and inspect batch paths"
     skill: "eddie-orchestrate"
     agent: "ralph-loop-worker"
     outcome: "Dry-run output confirms work/batch_001, trace paths, unchanged output_dir, and expected params file"

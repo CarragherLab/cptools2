@@ -81,7 +81,7 @@ module load python/3.11.4
 export OMP_NUM_THREADS=$NSLOTS
 
 # Validate inputs
-INPUT=/exports/cmvm/eddie/scs/groups/chandranlabs/myproject/data
+INPUT=/exports/<college>/eddie/<school>/groups/<group>/myproject/data
 if [ ! -d "$INPUT" ]; then
     echo "ERROR: Input directory not found: $INPUT"
     exit 1

@@ -7,16 +7,16 @@ This file gives Eddie agents the project-specific paths and conventions for cpto
 ```text
 PROJECT_NAME=cptools2
 COLLEGE=cmvm
-USER=mharvey2
-GROUP=ChandranLabs
+USER=<UUN>
+GROUP=<group>
 ```
 
 ## Standard Eddie Paths
 
 ```text
 EDDIE_HOST=eddie.ecdf.ed.ac.uk
-EDDIE_GROUP_ROOT=/exports/cmvm/eddie/smgphs/groups/ChandranLabs
-DATASTORE_ROOT=/exports/cmvm/datastore/smgphs/groups/ChandranLabs
+EDDIE_GROUP_ROOT=/exports/<college>/eddie/<school>/groups/<group>
+DATASTORE_ROOT=/exports/<college>/datastore/<school>/groups/<group>
 SCRATCH_ROOT=/exports/eddie/scratch/$USER
 ```
 

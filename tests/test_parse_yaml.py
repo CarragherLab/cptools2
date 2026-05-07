@@ -267,27 +267,27 @@ def test_parse_config_file_explicit_plates_and_staging(tmp_path):
     """parse_config_file accepts explicit plates and stage_data for DataStore runs."""
     config_file = tmp_path / "config.yaml"
     config_file.write_text(
-        "input_dir: /exports/igmm/datastore/ImageXpress2020/imagexpress/Sarah-screen\n"
-        "output_dir: /exports/eddie/scratch/mharvey2/cptools2-loop230\n"
+        "input_dir: /exports/<college>/datastore/<project>/imagexpress/<screen>\n"
+        "output_dir: /exports/eddie/scratch/test-user/cptools2-loop230\n"
         "pipeline: tests/example_pipeline.cppipe\n"
         "commands location: /tmp/commands\n"
         "plates:\n"
-        "  - 3723-D-100\n"
+        "  - example-plate-001\n"
         "plate_sizes_gb:\n"
-        "  3723-D-100: 103\n"
+        "  example-plate-001: 103\n"
         "stage_data: true\n"
     )
 
     config = parse_yaml.parse_config_file(str(config_file))
 
     assert config["experiment_args"] == {
-        "exp_dir": "/exports/igmm/datastore/ImageXpress2020/imagexpress/Sarah-screen"
+        "exp_dir": "/exports/<college>/datastore/<project>/imagexpress/<screen>"
     }
     assert config["create_command_args"]["location"] == (
-        "/exports/eddie/scratch/mharvey2/cptools2-loop230"
+        "/exports/eddie/scratch/test-user/cptools2-loop230"
     )
-    assert config["plates"] == ["3723-D-100"]
-    assert config["plate_sizes_gb"] == {"3723-D-100": 103}
+    assert config["plates"] == ["example-plate-001"]
+    assert config["plate_sizes_gb"] == {"example-plate-001": 103}
     assert config["stage_data"] is True
 
 
@@ -295,11 +295,11 @@ def test_generate_params_json_explicit_plates_and_staging(tmp_path):
     """generate_params_json emits Nextflow plates and stage_data params."""
     config_file = tmp_path / "config.yaml"
     config_file.write_text(
-        "input_dir: /exports/igmm/datastore/ImageXpress2020/imagexpress/Sarah-screen\n"
-        "output_dir: /exports/eddie/scratch/mharvey2/cptools2-loop230\n"
+        "input_dir: /exports/<college>/datastore/<project>/imagexpress/<screen>\n"
+        "output_dir: /exports/eddie/scratch/test-user/cptools2-loop230\n"
         "pipeline: tests/example_pipeline.cppipe\n"
         "commands location: /tmp/commands\n"
-        "plates: 3723-D-100,13738-D-30\n"
+        "plates: example-plate-001,13738-D-30\n"
         "stage_data: true\n"
     )
     config = parse_yaml.parse_config_file(str(config_file))
@@ -309,21 +309,21 @@ def test_generate_params_json_explicit_plates_and_staging(tmp_path):
     with open(output_path) as f:
         params = json.load(f)
 
-    assert params["plates"] == ["3723-D-100", "13738-D-30"]
+    assert params["plates"] == ["example-plate-001", "13738-D-30"]
     assert params["stage_data"] is True
     assert params["input_dir"] == (
-        "/exports/igmm/datastore/ImageXpress2020/imagexpress/Sarah-screen"
+        "/exports/<college>/datastore/<project>/imagexpress/<screen>"
     )
-    assert params["output_dir"] == "/exports/eddie/scratch/mharvey2/cptools2-loop230"
+    assert params["output_dir"] == "/exports/eddie/scratch/test-user/cptools2-loop230"
 
 
 def test_generate_params_json_data_destination(tmp_path):
     """generate_params_json emits the durable destination for stage-out."""
     config_file = tmp_path / "config.yaml"
     config_file.write_text(
-        "input_dir: /exports/igmm/datastore/ImageXpress2020/imagexpress/Sarah-screen\n"
-        "output_dir: /exports/eddie/scratch/mharvey2/cptools2-loop230\n"
-        "data_destination: /exports/cmvm/eddie/smgphs/groups/ChandranLabs/results\n"
+        "input_dir: /exports/<college>/datastore/<project>/imagexpress/<screen>\n"
+        "output_dir: /exports/eddie/scratch/test-user/cptools2-loop230\n"
+        "data_destination: /exports/site/eddie/school/groups/example/results\n"
         "pipeline: tests/example_pipeline.cppipe\n"
         "stage_data: true\n"
     )
@@ -335,7 +335,7 @@ def test_generate_params_json_data_destination(tmp_path):
         params = json.load(f)
 
     assert params["data_destination"] == (
-        "/exports/cmvm/eddie/smgphs/groups/ChandranLabs/results"
+        "/exports/site/eddie/school/groups/example/results"
     )
 
 
@@ -343,13 +343,13 @@ def test_create_commands_defaults_commands_location_to_output_dir():
     """commands location defaults to <output_dir>/commands."""
     yaml_dict = {
         "pipeline": "tests/example_pipeline.cppipe",
-        "output_dir": "/exports/eddie/scratch/mharvey2/cptools2-loop230",
+        "output_dir": "/exports/eddie/scratch/test-user/cptools2-loop230",
     }
 
     result = parse_yaml.create_commands(yaml_dict)
 
     assert result["commands_location"] == (
-        "/exports/eddie/scratch/mharvey2/cptools2-loop230/commands"
+        "/exports/eddie/scratch/test-user/cptools2-loop230/commands"
     )
 
 
@@ -357,12 +357,12 @@ def test_generate_params_json_nextflow_pipeline_paths(tmp_path):
     """generate_params_json emits explicit Nextflow CellProfiler pipeline paths."""
     config_file = tmp_path / "config.yaml"
     config_file.write_text(
-        "input_dir: /exports/igmm/datastore/ImageXpress2020/imagexpress/Sarah-screen\n"
-        "output_dir: /exports/eddie/scratch/mharvey2/cptools2-loop230\n"
-        "pipeline: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/nuclear_segmentation.cppipe\n"
-        "illum_pipeline_calculate: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/illum_calculate.cppipe\n"
-        "illum_pipeline_apply: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/illum_apply.cppipe\n"
-        "seg_pipeline: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/nuclear_segmentation.cppipe\n"
+        "input_dir: /exports/<college>/datastore/<project>/imagexpress/<screen>\n"
+        "output_dir: /exports/eddie/scratch/test-user/cptools2-loop230\n"
+        "pipeline: /exports/eddie/scratch/test-user/cptools2-loop230/pipelines/nuclear_segmentation.cppipe\n"
+        "illum_pipeline_calculate: /exports/eddie/scratch/test-user/cptools2-loop230/pipelines/illum_calculate.cppipe\n"
+        "illum_pipeline_apply: /exports/eddie/scratch/test-user/cptools2-loop230/pipelines/illum_apply.cppipe\n"
+        "seg_pipeline: /exports/eddie/scratch/test-user/cptools2-loop230/pipelines/nuclear_segmentation.cppipe\n"
         "stage_data: true\n"
     )
     config = parse_yaml.parse_config_file(str(config_file))
@@ -381,8 +381,8 @@ def test_datastore_input_requires_stage_data(tmp_path):
     """DataStore-backed YAML configs must stage data before compute."""
     config_file = tmp_path / "config.yaml"
     config_file.write_text(
-        "input_dir: /exports/igmm/datastore/ImageXpress2020/imagexpress/Sarah-screen\n"
-        "output_dir: /exports/eddie/scratch/mharvey2/cptools2-loop230\n"
+        "input_dir: /exports/<college>/datastore/<project>/imagexpress/<screen>\n"
+        "output_dir: /exports/eddie/scratch/test-user/cptools2-loop230\n"
         "pipeline: tests/example_pipeline.cppipe\n"
         "stage_data: false\n"
     )

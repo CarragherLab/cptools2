@@ -1,13 +1,13 @@
 # Design: Eddie Deployment — Containers, Staging, and End-to-End Testing
 
-Reference: ~/.gstack/projects/CarragherLab-cptools2/mharvey2-ai-update-design-20260407-114442.md
+Reference: ~/.gstack/projects/CarragherLab-cptools2/<UUN>-ai-update-design-20260407-114442.md
 Branch: ai-update
 Status: APPROVED
 
 ## Summary
 
 Three sub-phases to get cptools2 running on Eddie:
-- C1: Build and deploy 3 Singularity containers to /exports/cmvm/.../chandranlabs/cptools2/containers/
+- C1: Build and deploy 3 Singularity containers to /exports/<college>/.../<group>/cptools2/containers/
 - C2: Add STAGE_IN/STAGE_OUT Nextflow processes + batch-aware orchestration (migrate from job.py)
 - C3: End-to-end test on a real plate
 

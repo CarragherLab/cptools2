@@ -12,12 +12,12 @@ loops_total: 7
 
 ## Objective
 
-Prove that cptools2 can run controlled Eddie dry-runs and small smoke tests for CellProfiler, Cellpose, and DeepProfiler from the permanent ChandranLabs mirror while keeping all runtime cache, work, logs, traces, and generated run artifacts inside the dedicated scratch root.
+Prove that cptools2 can run controlled Eddie dry-runs and small smoke tests for CellProfiler, Cellpose, and DeepProfiler from the permanent <group> mirror while keeping all runtime cache, work, logs, traces, and generated run artifacts inside the dedicated scratch root.
 
 ## Decisions Locked In
 
-- Permanent project mirror is authoritative: `/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2`.
-- Scratch runtime root is `/exports/eddie/scratch/mharvey2/cptools2-ai-update`.
+- Permanent project mirror is authoritative: `${CPTOOLS2_PROJECT_ROOT}`.
+- Scratch runtime root is `${CPTOOLS2_SCRATCH_ROOT}`.
 - Stable configs, environment bootstrap files, container manifests, and container images live in permanent space.
 - Runtime cache, Nextflow work directories, generated params, staged test data, logs, traces, reports, and timelines live under the scratch root.
 - Use dry-runs and minimal smoke tests before any broader Eddie execution.
@@ -32,19 +32,19 @@ Prove that cptools2 can run controlled Eddie dry-runs and small smoke tests for 
 | Ralph loops | `.claude/plans/phase-2.8-ralph-loops.md` | Executable development loops |
 | TODO reconciliation | `TODOs.md` | Current work queue for unattended/resumed development |
 | Permanent bootstrap/config candidates | `config/`, `nextflow/conf/` | Reproducible Eddie module/container setup |
-| Scratch evidence | `/exports/eddie/scratch/mharvey2/cptools2-ai-update/` | Logs, traces, reports, params, and run snapshots |
+| Scratch evidence | `${CPTOOLS2_SCRATCH_ROOT}/` | Logs, traces, reports, params, and run snapshots |
 | Validation notes | this plan and follow-up docs | Evidence for what works, what is blocked, and why |
 
 ## Eddie Layout
 
 ```text
-/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/
+${CPTOOLS2_PROJECT_ROOT}/
   config/                 # stable project configs and environment bootstrap
   containers/             # .sif images and manifests
   nextflow/               # pipeline code and Eddie config
   cptools2/               # package source
 
-/exports/eddie/scratch/mharvey2/cptools2-ai-update/
+${CPTOOLS2_SCRATCH_ROOT}/
   work/                   # Nextflow work dirs, batch_* work dirs, cache
   params/                 # generated runtime params only
   logs/                   # command logs and scheduler logs
@@ -80,10 +80,10 @@ Prove that cptools2 can run controlled Eddie dry-runs and small smoke tests for 
 
 ## Current Evidence
 
-- SSH to Eddie succeeds as `mharvey2` on `login02.ecdf.ed.ac.uk`.
+- SSH to Eddie succeeds as `<UUN>` on `login02.ecdf.ed.ac.uk`.
 - Permanent mirror exists and is writable.
 - Permanent mirror is stale relative to local development at commit `062a0da` and has uncommitted/untracked remote changes, so mirror sync needs a snapshot and a conservative update path.
-- Scratch root `/exports/eddie/scratch/mharvey2/cptools2-ai-update` exists with `work`, `params`, `logs`, `traces`, `staging`, and `snapshots`.
+- Scratch root `${CPTOOLS2_SCRATCH_ROOT}` exists with `work`, `params`, `logs`, `traces`, `staging`, and `snapshots`.
 - Available validated module candidates include `roslin/nextflow/25.10.2`, `singularity/4.3.4`, and `miniforge/25.3.1-0`.
 - Existing permanent containers include `cellprofiler_4.2.8.sif`, `cellpose_sam_1.0.sif`, and `deepprofiler_1.0.sif`.
 - Container sizes observed on Eddie: CellProfiler `1,635,794,944` bytes, Cellpose-SAM `7,760,654,336` bytes, DeepProfiler `3,383,758,848` bytes.
@@ -96,13 +96,13 @@ Prove that cptools2 can run controlled Eddie dry-runs and small smoke tests for 
 - Cellpose first GPU smoke job `55264551` ran immediately but used a bad probe (`cellpose.__version__`) and produced a Python traceback; qacct reported `exit_status 0` because the original script piped through `tee`, masking the Python failure.
 - Smoke scripts were corrected to preserve the container command exit status and avoid `tee` masking failures. Corrected Cellpose job `55264576` completed with `exit_status 0`, `failed 0`, `ru_wallclock 226.879`, `maxvmem 17.010G`, Cellpose `4.1.1`, and CUDA visible on `NVIDIA H200 NVL`.
 - DeepProfiler GPU smoke job `55269157` completed with `exit_status 0`, `failed 0`, `ru_wallclock 210.269`, `maxvmem 16.212G`, TensorFlow `2.5.3`, and a visible GPU device. TensorFlow logs confirm CUDA libraries and an `NVIDIA H200 NVL` were detected.
-- After the GPU smoke checks, `qstat -u mharvey2` showed no lingering jobs.
+- After the GPU smoke checks, `qstat -u <UUN>` showed no lingering jobs.
 
 ## Blockers and Decision Points
 
 - Remote mirror update strategy: the permanent mirror has local remote modifications. We need either a branch/patch-based update, an rsync with explicit exclusions, or user approval to reset/replace the mirror.
 - Container manifest deployment: the expected manifest template exists locally, but the permanent `containers/` directory currently exposes only `.sif` and log files. Loop 410 should decide whether to generate/deploy a manifest before smoke tests.
-- Minimal test dataset: choose whether to reuse the Loop 230 Sarah-screen sample, a tiny staged fixture, or a new purpose-built smoke dataset.
+- Minimal test dataset: choose whether to reuse the Loop 230 example-screen sample, a tiny staged fixture, or a new purpose-built smoke dataset.
 - GPU validation queue: Cellpose and DeepProfiler require Eddie GPU availability and `--nv`; live scheduler syntax is `-q gpu -l gpu=1`, not legacy `gpu-a100`/`gpus`.
 - DeepProfiler assets: confirm which config, checkpoint, and weights should be mounted for the minimal validation.
 - Cleanup policy for validation: default should leave evidence until reviewed; enable `--clean-work` only after a successful evidence-preserving run.
@@ -121,7 +121,7 @@ Current comparison:
 Conservative strategy:
 
 1. Do not run `git reset`, `git clean`, `git pull`, or `rsync --delete` in the permanent mirror without explicit approval.
-2. Preserve a remote evidence snapshot under `/exports/eddie/scratch/mharvey2/cptools2-ai-update/snapshots/` before any sync.
+2. Preserve a remote evidence snapshot under `${CPTOOLS2_SCRATCH_ROOT}/snapshots/` before any sync.
 3. Prefer deploying reviewed local commits over the permanent mirror only after the remote dirty files have either been archived or judged disposable.
 4. Exclude `containers/`, `.nextflow/`, `.nextflow.log*`, and scratch/runtime artifacts from source sync operations.
 5. Deploy the container manifest as an additive file only if absent or after confirming the existing file should be replaced.
@@ -142,16 +142,16 @@ No approval needed for non-destructive actions already performed:
 
 ## Loop 440 Smoke Strategy
 
-The smallest safe end-to-end smoke should not reuse the full Loop 230 Sarah-screen plate directly. `max_chunks: 1` limits processing after image-set indexing, but it does not avoid whole-plate staging when `stage_data: true`; the Loop 230 plate is documented as about 103 GB. That is larger than a smoke test and would obscure whether failures come from orchestration or data volume.
+The smallest safe end-to-end smoke should not reuse the full Loop 230 example-screen plate directly. `max_chunks: 1` limits processing after image-set indexing, but it does not avoid whole-plate staging when `stage_data: true`; the Loop 230 plate is documented as about 103 GB. That is larger than a smoke test and would obscure whether failures come from orchestration or data volume.
 
 Recommended path:
 
 1. Use startup probe evidence from Loops 420 and 430 as the container-runtime gate.
-2. Create or identify a tiny staged plate under `/exports/eddie/scratch/mharvey2/cptools2-ai-update/staging/tiny-plate-set`.
+2. Create or identify a tiny staged plate under `${CPTOOLS2_SCRATCH_ROOT}/staging/tiny-plate-set`.
 3. Keep `stage_data: false` for the first end-to-end smoke so staging/DataStore transfer is not mixed with Cellpose/DeepProfiler execution.
 4. Use `max_chunks: 1`, `batch_size: 1` for Cellpose, and a small DeepProfiler batch size.
-5. Write results, params, work, traces, reports, and logs under `/exports/eddie/scratch/mharvey2/cptools2-ai-update`.
-6. Reference stable templates, containers, and config from `/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2`.
+5. Write results, params, work, traces, reports, and logs under `${CPTOOLS2_SCRATCH_ROOT}`.
+6. Reference stable templates, containers, and config from `${CPTOOLS2_PROJECT_ROOT}`.
 7. Do not enable cleanup for the first end-to-end smoke; preserve evidence until reviewed.
 
 Local candidate config:
@@ -161,18 +161,18 @@ Local candidate config:
 Current evidence:
 
 - The tiny staged plate exists in scratch and indexes/chunks successfully on Eddie:
-  `/exports/eddie/scratch/mharvey2/cptools2-ai-update/staging/tiny-plate-set/tiny-plate-001`.
+  `${CPTOOLS2_SCRATCH_ROOT}/staging/tiny-plate-set/tiny-plate-001`.
 - User explicitly approved resetting the shared permanent mirror source/config/docs
   state to GitHub `origin/ai-update`; `containers/` was preserved as permanent
   untracked asset storage.
 - The permanent mirror is now on `ai-update` at `5e952d5`.
 - A permanent project virtualenv was created at
-  `/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/.venv`; pip cache and
+  `${CPTOOLS2_PROJECT_ROOT}/.venv`; pip cache and
   temporary build work were kept under
-  `/exports/eddie/scratch/mharvey2/cptools2-ai-update/work`.
+  `${CPTOOLS2_SCRATCH_ROOT}/work`.
 - The Loop 440 dry-run now passes from the permanent mirror using
   `config/loop440-eddie-smoke.yaml`. It writes params and batch metadata under
-  `/exports/eddie/scratch/mharvey2/cptools2-ai-update/results/loop440` and skips
+  `${CPTOOLS2_SCRATCH_ROOT}/results/loop440` and skips
   Nextflow submission as intended.
 
 Next decision:

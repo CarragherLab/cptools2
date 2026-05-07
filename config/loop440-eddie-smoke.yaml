@@ -2,10 +2,10 @@
 #
 # This file records the intended Eddie runtime contract for a future tiny
 # end-to-end smoke. It is not a production config and should not be pointed at
-# the full Sarah-screen plate unless broad staging is explicitly approved.
+# the full example-screen plate unless broad staging is explicitly approved.
 
-input_dir: /exports/eddie/scratch/mharvey2/cptools2-ai-update/staging/tiny-plate-set
-output_dir: /exports/eddie/scratch/mharvey2/cptools2-ai-update/results/loop440
+input_dir: ${CPTOOLS2_SCRATCH_ROOT}/staging/tiny-plate-set
+output_dir: ${CPTOOLS2_SCRATCH_ROOT}/results/loop440
 
 plates:
   - tiny-plate-001
@@ -19,14 +19,14 @@ scratch_quota_gb: 200
 scratch_utilisation_fraction: 0.75
 scratch_work_factor: 3.5
 
-container_path: /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/containers
+container_path: ${CPTOOLS2_CONTAINER_DIR}
 
-illum_pipeline_calculate: /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/cptools2/templates/illum_calculate.cppipe
-illum_pipeline_apply: /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/cptools2/templates/illum_apply.cppipe
-seg_pipeline: /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/cptools2/templates/nuclear_segmentation.cppipe
-pipeline: /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/cptools2/templates/nuclear_segmentation.cppipe
+illum_pipeline_calculate: ${CPTOOLS2_PROJECT_ROOT}/cptools2/templates/illum_calculate.cppipe
+illum_pipeline_apply: ${CPTOOLS2_PROJECT_ROOT}/cptools2/templates/illum_apply.cppipe
+seg_pipeline: ${CPTOOLS2_PROJECT_ROOT}/cptools2/templates/nuclear_segmentation.cppipe
+pipeline: ${CPTOOLS2_PROJECT_ROOT}/cptools2/templates/nuclear_segmentation.cppipe
 
-commands location: /exports/eddie/scratch/mharvey2/cptools2-ai-update/commands/loop440
+commands location: ${CPTOOLS2_SCRATCH_ROOT}/commands/loop440
 
 channels:
   - DNA
@@ -54,5 +54,5 @@ segmentation:
 
 feature_extraction:
   tool: deepprofiler
-  config: /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/cptools2/templates/deepprofiler_config.json
+  config: ${CPTOOLS2_PROJECT_ROOT}/cptools2/templates/deepprofiler_config.json
   batch_size: 8

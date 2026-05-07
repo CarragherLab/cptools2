@@ -108,6 +108,6 @@ git worktree add ../cptools2-lane-d ai-update
 - **Code review**: completed 2026-04-06 (3 critical bugs, 3 high, 21 additional issues)
 - **Eng review (Phase 1)**: completed 2026-04-07 (2 issues found, 0 critical gaps, CLEARED)
 - **Investigate**: completed 2026-04-07 (root cause: parallel lane interface mismatches, Bug 2 downgraded)
-- **Loop 230 burn-down**: [2026-04-30 report](2026-04-30-loop230-blocker-burndown-report.md) records Eddie staging/index/chunk success for `3723-D-100`; Loop 330 remains next.
+- **Loop 230 burn-down**: [2026-04-30 report](2026-04-30-loop230-blocker-burndown-report.md) records Eddie staging/index/chunk success for `example-plate-001`; Loop 330 remains next.
 - **Eng review (Seqera Eddie scratch batching)**: completed 2026-05-01 (cleared for implementation; flat outputs preserved, batch identity limited to work/params/traces, guarded post-success cleanup required).
-- **Phase 2.8 container validation**: active from 2026-05-05. Permanent code/config/container authority is `/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2`; transient runtime root is `/exports/eddie/scratch/mharvey2/cptools2-ai-update`.
+- **Phase 2.8 container validation**: active from 2026-05-05. Permanent code/config/container authority is `${CPTOOLS2_PROJECT_ROOT}`; transient runtime root is `${CPTOOLS2_SCRATCH_ROOT}`.

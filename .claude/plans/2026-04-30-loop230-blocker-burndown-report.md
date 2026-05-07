@@ -6,7 +6,7 @@ Status: Loop 320 complete; Loop 330 next
 
 ## Summary
 
-Loop 320 now proves the Eddie substrate through staged data loading, parserix-backed image-set indexing, and pure Nextflow chunk fan-out on the representative Sarah-screen plate `3723-D-100`.
+Loop 320 now proves the Eddie substrate through staged data loading, parserix-backed image-set indexing, and pure Nextflow chunk fan-out on the representative example-screen plate `example-plate-001`.
 
 The bounded validation command used `--stages none --max_chunks 1`, so it intentionally stopped before illumination, Cellpose, and feature extraction. This was the right validation boundary for proving the staging/index/chunk contract before spending GPU or full-plate compute.
 
@@ -63,30 +63,30 @@ Files synced to the shared Eddie checkout:
 Eddie command:
 
 ```bash
-cd /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2
+cd ${CPTOOLS2_PROJECT_ROOT}
 export NXF_ANSI_LOG=false
 export NXF_OPTS='-Xms128m -Xmx384m -XX:+UseSerialGC -XX:ActiveProcessorCount=1 -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:CICompilerCount=2'
-/exports/cmvm/eddie/scs/groups/chandranlabs/cptools2/env/bin/nextflow run nextflow/main.nf -profile eddie -params-file /exports/eddie/scratch/mharvey2/cptools2-loop230/params.batch_1.json -work-dir /exports/eddie/scratch/mharvey2/cptools2-loop230/work -resume --stages none --max_chunks 1
+${CPTOOLS2_PROJECT_ROOT}/env/bin/nextflow run nextflow/main.nf -profile eddie -params-file /exports/eddie/scratch/${USER}/cptools2-loop230/params.batch_1.json -work-dir /exports/eddie/scratch/${USER}/cptools2-loop230/work -resume --stages none --max_chunks 1
 ```
 
 Result:
 
 ```text
-STAGE_IN (3723-D-100)              CACHED     exit 0
-BUILD_IMAGESET_INDEX (3723-D-100)  COMPLETED  exit 0
-CHUNK_IMAGESETS (3723-D-100)       COMPLETED  exit 0
+STAGE_IN (example-plate-001)              CACHED     exit 0
+BUILD_IMAGESET_INDEX (example-plate-001)  COMPLETED  exit 0
+CHUNK_IMAGESETS (example-plate-001)       COMPLETED  exit 0
 ```
 
 Evidence:
 
-- Trace: `/exports/eddie/scratch/mharvey2/cptools2-loop230/pipeline_info/trace.txt`
+- Trace: `/exports/eddie/scratch/${USER}/cptools2-loop230/pipeline_info/trace.txt`
 - Staged TIFF count: `23040`
-- `STAGE_IN` workdir: `/exports/eddie/scratch/mharvey2/cptools2-loop230/work/65/d84f768ab4b2fc00f77f5b4cdf5829`
-- `BUILD_IMAGESET_INDEX` workdir: `/exports/eddie/scratch/mharvey2/cptools2-loop230/work/22/4dcd2fe11c4d421b8b95755a9fa363`
-- Image-set manifest: `/exports/eddie/scratch/mharvey2/cptools2-loop230/work/22/4dcd2fe11c4d421b8b95755a9fa363/image_sets.csv`
+- `STAGE_IN` workdir: `/exports/eddie/scratch/${USER}/cptools2-loop230/work/65/d84f768ab4b2fc00f77f5b4cdf5829`
+- `BUILD_IMAGESET_INDEX` workdir: `/exports/eddie/scratch/${USER}/cptools2-loop230/work/22/4dcd2fe11c4d421b8b95755a9fa363`
+- Image-set manifest: `/exports/eddie/scratch/${USER}/cptools2-loop230/work/22/4dcd2fe11c4d421b8b95755a9fa363/image_sets.csv`
 - Image-set manifest size: `11521` lines, so `11520` data rows
-- `CHUNK_IMAGESETS` workdir: `/exports/eddie/scratch/mharvey2/cptools2-loop230/work/1b/5d621d9bf35e0ed367b7e440361816`
-- Chunk manifest: `/exports/eddie/scratch/mharvey2/cptools2-loop230/work/1b/5d621d9bf35e0ed367b7e440361816/chunks/3723-D-100_chunk_0001.csv`
+- `CHUNK_IMAGESETS` workdir: `/exports/eddie/scratch/${USER}/cptools2-loop230/work/1b/5d621d9bf35e0ed367b7e440361816`
+- Chunk manifest: `/exports/eddie/scratch/${USER}/cptools2-loop230/work/1b/5d621d9bf35e0ed367b7e440361816/chunks/example-plate-001_chunk_0001.csv`
 - Chunk manifest size: `481` lines, so `480` data rows
 
 No active `qstat` jobs remained after the run, and `.nextflow.log` reported `failedCount=0`.
@@ -94,8 +94,8 @@ No active `qstat` jobs remained after the run, and `.nextflow.log` reported `fai
 ## Remaining Issues
 
 1. Two files were accidentally copied into the Eddie shared checkout root during sync:
-   - `/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/stage_in.nf`
-   - `/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/test_nextflow_architecture_smoke.py`
+   - `${CPTOOLS2_PROJECT_ROOT}/stage_in.nf`
+   - `${CPTOOLS2_PROJECT_ROOT}/test_nextflow_architecture_smoke.py`
 
    They were not deleted during validation. They are safe to remove after explicit cleanup approval.
 

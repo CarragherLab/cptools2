@@ -32,19 +32,19 @@ Optimised for HPC I/O. Not backed up. Three areas:
 
 | Location | Path |
 |---|---|
-| **Group space (Eddie)** | `/exports/cmvm/eddie/scs/groups/chandranlabs/` |
-| **DataStore (Eddie mount)** | `/exports/cmvm/datastore/scs/groups/chandranlabs/` |
-| **DataStore (Windows UNC)** | `\\cmvm.datastore.ed.ac.uk\cmvm\scs\groups\chandranlabs\` |
-| **Scratch** | `/exports/eddie/scratch/mharvey2/` |
+| **Group space (Eddie)** | `/exports/<college>/eddie/<school>/groups/<group>/` |
+| **DataStore (Eddie mount)** | `/exports/<college>/datastore/<school>/groups/<group>/` |
+| **DataStore (Windows UNC)** | `\\<datastore-host>\<college>\<school>\groups\<group>\` |
+| **Scratch** | `/exports/eddie/scratch/${USER}/` |
 
 The `DRUGSEQ_DATA_ROOT` environment variable pattern is used in lab pipelines
 to abstract between Windows UNC and Linux mount paths:
 
 ```bash
 # In .env file:
-DRUGSEQ_DATA_ROOT=/exports/cmvm/datastore/scs/groups/chandranlabs/drugseq
+DRUGSEQ_DATA_ROOT=/exports/<college>/datastore/<school>/groups/<group>/drugseq
 # or on Windows:
-DRUGSEQ_DATA_ROOT=\\cmvm.datastore.ed.ac.uk\cmvm\scs\groups\chandranlabs\drugseq
+DRUGSEQ_DATA_ROOT=\\<datastore-host>\<college>\<school>\groups\<group>\drugseq
 ```
 
 ---
@@ -109,8 +109,8 @@ qsub -q staging my_staging_script.sh
 #$ -l h_rss=4G
 # No -pe sharedmem — incompatible with staging queue
 
-SRC="/exports/cmvm/datastore/scs/groups/chandranlabs/myproject/data"
-DST="/exports/cmvm/eddie/scs/groups/chandranlabs/myproject/data"
+SRC="/exports/<college>/datastore/<school>/groups/<group>/myproject/data"
+DST="/exports/<college>/eddie/<school>/groups/<group>/myproject/data"
 
 rsync -av --progress "${SRC}/" "${DST}/"
 ```
@@ -125,8 +125,8 @@ rsync -av --progress "${SRC}/" "${DST}/"
 #$ -l h_rt=02:00:00
 #$ -l h_rss=4G
 
-SRC="/exports/cmvm/eddie/scs/groups/chandranlabs/myproject/results"
-DST="/exports/cmvm/datastore/scs/groups/chandranlabs/myproject/results"
+SRC="/exports/<college>/eddie/<school>/groups/<group>/myproject/results"
+DST="/exports/<college>/datastore/<school>/groups/<group>/myproject/results"
 
 rsync -av --progress "${SRC}/" "${DST}/"
 ```
@@ -153,7 +153,7 @@ Use it for intermediate files to avoid cluttering scratch:
 #$ -cwd
 #$ -l h_rss=16G
 
-RESULTS="/exports/cmvm/eddie/scs/groups/chandranlabs/myproject/results"
+RESULTS="/exports/<college>/eddie/<school>/groups/<group>/myproject/results"
 
 # Intermediate work in $TMPDIR — auto-cleaned
 process_data.py --temp "$TMPDIR" --output "$RESULTS/"

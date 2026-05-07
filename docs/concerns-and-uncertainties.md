@@ -17,7 +17,7 @@ These were identified as issues and have been addressed. Kept here for audit tra
 
 ### C2. project_paths.yaml contained hardcoded project-specific paths
 - **Issue:** `skills/eddie-login/project_paths.yaml` contained hardcoded Chandran Lab drugseq paths and specific DataStore directories.
-- **Resolution:** Paths parameterised using `$PROJECT_NAME` and `$COLLEGE` variables. Standard Eddie infrastructure paths retained. Chandran Lab example preserved in `config/examples/chandranlabs.yaml`.
+- **Resolution:** Paths parameterised using `$PROJECT_NAME` and `$COLLEGE` variables. Standard Eddie infrastructure paths retained. group example preserved in `config/examples/<group>.yaml`.
 - **Status:** Resolved in Phase 3
 
 ### C3. Config files referenced by subagents did not exist

@@ -118,9 +118,9 @@ Feature extraction outputs are extraction products only. Downstream aggregation 
 1. Local/unit test: image-set grouping keeps all channels for each well/site together.
 2. Local/unit test: 97 image sets create two chunks with default chunk size 96.
 3. Local Nextflow config smoke: chunking params parse under the test and Eddie profiles.
-4. Eddie subset run: stage one Sarah-screen plate and run the first few chunks only using `max_chunks`.
+4. Eddie subset run: stage one example-screen plate and run the first few chunks only using `max_chunks`.
 5. Eddie scaling run: prove many SGE jobs are submitted for one staged plate.
-6. Representative run: Sarah-screen plate `3723-D-100` runs through the AI-focused path with Cellpose plus DeepProfiler.
+6. Representative run: example-screen plate `example-plate-001` runs through the AI-focused path with Cellpose plus DeepProfiler.
 
 ## Non-Goals
 

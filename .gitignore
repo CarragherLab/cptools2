@@ -23,6 +23,9 @@ venv/
 .env.local
 .env.production
 
+# Local/private deployment paths and run configs
+local/
+
 # Large test data (keep if present; move heavy data out of repo)
 tests/example_dir/
 tests/example_dir_new_paths/

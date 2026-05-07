@@ -14,10 +14,10 @@ test config.
 
 Root directory containing plate folders.
 
-For Sarah-screen this is the DataStore root:
+For example-screen this is the DataStore root:
 
 ```yaml
-input_dir: /exports/igmm/datastore/ImageXpress2020/imagexpress/Sarah-screen
+input_dir: /exports/<college>/datastore/<project>/imagexpress/<screen>
 ```
 
 DataStore paths are visible from Eddie staging nodes, not from ordinary compute
@@ -34,7 +34,7 @@ Everything generated for the run should live under this directory, including
 staged images, work outputs, and published results.
 
 ```yaml
-output_dir: /exports/eddie/scratch/mharvey2/cptools2-loop230
+output_dir: /exports/eddie/scratch/${USER}/cptools2-loop230
 ```
 
 Legacy alias: `location`.
@@ -48,7 +48,7 @@ paths. `plates` may be a YAML list or a comma-separated string.
 
 ```yaml
 plates:
-  - 3723-D-100
+  - example-plate-001
 ```
 
 Legacy alias: `plate_list`.
@@ -73,7 +73,7 @@ Nextflow `ILLUM_CALCULATE` process.
 For self-contained runs, copy this file into the scratch project:
 
 ```yaml
-illum_pipeline_calculate: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/illum_calculate.cppipe
+illum_pipeline_calculate: /exports/eddie/scratch/${USER}/cptools2-loop230/pipelines/illum_calculate.cppipe
 ```
 
 ### `illum_pipeline_apply`
@@ -82,7 +82,7 @@ Full path to the CellProfiler illumination-apply pipeline used by the Nextflow
 `ILLUM_APPLY` process.
 
 ```yaml
-illum_pipeline_apply: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/illum_apply.cppipe
+illum_pipeline_apply: /exports/eddie/scratch/${USER}/cptools2-loop230/pipelines/illum_apply.cppipe
 ```
 
 ### `seg_pipeline`
@@ -91,7 +91,7 @@ Full path to the CellProfiler segmentation pipeline used by the Nextflow
 `SEGMENTATION` process.
 
 ```yaml
-seg_pipeline: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/nuclear_segmentation.cppipe
+seg_pipeline: /exports/eddie/scratch/${USER}/cptools2-loop230/pipelines/nuclear_segmentation.cppipe
 ```
 
 ### `pipeline`
@@ -110,7 +110,7 @@ Directory for generated command artifacts.
 For the Nextflow workflow this should be inside `output_dir`, usually:
 
 ```yaml
-commands location: /exports/eddie/scratch/mharvey2/cptools2-loop230/commands
+commands location: /exports/eddie/scratch/${USER}/cptools2-loop230/commands
 ```
 
 If omitted, cptools2 defaults it to `<output_dir>/commands`.
@@ -171,7 +171,7 @@ Feature-extraction engine settings.
 ```yaml
 feature_extraction:
   tool: deepprofiler
-  config: /exports/eddie/scratch/mharvey2/cptools2-loop230/config/deepprofiler_config.json
+  config: /exports/eddie/scratch/${USER}/cptools2-loop230/config/deepprofiler_config.json
   batch_size: 128
 ```
 

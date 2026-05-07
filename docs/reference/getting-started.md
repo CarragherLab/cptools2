@@ -108,10 +108,10 @@ python my_analysis.py -i "$DATA_DIR" -o "$RESULTS_DIR"
 
 | Location | Path | Purpose |
 |---|---|---|
-| Home | `/home/mharvey2` | Config files, scripts (10GB, backed up) |
-| Scratch | `/exports/eddie/scratch/mharvey2` | Active job data (2TB, purged after 1 month) |
-| Group space | `/exports/cmvm/eddie/scs/groups/chandranlabs` | Shared group storage |
-| DataStore | `/exports/cmvm/datastore/scs/groups/chandranlabs` | Long-term archive (staging nodes only) |
+| Home | `/home/<UUN>` | Config files, scripts (10GB, backed up) |
+| Scratch | `/exports/eddie/scratch/${USER}` | Active job data (2TB, purged after 1 month) |
+| Group space | `/exports/<college>/eddie/<school>/groups/<group>` | Shared group storage |
+| DataStore | `/exports/<college>/datastore/<school>/groups/<group>` | Long-term archive (staging nodes only) |
 
 ---
 

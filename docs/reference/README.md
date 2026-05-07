@@ -80,11 +80,11 @@ encoded in the CI linting and skill validation logic.
 | Eddie wiki — Parallel Environments PDF | Jan 2025 | Downloaded from Research Services wiki |
 | Eddie wiki — Getting Started, Submitting Jobs, Storage | Various | Original text preserved in legacy docs |
 | Chandran Lab operational experience | Ongoing | DRUGseq, cptools2, ALS DataLakehouse pipeline development |
-| eddie-documentation repo (git.ecdf.ed.ac.uk/mharvey2) | Mar 2026 | Wiki scrapes consolidated; GPUs, applications, general info merged in |
+| eddie-documentation repo (git.ecdf.ed.ac.uk/<UUN>) | Mar 2026 | Wiki scrapes consolidated; GPUs, applications, general info merged in |
 
 **One document pending import:**  
 `Memory_Specification.docx` — located at  
-`\\cmvm.datastore.ed.ac.uk\cmvm\scs\groups\chandranlabs\Mungo\Eddie\docs\`  
+`\\<datastore-host>\<college>\<school>\groups\<group>\Mungo\Eddie\docs\`
 Copy manually into this directory when access permits.
 
 ---

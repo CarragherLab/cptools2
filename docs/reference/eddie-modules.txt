@@ -4,7 +4,7 @@
 # Source: eddie.ecdf.ed.ac.uk (login node)
 #
 # Refresh with:
-#   ssh -o ConnectTimeout=10 mharvey2@eddie.ecdf.ed.ac.uk \
+#   ssh -o ConnectTimeout=10 <UUN>@eddie.ecdf.ed.ac.uk \
 #     ". /etc/profile.d/modules.sh && MODULES_PAGER='' module avail -t 2>&1" \
 #     > docs/reference/eddie-modules.txt
 #

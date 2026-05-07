@@ -16,11 +16,11 @@ name: Container Build & Deploy
 status: in_progress
 type: infrastructure
 key_outputs:
-  - 3 .sif containers on Eddie at /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/containers/
+  - 3 .sif containers on Eddie at ${CPTOOLS2_PROJECT_ROOT}/containers/
   - Container manifest deployed and verified
   - build_containers.sh parameterized for reuse
 todos:
-  - text: "Parameterize build_containers.sh: accept CONTAINER_DIR as first argument with default /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/containers"
+  - text: "Parameterize build_containers.sh: accept CONTAINER_DIR as first argument with default ${CPTOOLS2_PROJECT_ROOT}/containers"
     status: completed
     skill: null
     agent: null
@@ -29,7 +29,7 @@ todos:
     skill: null
     agent: null
   # AWAITING MANUAL EXECUTION — todos below require Eddie SSH or Docker daemon access
-  - text: "Create cptools2/ directory on Eddie: ssh eddie 'mkdir -p /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/{containers,env,nextflow}'"
+  - text: "Create cptools2/ directory on Eddie: ssh eddie 'mkdir -p ${CPTOOLS2_PROJECT_ROOT}/{containers,env,nextflow}'"
     status: completed
     skill: eddie:eddie-login
     agent: null
@@ -41,7 +41,7 @@ todos:
     status: completed
     skill: null
     agent: null
-  - text: "Transfer archives to Eddie: scp *.tar to /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/containers/"
+  - text: "Transfer archives to Eddie: scp *.tar to ${CPTOOLS2_PROJECT_ROOT}/containers/"
     status: completed
     skill: null
     agent: null
@@ -174,27 +174,27 @@ status: pending
 type: validation
 depends_on: [220]
 key_outputs:
-  - Full pipeline run on Eddie with representative Sarah-screen Cell Painting data
+  - Full pipeline run on Eddie with representative example-screen Cell Painting data
   - Verified output structure at output_dir/plate_id/stage/
   - Pipeline timeline and report HTML generated
 handoff_summary:
-  done: "Eddie install completed; Sarah-screen DataStore path verified on staging nodes; representative plate `3723-D-100` selected; plate size measured at ~103G; scratch-contained config and params generated at `/exports/eddie/scratch/mharvey2/cptools2-loop230`; parser now enforces `stage_data: true` for DataStore inputs."
+  done: "Eddie install completed; example-screen DataStore path verified on staging nodes; representative plate `example-plate-001` selected; plate size measured at ~103G; scratch-contained config and params generated at `/exports/eddie/scratch/${USER}/cptools2-loop230`; parser now enforces `stage_data: true` for DataStore inputs."
   failed: "Full representative compute run has not completed yet; local Windows pytest remains blocked by temp/cache permission errors; Eddie runtime env does not include pytest."
-  needed: "Run the staged Sarah-screen validation from `/exports/eddie/scratch/mharvey2/cptools2-loop230/params.json`, starting with staging/illumination and then full compute once scheduler state is clean."
+  needed: "Run the staged example-screen validation from `/exports/eddie/scratch/${USER}/cptools2-loop230/params.json`, starting with staging/illumination and then full compute once scheduler state is clean."
 todos:
   - id: "loop-230-1"
-    content: "Deploy cptools2 to Eddie using install_eddie.sh: bash scripts/install_eddie.sh /exports/cmvm/eddie/scs/groups/chandranlabs — verify activate.sh created and conda env installs cleanly"
+    content: "Deploy cptools2 to Eddie using install_eddie.sh: bash scripts/install_eddie.sh /exports/<college>/eddie/<school>/groups/<group> — verify activate.sh created and conda env installs cleanly"
     skill: "eddie:eddie-login"
     agent: "ralph-loop-worker"
-    outcome: "install_eddie.sh exits 0; activate.sh exists at chandranlabs/cptools2/env/activate.sh; cptools2 importable in the new conda env"
+    outcome: "install_eddie.sh exits 0; activate.sh exists at <group>/cptools2/env/activate.sh; cptools2 importable in the new conda env"
     status: completed
     complexity: medium
     priority: high
   - id: "loop-230-2"
-    content: "Create test YAML config on Eddie pointing at representative Sarah-screen plate `3723-D-100` on DataStore, with runtime assets copied into scratch project"
+    content: "Create test YAML config on Eddie pointing at representative example-screen plate `example-plate-001` on DataStore, with runtime assets copied into scratch project"
     skill: "eddie:eddie-login"
     agent: "ralph-loop-worker"
-    outcome: "config/loop230-sarah-screen.yaml exists locally and on Eddie; scratch copy exists at /exports/eddie/scratch/mharvey2/cptools2-loop230/config/loop230-sarah-screen.yaml; params resolve shared .sif containers via CPTOOLS2_CONTAINER_DIR"
+    outcome: "config/loop230-sarah-screen.yaml exists locally and on Eddie; scratch copy exists at /exports/eddie/scratch/${USER}/cptools2-loop230/config/loop230-sarah-screen.yaml; params resolve shared .sif containers via CPTOOLS2_CONTAINER_DIR"
     status: completed
     complexity: low
     priority: high
@@ -202,12 +202,12 @@ todos:
     content: "Run dry-run: cptools2 pipeline test_config.yaml --dry-run — inspect params.json for correct container paths, expanded stage names, and batch info"
     skill: "eddie:eddie-login"
     agent: "ralph-loop-worker"
-    outcome: "dry-run exits 0; /exports/eddie/scratch/mharvey2/cptools2-loop230/params.json contains scratch-local pipelines, expanded stage names, explicit plate list, stage_data=true, and resolved container paths"
+    outcome: "dry-run exits 0; /exports/eddie/scratch/${USER}/cptools2-loop230/params.json contains scratch-local pipelines, expanded stage names, explicit plate list, stage_data=true, and resolved container paths"
     status: completed
     complexity: medium
     priority: high
   - id: "loop-230-4"
-    content: "Run staged illumination test for Sarah-screen plate `3723-D-100` using scratch params — wait for SGE jobs to complete and verify outputs"
+    content: "Run staged illumination test for example-screen plate `example-plate-001` using scratch params — wait for SGE jobs to complete and verify outputs"
     skill: "eddie:eddie-login"
     agent: "ralph-loop-worker"
     outcome: "output_dir/plate_id/illum_functions/ exists with at least one .npy file; output_dir/plate_id/corrected_images/ exists; no SGE job failures"
@@ -231,7 +231,7 @@ todos:
     complexity: high
     priority: medium
   - id: "loop-230-7"
-    content: "Run full representative Sarah-screen pipeline end-to-end using scratch params — wait for all SGE jobs and verify all stage outputs plus pipeline report"
+    content: "Run full representative example-screen pipeline end-to-end using scratch params — wait for all SGE jobs and verify all stage outputs plus pipeline report"
     skill: "eddie:eddie-login"
     agent: "ralph-loop-worker"
     outcome: "All stage output directories present; pipeline_info/report.html and pipeline_info/timeline.html exist; no failed jobs in qstat/qacct"

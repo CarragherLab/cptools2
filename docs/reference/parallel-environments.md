@@ -205,7 +205,7 @@ module load star/2.7.10a
 export OMP_NUM_THREADS=$NSLOTS
 
 STAR --runThreadN $NSLOTS \
-     --genomeDir /exports/cmvm/eddie/scs/groups/chandranlabs/refs/star_index \
+     --genomeDir /exports/<college>/eddie/<school>/groups/<group>/refs/star_index \
      --readFilesIn sample_R1.fastq.gz sample_R2.fastq.gz \
      --readFilesCommand zcat \
      --outSAMtype BAM SortedByCoordinate \

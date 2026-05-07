@@ -36,7 +36,7 @@ Build, test, and deploy three Singularity container images (CellProfiler, DeepPr
 - ✓ `docker run --rm cellprofiler/cellprofiler:4.2.8 cellprofiler --version` returns `4.2.8` locally
 - ✓ `docker run --gpus all cptools2/deepprofiler:1.0` detects GPU via TensorFlow locally
 - ✓ `docker run --gpus all cptools2/cellpose-sam:1.0` detects GPU via PyTorch locally
-- ✓ All 3 `.sif` files exist in Eddie group space at `/exports/cmvm/eddie/scs/groups/chandranlabs/containers/`
+- ✓ All 3 `.sif` files exist in Eddie group space at `/exports/<college>/eddie/<school>/groups/<group>/containers/`
 - ✓ `singularity exec cellprofiler_4.2.8.sif cellprofiler --version` returns `4.2.8` on Eddie CPU node
 - ✓ `singularity exec --nv deepprofiler_1.0.sif python -c "import tensorflow as tf; assert len(tf.config.list_physical_devices('GPU')) > 0"` passes on Eddie GPU node
 - ✓ `singularity exec --nv cellpose_sam_1.0.sif python -c "import torch; assert torch.cuda.is_available()"` passes on Eddie GPU node
@@ -74,7 +74,7 @@ Build, test, and deploy three Singularity container images (CellProfiler, DeepPr
 
 ## Assumptions
 
-- `Eddie group space writable`: User has write access to `/exports/cmvm/eddie/scs/groups/chandranlabs/containers/` — validate by `touch` test on Eddie
+- `Eddie group space writable`: User has write access to `/exports/<college>/eddie/<school>/groups/<group>/containers/` — validate by `touch` test on Eddie
 - `WSL2 GPU passthrough`: Local machine has NVIDIA drivers ≥470 and NVIDIA Container Toolkit — validate with `nvidia-smi` in WSL2
 - `Official CellProfiler image compatible`: `cellprofiler/cellprofiler:4.2.8` Docker image converts cleanly to Singularity — validated by many other labs
 - `A100 CUDA compatibility`: Container CUDA runtimes (11.2 for TF, 11.8 for PyTorch) are compatible with Eddie A100 drivers — validate during GPU testing

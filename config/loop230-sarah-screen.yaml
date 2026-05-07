@@ -2,28 +2,28 @@
 #
 # Runtime assets are expected to be copied into the scratch project before
 # execution:
-#   /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/
-#   /exports/eddie/scratch/mharvey2/cptools2-loop230/config/
+#   ${CPTOOLS2_SCRATCH_ROOT}/loop230/pipelines/
+#   ${CPTOOLS2_SCRATCH_ROOT}/loop230/config/
 
-input_dir: /exports/igmm/datastore/ImageXpress2020/imagexpress/Sarah-screen
-output_dir: /exports/eddie/scratch/mharvey2/cptools2-loop230
+input_dir: /exports/<college>/datastore/<project>/imagexpress/<screen>
+output_dir: ${CPTOOLS2_SCRATCH_ROOT}/loop230
 
 plates:
-  - 3723-D-100
+  - example-plate-001
 
 plate_sizes_gb:
-  3723-D-100: 103
+  example-plate-001: 103
 
 stage_data: true
-data_destination: /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/results/loop230
+data_destination: ${CPTOOLS2_PROJECT_ROOT}/results/loop230
 
-illum_pipeline_calculate: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/illum_calculate.cppipe
-illum_pipeline_apply: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/illum_apply.cppipe
-seg_pipeline: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/nuclear_segmentation.cppipe
-pipeline: /exports/eddie/scratch/mharvey2/cptools2-loop230/pipelines/nuclear_segmentation.cppipe
+illum_pipeline_calculate: ${CPTOOLS2_SCRATCH_ROOT}/loop230/pipelines/illum_calculate.cppipe
+illum_pipeline_apply: ${CPTOOLS2_SCRATCH_ROOT}/loop230/pipelines/illum_apply.cppipe
+seg_pipeline: ${CPTOOLS2_SCRATCH_ROOT}/loop230/pipelines/nuclear_segmentation.cppipe
+pipeline: ${CPTOOLS2_SCRATCH_ROOT}/loop230/pipelines/nuclear_segmentation.cppipe
 
-commands location: /exports/eddie/scratch/mharvey2/cptools2-loop230/commands
-container_path: /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/containers
+commands location: ${CPTOOLS2_SCRATCH_ROOT}/loop230/commands
+container_path: ${CPTOOLS2_CONTAINER_DIR}
 
 channels:
   - DNA
@@ -45,5 +45,5 @@ segmentation:
 
 feature_extraction:
   tool: deepprofiler
-  config: /exports/eddie/scratch/mharvey2/cptools2-loop230/config/deepprofiler_config.json
+  config: ${CPTOOLS2_SCRATCH_ROOT}/loop230/config/deepprofiler_config.json
   batch_size: 128

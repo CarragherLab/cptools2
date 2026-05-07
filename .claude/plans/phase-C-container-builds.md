@@ -44,7 +44,7 @@ Build three Singularity container images (CellProfiler, DeepProfiler, Cellpose-S
 - ✓ `docker run --rm cellprofiler/cellprofiler:4.2.8 cellprofiler --version` returns `4.2.8` locally
 - ✓ `docker run --gpus all cptools2/deepprofiler:1.0 python -c "import tensorflow as tf; assert len(tf.config.list_physical_devices('GPU')) > 0"` passes locally
 - ✓ `docker run --gpus all cptools2/cellpose-sam:1.0 python -c "import torch; assert torch.cuda.is_available()"` passes locally
-- ✓ All 3 `.sif` files exist in Eddie group space at `/exports/cmvm/eddie/scs/groups/chandranlabs/containers/`
+- ✓ All 3 `.sif` files exist in Eddie group space at `/exports/<college>/eddie/<school>/groups/<group>/containers/`
 - ✓ `singularity exec cellprofiler_4.2.8.sif cellprofiler --version` returns `4.2.8` on Eddie CPU node
 - ✓ `singularity exec --nv deepprofiler_1.0.sif python -c "import tensorflow as tf; assert len(tf.config.list_physical_devices('GPU')) > 0"` passes on Eddie GPU node
 - ✓ `singularity exec --nv cellpose_sam_1.0.sif python -c "import torch; assert torch.cuda.is_available()"` passes on Eddie GPU node
@@ -82,7 +82,7 @@ Build three Singularity container images (CellProfiler, DeepProfiler, Cellpose-S
 
 ## Assumptions
 
-- `Eddie group space writable`: user has write access to `/exports/cmvm/eddie/scs/groups/chandranlabs/containers/`
+- `Eddie group space writable`: user has write access to `/exports/<college>/eddie/<school>/groups/<group>/containers/`
 - `WSL2 GPU passthrough working`: NVIDIA drivers ≥470, Container Toolkit installed
 - `Official CellProfiler image compatible`: `cellprofiler/cellprofiler:4.2.8` converts cleanly to Singularity
 

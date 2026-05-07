@@ -29,7 +29,7 @@ todos:
     complexity: medium
     priority: high
   - id: "loop-390-2"
-    content: "Create or verify scratch runtime subdirectories under /exports/eddie/scratch/mharvey2/cptools2-ai-update"
+    content: "Create or verify scratch runtime subdirectories under ${CPTOOLS2_SCRATCH_ROOT}"
     status: completed
     complexity: low
     priority: high
@@ -173,9 +173,9 @@ max_iterations: 3
 on_max_iterations: checkpoint
 
 handoff_summary:
-  done: "Created scripts/eddie_smoke_cellprofiler.sh and static tests for the CPU SGE smoke script. Submitted job 55264527 from the scratch validation root. It completed successfully with CellProfiler version 4.2.8, qacct exit_status 0, failed 0, ru_wallclock 404.182, and maxvmem 12.096G. Logs are under /exports/eddie/scratch/mharvey2/cptools2-ai-update/logs and version output is under smoke/cellprofiler. The run exposed a Singularity startup caveat: FUSE mount failed on Eddie and Singularity fell back to scratch extraction before running."
+  done: "Created scripts/eddie_smoke_cellprofiler.sh and static tests for the CPU SGE smoke script. Submitted job 55264527 from the scratch validation root. It completed successfully with CellProfiler version 4.2.8, qacct exit_status 0, failed 0, ru_wallclock 404.182, and maxvmem 12.096G. Logs are under ${CPTOOLS2_SCRATCH_ROOT}/logs and version output is under smoke/cellprofiler. The run exposed a Singularity startup caveat: FUSE mount failed on Eddie and Singularity fell back to scratch extraction before running."
   failed: ""
-  needed: "A functional CPU smoke using a tiny image/config fixture is still pending; decide whether this should reuse Loop 230 Sarah-screen data or a purpose-built small fixture."
+  needed: "A functional CPU smoke using a tiny image/config fixture is still pending; decide whether this should reuse Loop 230 example-screen data or a purpose-built small fixture."
 
 todos:
   - id: "loop-420-1"
@@ -210,7 +210,7 @@ max_iterations: 3
 on_max_iterations: checkpoint
 
 handoff_summary:
-  done: "Corrected GPU smoke scripts exist locally and on Eddie scratch. Cellpose job 55264576 completed successfully: Cellpose 4.1.1, CUDA visible on NVIDIA H200 NVL, qacct exit_status 0, failed 0, ru_wallclock 226.879, maxvmem 17.010G. DeepProfiler job 55269157 completed successfully: TensorFlow 2.5.3, GPU device visible, qacct exit_status 0, failed 0, ru_wallclock 210.269, maxvmem 16.212G. No mharvey2 jobs remained in qstat after validation. The prior tee/pipe status-masking bug was fixed in all smoke scripts."
+  done: "Corrected GPU smoke scripts exist locally and on Eddie scratch. Cellpose job 55264576 completed successfully: Cellpose 4.1.1, CUDA visible on NVIDIA H200 NVL, qacct exit_status 0, failed 0, ru_wallclock 226.879, maxvmem 17.010G. DeepProfiler job 55269157 completed successfully: TensorFlow 2.5.3, GPU device visible, qacct exit_status 0, failed 0, ru_wallclock 210.269, maxvmem 16.212G. No <UUN> jobs remained in qstat after validation. The prior tee/pipe status-masking bug was fixed in all smoke scripts."
   failed: ""
   needed: "Functional GPU smoke inputs remain out of scope for the startup probes. Before an end-to-end smoke, choose minimal images and confirm DeepProfiler config/weights/checkpoint assets."
 
@@ -247,7 +247,7 @@ max_iterations: 3
 on_max_iterations: checkpoint
 
 handoff_summary:
-  done: "Loop 440 audit confirmed no lingering Eddie jobs. Added config/loop440-eddie-smoke.yaml as a candidate end-to-end smoke config that uses a tiny staged plate under cptools2-ai-update/staging, keeps stage_data false, limits max_chunks to 1, writes outputs under cptools2-ai-update/results/loop440, and references permanent ChandranLabs templates/containers. Added scripts/create_loop440_tiny_plate.py, generated a five-channel real-TIFF tiny plate in Eddie scratch, and verified Eddie indexing/chunking produced image_sets.csv and one chunk manifest. Stable templates/configs were additively copied into the permanent mirror. A cptools2 dry-run from the permanent mirror was attempted and failed before Nextflow submission because stale permanent mirror code rejects scratch_utilisation_fraction and scratch_work_factor. Focused tests passed: pytest tests/test_eddie_runtime_config.py -q -> 8 passed."
+  done: "Loop 440 audit confirmed no lingering Eddie jobs. Added config/loop440-eddie-smoke.yaml as a candidate end-to-end smoke config that uses a tiny staged plate under cptools2-ai-update/staging, keeps stage_data false, limits max_chunks to 1, writes outputs under cptools2-ai-update/results/loop440, and references permanent <group> templates/containers. Added scripts/create_loop440_tiny_plate.py, generated a five-channel real-TIFF tiny plate in Eddie scratch, and verified Eddie indexing/chunking produced image_sets.csv and one chunk manifest. Stable templates/configs were additively copied into the permanent mirror. A cptools2 dry-run from the permanent mirror was attempted and failed before Nextflow submission because stale permanent mirror code rejects scratch_utilisation_fraction and scratch_work_factor. Focused tests passed: pytest tests/test_eddie_runtime_config.py -q -> 8 passed."
   failed: ""
   needed: "Decide mirror strategy before real Loop 440 dry-run: conservative permanent mirror source sync is preferred for the stated goal, while scratch-only code checkout is safer but less representative. Do not submit an end-to-end Nextflow job from the stale permanent source."
 

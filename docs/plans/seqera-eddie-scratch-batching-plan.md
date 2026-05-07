@@ -475,7 +475,7 @@ python -m cptools2 pipeline config/loop230-sarah-screen.yaml --dry-run
 ```
 
 That command fails before Nextflow starts because
-`parse_yaml.generate_params_json` tries to create `C:\exports` from the config's
+`parse_yaml.generate_params_json` tries to create `C:\<mount>` from the config's
 `/exports/...` paths and Windows returns `PermissionError: [WinError 5] Access is
 denied`. No Eddie trace, report, timeline, `qacct`, or peak scratch data were
 collected here, so the `scratch_work_factor` and `maxForks` values in this plan

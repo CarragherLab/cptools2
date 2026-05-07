@@ -91,11 +91,9 @@ def test_loop230_config_is_scratch_self_contained_and_staged():
     output_dir = config["output_dir"].rstrip("/")
     assert config["stage_data"] is True
     assert "/datastore/" in config["input_dir"]
-    assert config["plates"] == ["3723-D-100"]
+    assert config["plates"] == ["example-plate-001"]
     assert config["stages"] == ["illum", "segment", "extract"]
-    assert config["data_destination"].startswith(
-        "/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/results/"
-    )
+    assert config["data_destination"].startswith("${CPTOOLS2_PROJECT_ROOT}/results/")
     assert config["data_destination"].rstrip("/") != output_dir
 
     scratch_bound_paths = [

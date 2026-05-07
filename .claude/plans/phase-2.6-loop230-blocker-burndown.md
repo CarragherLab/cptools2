@@ -2,7 +2,7 @@
 
 ## Objective
 
-Turn the current Loop 230 review fixes and Eddie validation blockers into a clean, executable path to a resumed Sarah-screen run.
+Turn the current Loop 230 review fixes and Eddie validation blockers into a clean, executable path to a resumed example-screen run.
 
 ## Scope
 
@@ -12,7 +12,7 @@ Turn the current Loop 230 review fixes and Eddie validation blockers into a clea
 - Confirm `max_chunks` or equivalent subset controls are available before running expensive Eddie jobs.
 - Confirm the active scratch-safe plate batch is what each Nextflow invocation receives.
 - Sync the local fix set to the shared Eddie group checkout.
-- Resume Loop 230 on the Sarah-screen test plate with constrained Nextflow driver resources.
+- Resume Loop 230 on the example-screen test plate with constrained Nextflow driver resources.
 - Make Eddie submit-host pressure handling reproducible through documented `NXF_OPTS`, queue-size, and resume commands.
 - Capture the exact remaining blocker if the representative run still cannot progress.
 
@@ -46,7 +46,7 @@ The active dirty tree contains review-fix work that should be landed before anot
 | Deliverable | Format | Location |
 |-------------|--------|----------|
 | Landed review-fix commit | Git commit | Local `ai-update` branch |
-| Updated Eddie group checkout | Synced source tree | `/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2` |
+| Updated Eddie group checkout | Synced source tree | `${CPTOOLS2_PROJECT_ROOT}` |
 | Subset validation controls | Code/tests or documented verified existing behaviour | `nextflow/main.nf`, helper scripts, tests, runbook |
 | Eddie resume run evidence | Run log/status note | `.claude/plans/2026-04-28-loop230-progress-report.md` or new progress report |
 | Remaining blocker report | Markdown | `.claude/plans/2026-04-29-loop230-blocker-burndown-report.md` |
@@ -98,9 +98,9 @@ The active dirty tree contains review-fix work that should be landed before anot
 
 ## Assumptions
 
-- `3723-D-100 remains the representative plate`: It is large but realistic and already staged/cached in parts.
-- `Scratch project path remains /exports/eddie/scratch/mharvey2/cptools2-loop230`: Existing params and cached work use this location.
-- `Shared group checkout remains canonical for Eddie execution`: `/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2`.
+- `example-plate-001 remains the representative plate`: It is large but realistic and already staged/cached in parts.
+- `Scratch project path remains /exports/eddie/scratch/${USER}/cptools2-loop230`: Existing params and cached work use this location.
+- `Shared group checkout remains canonical for Eddie execution`: `${CPTOOLS2_PROJECT_ROOT}`.
 - `GPT-5.4-mini is suitable for bounded loops`: The loops must be constrained, testable, and avoid broad architectural rewrites.
 
 ## Notes / Design Decisions
@@ -177,7 +177,7 @@ No two GPT-5.4-mini workers may edit the same file at the same time. Eddie loops
 | Gate 1: Local clean baseline | Focused tests pass, full pytest passes, `git diff --check` clean, review-fix commit exists | Stop before Eddie sync; fix local patch. |
 | Gate 2: Safe subset run ready | Params expose active plates and chunk limit, default full-run behaviour unchanged | Add subset control or document why existing control is sufficient. |
 | Gate 3: Eddie params verified | Shared checkout matches local commit/files, dry-run writes scratch-contained params | Do not resume; fix sync or params mismatch. |
-| Gate 4: Index/chunk proven | COMPLETE 2026-04-30: `BUILD_IMAGESET_INDEX` and `CHUNK_IMAGESETS` completed; one bounded chunk manifest exists for `3723-D-100`. | Proceed to Loop 330 AI smoke. |
+| Gate 4: Index/chunk proven | COMPLETE 2026-04-30: `BUILD_IMAGESET_INDEX` and `CHUNK_IMAGESETS` completed; one bounded chunk manifest exists for `example-plate-001`. | Proceed to Loop 330 AI smoke. |
 | Gate 5: AI path executable | One chunk Cellpose/feature smoke succeeds, or exact scaffold/container/model blocker is documented | Convert blocker into next phase/loop item. |
 | Gate 6: Handoff complete | Report exists, PLANS-INDEX current, next action unambiguous | Do not claim Phase 2 complete. |
 
@@ -197,7 +197,7 @@ Each loop completion report must record decisions in this format:
 
 | Decision | Classification | Principle | Rationale | Rejected Alternative |
 |----------|----------------|-----------|-----------|----------------------|
-| Example: use subset before full Sarah-screen run | Auto-decided | Reduce blast radius | A representative plate is expensive and scheduler-sensitive | Full run first |
+| Example: use subset before full example-screen run | Auto-decided | Reduce blast radius | A representative plate is expensive and scheduler-sensitive | Full run first |
 
 Decision classifications:
 

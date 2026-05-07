@@ -40,9 +40,9 @@ install_eddie
 ### Key Paths
 
 ```text
-CONTAINER_DIR=/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/containers
-PROJECT_ROOT=/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2
-DATASTORE_ROOT=/exports/cmvm/datastore/smgphs/groups/ChandranLabs
+CONTAINER_DIR=${CPTOOLS2_CONTAINER_DIR}
+PROJECT_ROOT=${CPTOOLS2_PROJECT_ROOT}
+DATASTORE_ROOT=/exports/<college>/datastore/<school>/groups/<group>
 SCRATCH_PROJECT=/exports/eddie/scratch/$USER/cptools2
 ```
 

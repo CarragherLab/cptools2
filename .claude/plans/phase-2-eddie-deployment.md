@@ -7,7 +7,7 @@ Deploy cptools2's Nextflow pipeline to Eddie HPC with Singularity containers, Da
 ## Scope
 
 ### Included:
-- Build and deploy 3 Singularity containers to chandranlabs group space
+- Build and deploy 3 Singularity containers to <group> group space
 - Parameterize build_containers.sh for reuse across group spaces
 - Create STAGE_IN/STAGE_OUT Nextflow processes on -q staging queue
 - Migrate batch logic from job.py to standalone batch.py module
@@ -16,7 +16,7 @@ Deploy cptools2's Nextflow pipeline to Eddie HPC with Singularity containers, Da
 - Remove dead eddie_container_dir from containers.config
 - Create install_eddie.sh for shared conda env deployment
 - Write 6-7 unit tests for batch.py
-- Run end-to-end test on a representative Sarah-screen Cell Painting plate on Eddie
+- Run end-to-end test on a representative example-screen Cell Painting plate on Eddie
 
 ### Explicitly NOT included:
 - DINOv2 container build (placeholder only, no Dockerfile yet)
@@ -30,7 +30,7 @@ Deploy cptools2's Nextflow pipeline to Eddie HPC with Singularity containers, Da
 
 | Deliverable | Format | Location |
 |-------------|--------|----------|
-| 3 Singularity .sif containers | .sif files | Eddie: .../chandranlabs/cptools2/containers/ |
+| 3 Singularity .sif containers | .sif files | Eddie: .../<group>/cptools2/containers/ |
 | Container manifest | JSON | Eddie: .../cptools2/containers/cptools2_containers.json |
 | STAGE_IN process | .nf module | nextflow/modules/stage_in.nf |
 | STAGE_OUT process | .nf module | nextflow/modules/stage_out.nf |
@@ -87,13 +87,13 @@ Deploy cptools2's Nextflow pipeline to Eddie HPC with Singularity containers, Da
 | GPU node unavailable for validation | Med | Low | Validation can wait. CPU containers tested first. |
 | DataStore NFS flaky during staging | Med | Med | rsync --partial --timeout=300. Staging retry via Nextflow errorStrategy. |
 | lfs quota command unavailable | Low | Low | Fallback to df, then YAML config scratch_quota_gb. |
-| Scratch quota insufficient for representative plate | Med | Med | Sarah-screen plate `3723-D-100` is ~103G. Stage to scratch first and check quota before full compute. |
+| Scratch quota insufficient for representative plate | Med | Med | example-screen plate `example-plate-001` is ~103G. Stage to scratch first and check quota before full compute. |
 | Container path mismatch between Python and Nextflow | Low | High | params.json resolves .sif paths via containers.py. Single source of truth. |
 
 ## Assumptions
 
 - `Docker Desktop with WSL2 backend is available on the local machine`: Needed for building DeepProfiler and Cellpose images. Verify with `docker info`.
-- `Eddie scratch has enough space for the representative Sarah-screen plate`: `3723-D-100` is ~103G before derived outputs. Check scratch before full compute.
+- `Eddie scratch has enough space for the representative example-screen plate`: `example-plate-001` is ~103G before derived outputs. Check scratch before full compute.
 - `Nextflow 25.10.4 is still installed at ~/.local/bin/nextflow on Eddie`: Validated in prior session (job 55013075). Verify with `nextflow -version`.
 - `conda is available on Eddie`: Either via module load or existing miniconda install. Needed for install_eddie.sh.
 - `The staging queue (-q staging) is accessible to the user`: Eddie staging queue requires no special permissions, just the correct qsub flags.
@@ -104,10 +104,10 @@ Deploy cptools2's Nextflow pipeline to Eddie HPC with Singularity containers, Da
 2. **subprocess.run instead of os.execvp** — enables the batch loop (multiple Nextflow invocations per cptools2 run). os.execvp replaces the process.
 3. **batch.py is a migration, not new logic** — same algorithm as job.py:327-367. job.py kept for legacy generate command backward compatibility.
 4. **Staging h_rt override to 4h** — Eddie staging queue default may be 1h, insufficient for large plates.
-5. **Container symlinks for Drug-Discovery** — avoid storing 20GB of .sif files twice. Symlink from chandranlabs.
+5. **Container symlinks for Drug-Discovery** — avoid storing 20GB of .sif files twice. Symlink from <group>.
 6. **Activation script sets CPTOOLS2_CONTAINER_DIR** — containers.py reads this env var. Zero YAML config needed for container resolution on Eddie.
 7. **DataStore staging is mandatory** — DataStore paths are visible from staging nodes, not normal compute/GPU jobs. YAML configs backed by `/datastore/` must use `stage_data: true`.
-8. **Loop 230 is a representative scaling test** — the Sarah-screen validation plate is not small. The goal is to prove staged Nextflow orchestration on realistic data, not quick local smoke testing.
+8. **Loop 230 is a representative scaling test** — the example-screen validation plate is not small. The goal is to prove staged Nextflow orchestration on realistic data, not quick local smoke testing.
 
 ## Ralph Loops (3)
 
@@ -115,4 +115,4 @@ Deploy cptools2's Nextflow pipeline to Eddie HPC with Singularity containers, Da
 |------|------|------|-------------|
 | 210 | Container Build & Deploy | Infrastructure | 3 .sif files on Eddie, manifest deployed, build script parameterized |
 | 220 | Staging + Batch Orchestration | Implementation | stage_in.nf, stage_out.nf, batch.py, cmd_pipeline batch loop, unit tests |
-| 230 | End-to-End Eddie Test | Validation | Representative Sarah-screen staged run, output verification, install script tested |
+| 230 | End-to-End Eddie Test | Validation | Representative example-screen staged run, output verification, install script tested |

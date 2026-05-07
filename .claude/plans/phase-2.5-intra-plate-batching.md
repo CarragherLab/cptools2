@@ -16,7 +16,7 @@ Restore cptools2's SGE-era intra-plate parallelism inside the Nextflow architect
 - Preserve mandatory DataStore staging before compute.
 - Preserve output metadata fields: `plate`, `well`, `site`, `image_path`, plus stage-specific output paths.
 - Add smoke tests proving that a representative plate fans out into many tasks.
-- Validate on Eddie with a small subset first, then the Sarah-screen representative plate.
+- Validate on Eddie with a small subset first, then the example-screen representative plate.
 
 ### Explicitly NOT included:
 - Downstream hit calling, aggregation, profiling, or analytics.
@@ -86,7 +86,7 @@ Minimum required columns:
 | `channel` | Channel name or index |
 | `image_path` | Scratch-local path after staging, never DataStore path for compute |
 | `image_set_id` | Stable id for the well/site image set |
-| `chunk_id` | Stable chunk id, for example `3723-D-100_chunk_0001` |
+| `chunk_id` | Stable chunk id, for example `example-plate-001_chunk_0001` |
 | `source_plate_path` | Original plate path, retained for traceability only |
 
 The chunking unit should be image sets, not individual files. A Cell Painting site with five channels must stay together.
@@ -121,7 +121,7 @@ Default chunk size is `96` image sets. This must be configurable, but `96` is th
 
 ## Success Criteria
 
-- [ ] A dry run for Sarah-screen plate `3723-D-100` produces a chunk manifest with many chunks, not one plate-level unit.
+- [ ] A dry run for example-screen plate `example-plate-001` produces a chunk manifest with many chunks, not one plate-level unit.
 - [ ] Each chunk contains complete image sets, with all expected channels for a site.
 - [ ] The CLI passes the active batch's plate list into each Nextflow run.
 - [ ] DataStore-backed configs refuse compute unless `stage_data: true`.
@@ -136,7 +136,7 @@ Default chunk size is `96` image sets. This must be configurable, but `96` is th
 - [ ] Missing required channels fail before compute starts.
 - [ ] Eddie validation shows multiple SGE jobs submitted for one plate.
 - [ ] Outputs preserve `plate`, `well`, `site`, and `image_path`.
-- [ ] The representative Sarah-screen plate can run without staging the whole screen at once.
+- [ ] The representative example-screen plate can run without staging the whole screen at once.
 
 ## Dependencies
 
@@ -172,7 +172,7 @@ Default chunk size is `96` image sets. This must be configurable, but `96` is th
 
 ## Assumptions
 
-- `parserix can parse Sarah-screen ImageXpress filenames`: This is already relied on by the SGE-native implementation and should be validated with fixture tests.
+- `parserix can parse example-screen ImageXpress filenames`: This is already relied on by the SGE-native implementation and should be validated with fixture tests.
 - `Image-set chunks are the right parallel unit`: This preserves channel grouping and maps cleanly to per-site feature extraction.
 - `Illumination calculate remains plate-level initially`: It may need global plate context. We should not force chunking there until validated scientifically.
 - `Feature extraction should initially be per-site or per-image-set`: This aligns with the user's stated target and avoids premature aggregation.
@@ -184,7 +184,7 @@ Default chunk size is `96` image sets. This must be configurable, but `96` is th
 2. **Batching has two layers**: screen-level plate batches protect scratch; intra-plate chunks create SGE parallelism.
 3. **Nextflow replaces SGE arrays, not the chunking idea**: We should stop generating SGE command files for the new pipeline, but keep the proven split/load/metadata concepts.
 4. **Staging remains non-optional**: DataStore paths should only be accessed from staging jobs. Compute and GPU jobs operate on scratch-local paths.
-5. **Subset mode is required**: Loop 230 should be able to run the first N chunks of `3723-D-100` before the full plate.
+5. **Subset mode is required**: Loop 230 should be able to run the first N chunks of `example-plate-001` before the full plate.
 6. **Cellpose is conditional, not universal**: It is mandatory for AI feature extraction paths, but not for pure CellProfiler-only baseline workflows.
 
 ## Ralph Loops
@@ -195,7 +195,7 @@ Default chunk size is `96` image sets. This must be configurable, but `96` is th
 | 250 | Nextflow Index and Chunk Processes | Implementation | Parserix-backed index process, chunk process, chunk-size controls, tests |
 | 260 | Batch-Aware Nextflow Params | Implementation | Active batch plate list passed into Nextflow; dry-run shows selected plates/chunks |
 | 270 | Chunked AI Pipeline Stages | Implementation | Chunked apply, Cellpose segmentation, and feature extraction modules |
-| 280 | Eddie Scaling Validation | Validation | Subset run, then representative Sarah-screen plate with multiple SGE jobs |
+| 280 | Eddie Scaling Validation | Validation | Subset run, then representative example-screen plate with multiple SGE jobs |
 
 ## Implementation Progress
 

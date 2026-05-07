@@ -303,7 +303,7 @@ todos:
     content: "Sync the verified local source/config to the Eddie group checkout."
     skill: eddie-login
     agent: gpt-5.4-mini-worker
-    outcome: "Shared checkout at /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2 contains the local blocker-fix commit or matching files."
+    outcome: "Shared checkout at ${CPTOOLS2_PROJECT_ROOT} contains the local blocker-fix commit or matching files."
     status: pending
     priority: high
   - id: loop-310-2
@@ -331,7 +331,7 @@ prompt: |
 
   ## Verification
   - cptools2 pipeline config/loop230-sarah-screen.yaml --dry-run on Eddie
-  - Inspect /exports/eddie/scratch/mharvey2/cptools2-loop230/params.batch_1.json
+  - Inspect /exports/eddie/scratch/${USER}/cptools2-loop230/params.batch_1.json
 
   ## Completion
   Return sync method, Eddie host, command run, params path, and any mismatches.
@@ -392,7 +392,7 @@ todos:
     content: "Verify BUILD_IMAGESET_INDEX and CHUNK_IMAGESETS complete, or capture exact blocker."
     skill: eddie-validate
     agent: gpt-5.4-mini-worker
-    outcome: "Chunk manifests exist for 3723-D-100, or report includes command, log path, process name, and failure text."
+    outcome: "Chunk manifests exist for example-plate-001, or report includes command, log path, process name, and failure text."
     status: completed
     priority: high
 prompt: |
@@ -402,7 +402,7 @@ prompt: |
   ## Constraints
   - Do not run an unlimited full plate if subset mode is available.
   - Keep NXF_OPTS constrained for login-host execution.
-  - Keep work dir in /exports/eddie/scratch/mharvey2/cptools2-loop230/work.
+  - Keep work dir in /exports/eddie/scratch/${USER}/cptools2-loop230/work.
 
   ## Verification
   - Nextflow log shows BUILD_IMAGESET_INDEX completed.

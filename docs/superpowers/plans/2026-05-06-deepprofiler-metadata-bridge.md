@@ -611,8 +611,8 @@ git commit -m "wire DeepProfiler metadata bridge into Nextflow"
 ### Task 4: Validate On Eddie With Loop 440 Resume
 
 **Files:**
-- Remote mirror: `/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2`
-- Scratch root: `/exports/eddie/scratch/mharvey2/cptools2-ai-update`
+- Remote mirror: `${CPTOOLS2_PROJECT_ROOT}`
+- Scratch root: `${CPTOOLS2_SCRATCH_ROOT}`
 - Local docs after run: `.claude/plans/phase-2.8-eddie-container-validation.md`, `TODOs.md`
 
 - [ ] **Step 1: Push local branch**
@@ -630,7 +630,7 @@ Expected: GitHub branch advances to the new commits.
 Run:
 
 ```powershell
-ssh -o ConnectTimeout=10 mharvey2@eddie.ecdf.ed.ac.uk "cd /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2 && git -c safe.directory=/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2 pull --ff-only origin ai-update && git -c safe.directory=/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2 rev-parse --short HEAD"
+ssh -o ConnectTimeout=10 <UUN>@eddie.ecdf.ed.ac.uk "cd ${CPTOOLS2_PROJECT_ROOT} && git -c safe.directory=${CPTOOLS2_PROJECT_ROOT} pull --ff-only origin ai-update && git -c safe.directory=${CPTOOLS2_PROJECT_ROOT} rev-parse --short HEAD"
 ```
 
 Expected: Eddie mirror fast-forwards. `containers/` remains untracked and present.
@@ -640,7 +640,7 @@ Expected: Eddie mirror fast-forwards. `containers/` remains untracked and presen
 Run:
 
 ```powershell
-ssh -o ConnectTimeout=10 mharvey2@eddie.ecdf.ed.ac.uk 'run_id=loop440-smoke-$(date +%Y%m%d-%H%M%S); log_dir=/exports/eddie/scratch/mharvey2/cptools2-ai-update/logs/$run_id; mkdir -p "$log_dir"; status_file="$log_dir/status.txt"; log_file="$log_dir/launcher.log"; ( cd /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2 && . config/eddie_env.sh && cptools2 pipeline config/loop440-eddie-smoke.yaml --resume > "$log_file" 2>&1; printf "%s\n" "$?" > "$status_file" ) & pid=$!; printf "RUN_ID=%s\nPID=%s\nLOG=%s\nSTATUS=%s\n" "$run_id" "$pid" "$log_file" "$status_file"'
+ssh -o ConnectTimeout=10 <UUN>@eddie.ecdf.ed.ac.uk 'run_id=loop440-smoke-$(date +%Y%m%d-%H%M%S); log_dir=${CPTOOLS2_SCRATCH_ROOT}/logs/$run_id; mkdir -p "$log_dir"; status_file="$log_dir/status.txt"; log_file="$log_dir/launcher.log"; ( cd ${CPTOOLS2_PROJECT_ROOT} && . config/eddie_env.sh && cptools2 pipeline config/loop440-eddie-smoke.yaml --resume > "$log_file" 2>&1; printf "%s\n" "$?" > "$status_file" ) & pid=$!; printf "RUN_ID=%s\nPID=%s\nLOG=%s\nSTATUS=%s\n" "$run_id" "$pid" "$log_file" "$status_file"'
 ```
 
 Expected: Nextflow resumes cached index/chunk/Cellpose if hashes are reusable, then retries `FEATURE_EXTRACT`.
@@ -650,13 +650,13 @@ Expected: Nextflow resumes cached index/chunk/Cellpose if hashes are reusable, t
 Run every 60 seconds while active:
 
 ```powershell
-ssh -o ConnectTimeout=10 mharvey2@eddie.ecdf.ed.ac.uk "qstat -u mharvey2 | tail -n +3 || true"
+ssh -o ConnectTimeout=10 <UUN>@eddie.ecdf.ed.ac.uk "qstat -u <UUN> | tail -n +3 || true"
 ```
 
 Then inspect the newest launcher log:
 
 ```powershell
-ssh -o ConnectTimeout=10 mharvey2@eddie.ecdf.ed.ac.uk "latest=\$(ls -td /exports/eddie/scratch/mharvey2/cptools2-ai-update/logs/loop440-smoke-* | head -1); echo \$latest; tail -160 \$latest/launcher.log; cat \$latest/status.txt 2>/dev/null || true"
+ssh -o ConnectTimeout=10 <UUN>@eddie.ecdf.ed.ac.uk "latest=\$(ls -td ${CPTOOLS2_SCRATCH_ROOT}/logs/loop440-smoke-* | head -1); echo \$latest; tail -160 \$latest/launcher.log; cat \$latest/status.txt 2>/dev/null || true"
 ```
 
 Expected: `FEATURE_EXTRACT` creates `dp_project/inputs/metadata/index.csv`; if DeepProfiler fails later, the failure should be about model/checkpoint/config semantics, not missing metadata.
@@ -666,7 +666,7 @@ Expected: `FEATURE_EXTRACT` creates `dp_project/inputs/metadata/index.csv`; if D
 Run:
 
 ```powershell
-ssh -o ConnectTimeout=10 mharvey2@eddie.ecdf.ed.ac.uk "find /exports/eddie/scratch/mharvey2/cptools2-ai-update/results/loop440 -maxdepth 4 -type f \( -name 'trace*' -o -name 'report*' -o -name 'timeline*' -o -name 'params*.json' \) -printf '%p\t%s\n' | sort"
+ssh -o ConnectTimeout=10 <UUN>@eddie.ecdf.ed.ac.uk "find ${CPTOOLS2_SCRATCH_ROOT}/results/loop440 -maxdepth 4 -type f \( -name 'trace*' -o -name 'report*' -o -name 'timeline*' -o -name 'params*.json' \) -printf '%p\t%s\n' | sort"
 ```
 
 Expected: params, trace, report, and timeline are present under scratch. If the run completes, features should be under `results/loop440/tiny-plate-001/features/`.

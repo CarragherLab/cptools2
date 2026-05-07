@@ -65,7 +65,7 @@ docker save cptools2/cellpose_sam:1.0 | gzip > cellpose_sam_1.0.tar.gz
 ## Step 4: Transfer to Eddie
 
 ```bash
-EDDIE_CONTAINERS=mharvey2@eddie.ecdf.ed.ac.uk:/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/containers/
+EDDIE_CONTAINERS=<UUN>@eddie.ecdf.ed.ac.uk:/exports/<college>/eddie/<school>/groups/<group>/cptools2/containers/
 
 rsync -avzP cellprofiler_4.2.8.tar.gz "$EDDIE_CONTAINERS"
 rsync -avzP deepprofiler_1.0.tar.gz "$EDDIE_CONTAINERS"
@@ -97,7 +97,7 @@ qlogin -l h_rss=8G -l h_rt=00:30:00
 module load singularity
 
 singularity exec \
-    /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/containers/cellprofiler_4.2.8.sif \
+    /exports/<college>/eddie/<school>/groups/<group>/cptools2/containers/cellprofiler_4.2.8.sif \
     cellprofiler --version
 ```
 
@@ -109,12 +109,12 @@ module load singularity
 
 # DeepProfiler
 singularity exec --nv \
-    /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/containers/deepprofiler_1.0.sif \
+    /exports/<college>/eddie/<school>/groups/<group>/cptools2/containers/deepprofiler_1.0.sif \
     python -c "import tensorflow as tf; assert len(tf.config.list_physical_devices('GPU')) > 0"
 
 # Cellpose-SAM
 singularity exec --nv \
-    /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2/containers/cellpose_sam_1.0.sif \
+    /exports/<college>/eddie/<school>/groups/<group>/cptools2/containers/cellpose_sam_1.0.sif \
     python -c "import torch; assert torch.cuda.is_available()"
 ```
 

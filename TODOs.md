@@ -41,7 +41,7 @@ Goal: make `cptools2 pipeline` run scratch-safe Eddie batches as reproducible un
 
 - [ ] Add conservative `maxForks` tuning only after trace/report artifacts exist.
 - [x] Document the flat-output, batch-work-dir layout in the plan or Eddie docs.
-- [x] Attempt dry-run against the Loop 230 Sarah-screen config locally, blocked by `PermissionError: [WinError 5] Access is denied: 'C:\\exports'` before Nextflow.
+- [x] Attempt dry-run against the Loop 230 example-screen config locally, blocked by `PermissionError: [WinError 5] Access is denied: 'C:\\exports'` before Nextflow.
 - [ ] Run a small Eddie batch and record trace/report/timeline plus peak scratch usage.
 - [ ] Tune scratch factor and concurrency from observed Eddie data.
 
@@ -49,8 +49,8 @@ Goal: make `cptools2 pipeline` run scratch-safe Eddie batches as reproducible un
 
 Goal: certify the permanent Eddie mirror and scratch runtime layout, then validate CellProfiler, Cellpose, and DeepProfiler containers with dry-runs and minimal smoke tests.
 
-Permanent root: `/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2`
-Scratch root: `/exports/eddie/scratch/mharvey2/cptools2-ai-update`
+Permanent root: `${CPTOOLS2_PROJECT_ROOT}`
+Scratch root: `${CPTOOLS2_SCRATCH_ROOT}`
 
 ### Loop 390: Planning State and Eddie Inventory
 

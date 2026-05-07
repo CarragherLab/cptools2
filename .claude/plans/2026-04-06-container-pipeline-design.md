@@ -58,7 +58,7 @@ CellProfiler uses the official Docker Hub image directly (no custom Dockerfile).
 
 All containers stored in Eddie group space (persistent, shared):
 ```
-/exports/cmvm/eddie/scs/groups/chandranlabs/containers/
+/exports/<college>/eddie/<school>/groups/<group>/containers/
   cellprofiler_4.2.8.sif
   deepprofiler_1.0.sif
   cellpose_sam_1.0.sif

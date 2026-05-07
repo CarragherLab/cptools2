@@ -395,7 +395,7 @@ Primary distribution remains a Python CLI package plus project-owned Eddie deplo
 - Eddie deployment: `scripts/install_eddie.sh` creates the shared project environment, Nextflow location, and activation script.
 - Workflow execution: `cptools2 pipeline config.yml` invokes Nextflow with the Eddie profile.
 - Containers: Singularity `.sif` files live under the project container directory on Eddie.
-- CI: `.gitlab-ci.yml` includes Eddie validation templates from `mharvey2/eddie-for-agents`.
+- CI: `.gitlab-ci.yml` includes Eddie validation templates from `<namespace>/eddie-for-agents`.
 
 Future distribution needs:
 

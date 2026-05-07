@@ -4,27 +4,27 @@ Generated: 2026-04-28
 
 ## Summary
 
-Loop 230 now has the core scratch-aware Nextflow path in place and partially validated on Eddie with the Sarah-screen test plate `3723-D-100`.
+Loop 230 now has the core scratch-aware Nextflow path in place and partially validated on Eddie with the example-screen test plate `example-plate-001`.
 
 The SGE-native scratch safety model has been ported into the Nextflow CLI path:
 
 - Scratch availability is checked before execution.
 - Plate sizes are converted into scratch loading batches using the same `75%` usable scratch target and `30%` per-plate overhead buffer.
 - DataStore-backed staged runs no longer silently fall back to "all plates" when the source path is invisible from the login node.
-- Loop 230 config now carries an explicit measured size for `3723-D-100`: `103 GB`, producing a protected batch size of `133.9 GB`.
+- Loop 230 config now carries an explicit measured size for `example-plate-001`: `103 GB`, producing a protected batch size of `133.9 GB`.
 
 ## Completed
 
 - Added `plate_sizes_gb` config support for staged DataStore runs.
 - Added fail-fast behavior when a DataStore input is inaccessible and no explicit plate size is supplied.
 - Updated `config/loop230-sarah-screen.yaml` with:
-  - `plate_sizes_gb: {3723-D-100: 103}`
+  - `plate_sizes_gb: {example-plate-001: 103}`
   - shared SIF container directory via `container_path`
 - Deployed updated source/config/modules to:
-  - `/exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2`
+  - `${CPTOOLS2_PROJECT_ROOT}`
 - Confirmed Eddie dry-run writes:
   - `batch_id = 1`
-  - `plates = ['3723-D-100']`
+  - `plates = ['example-plate-001']`
   - `batch_plate_count = 1`
   - `batch_total_size_gb = 133.9`
   - `stage_data = true`
@@ -38,8 +38,8 @@ The SGE-native scratch safety model has been ported into the Nextflow CLI path:
   - `FEATURE_EXTRACT`
   - `STAGE_OUT`
 - Submitted a full run and confirmed:
-  - `STAGE_IN (3723-D-100)` completed and is cacheable.
-  - `ILLUM_CALCULATE (3723-D-100)` completed with the shared CellProfiler SIF container.
+  - `STAGE_IN (example-plate-001)` completed and is cacheable.
+  - `ILLUM_CALCULATE (example-plate-001)` completed with the shared CellProfiler SIF container.
 
 ## Code Changes
 
@@ -67,8 +67,8 @@ Eddie validation:
 - `cptools2 pipeline config/loop230-sarah-screen.yaml --dry-run` succeeded on Eddie.
 - Nextflow preview succeeded using:
   - `-profile eddie`
-  - `-params-file /exports/eddie/scratch/mharvey2/cptools2-loop230/params.batch_1.json`
-  - `-work-dir /exports/eddie/scratch/mharvey2/cptools2-loop230/work`
+  - `-params-file /exports/eddie/scratch/${USER}/cptools2-loop230/params.batch_1.json`
+  - `-work-dir /exports/eddie/scratch/${USER}/cptools2-loop230/work`
 - Full run progressed through staging and illumination calculation.
 
 ## Blocker
@@ -101,13 +101,13 @@ export NXF_OPTS='-Xms128m -Xmx384m -XX:+UseSerialGC -XX:ActiveProcessorCount=1 -
 4. Resume with:
 
 ```bash
-cd /exports/cmvm/eddie/smgphs/groups/ChandranLabs/cptools2
+cd ${CPTOOLS2_PROJECT_ROOT}
 export PATH=$HOME/.local/bin:/exports/applications/gridengine/ge-2024.1.0/bin/lx-amd64:/opt/sge/bin/lx-amd64:/usr/local/bin:/usr/bin:/bin:$PATH
 ~/.local/bin/nextflow run nextflow/main.nf \
   -c nextflow/nextflow.config \
   -profile eddie \
-  -params-file /exports/eddie/scratch/mharvey2/cptools2-loop230/params.batch_1.json \
-  -work-dir /exports/eddie/scratch/mharvey2/cptools2-loop230/work \
+  -params-file /exports/eddie/scratch/${USER}/cptools2-loop230/params.batch_1.json \
+  -work-dir /exports/eddie/scratch/${USER}/cptools2-loop230/work \
   -resume
 ```
 

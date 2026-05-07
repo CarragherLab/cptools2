@@ -78,7 +78,7 @@ The largest operational risk is oversubmitting GPU jobs. The plan should add:
 
 - Conservative `maxForks` for GPU labelled processes.
 - A separate parameter for chunk-level GPU concurrency.
-- Eddie subset mode before full `3723-D-100`.
+- Eddie subset mode before full `example-plate-001`.
 
 The current Eddie `queueSize = 100` is acceptable for CPU work, but GPU work needs tighter control.
 
