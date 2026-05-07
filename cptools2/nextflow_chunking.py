@@ -19,9 +19,6 @@ os.environ.setdefault("RAYON_NUM_THREADS", "1")
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("MKL_NUM_THREADS", "1")
 
-from parserix import parse as _parse
-
-
 DEFAULT_CHUNK_SIZE = 96
 CHANNEL_NAME_TO_INDEX = {
     "DNA": 1,
@@ -40,6 +37,12 @@ def _pl():
     import polars as pl
 
     return pl
+
+
+def _parserix_parse():
+    from parserix import parse as parserix_parse
+
+    return parserix_parse
 
 
 def _normalise_expected_channels(expected_channels):
@@ -62,7 +65,7 @@ def _normalise_expected_channels(expected_channels):
 
 def _parse_channel(filename):
     try:
-        channel = _parse.img_channel(filename)
+        channel = _parserix_parse().img_channel(filename)
     except Exception:
         channel = Path(filename).stem.rsplit("_", 1)[-1]
         channel = CHANNEL_NAME_TO_INDEX.get(str(channel).upper(), channel)
@@ -348,10 +351,11 @@ def build_image_set_index(
     )
 
     rows = []
+    parserix_parse = _parserix_parse()
     for image_path in sorted(image_paths):
-        filename = _parse.img_filename(image_path)
-        well = _parse.img_well(filename)
-        site = _parse.img_site(filename)
+        filename = parserix_parse.img_filename(image_path)
+        well = parserix_parse.img_well(filename)
+        site = parserix_parse.img_site(filename)
         channel = _parse_channel(filename)
         image_set_id = f"{plate_id}_{well}_s{site}"
         rows.append(

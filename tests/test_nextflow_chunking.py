@@ -1,6 +1,9 @@
 import csv
+import builtins
+import importlib
 import json
 import os
+import sys
 from pathlib import Path
 
 import polars as pl
@@ -139,6 +142,25 @@ def test_nextflow_chunking_caps_polars_thread_pools():
     assert os.environ["RAYON_NUM_THREADS"] == "1"
     assert os.environ["OMP_NUM_THREADS"] == "1"
     assert os.environ["MKL_NUM_THREADS"] == "1"
+
+
+def test_nextflow_chunking_import_does_not_require_parserix(monkeypatch):
+    original_module = sys.modules.get("cptools2.nextflow_chunking")
+    sys.modules.pop("cptools2.nextflow_chunking", None)
+    real_import = builtins.__import__
+
+    def guarded_import(name, *args, **kwargs):
+        if name.startswith("parserix"):
+            raise ModuleNotFoundError("No module named 'parserix'")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", guarded_import)
+    try:
+        module = importlib.import_module("cptools2.nextflow_chunking")
+        assert hasattr(module, "build_deepprofiler_input_package")
+    finally:
+        if original_module is not None:
+            sys.modules["cptools2.nextflow_chunking"] = original_module
 
 
 def test_build_image_set_index_preserves_complete_channel_groups(tmp_path):
