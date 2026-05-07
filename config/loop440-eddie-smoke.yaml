@@ -56,4 +56,5 @@ segmentation:
 feature_extraction:
   tool: deepprofiler
   config: ${CPTOOLS2_PROJECT_ROOT}/cptools2/templates/deepprofiler_config.json
+  weights: ${CPTOOLS2_MODEL_DIR}/deepprofiler/Cell_Painting_CNN_v1.hdf5
   batch_size: 8

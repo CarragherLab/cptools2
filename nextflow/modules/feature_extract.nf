@@ -30,7 +30,10 @@ process FEATURE_EXTRACT {
     tuple val(plate_id), path("features"), emit: features
 
     script:
-    if (params.feature_extraction_tool == 'deepprofiler')
+    if (params.feature_extraction_tool == 'deepprofiler') {
+        def weights_path = params.feature_extraction_weights && params.feature_extraction_weights.toString() != 'null'
+            ? params.feature_extraction_weights.toString()
+            : ''
         """
         mkdir -p features
 
@@ -52,9 +55,13 @@ process FEATURE_EXTRACT {
         test -d dp_project/inputs/images/${plate_id}
         test -f dp_project/inputs/config/config.json
 
-        # Link model weights if provided
-        if [ -n "${params.feature_extraction_weights}" ] && [ -f "${params.feature_extraction_weights}" ]; then
-            ln -s ${params.feature_extraction_weights} dp_project/outputs/cell_painting/checkpoint/
+        # Link model weights if configured
+        if [ -n "${weights_path}" ]; then
+            if [ ! -f "${weights_path}" ]; then
+                echo "Configured DeepProfiler weights do not exist: ${weights_path}" >&2
+                exit 1
+            fi
+            ln -s "${weights_path}" dp_project/outputs/cell_painting/checkpoint/
         fi
 
         # Run DeepProfiler
@@ -75,7 +82,7 @@ process FEATURE_EXTRACT {
         fi
         cp -r dp_project/outputs/cell_painting/features/* features/
         """
-    else if (params.feature_extraction_tool == 'dinov2')
+    } else if (params.feature_extraction_tool == 'dinov2')
         """
         mkdir -p features
 

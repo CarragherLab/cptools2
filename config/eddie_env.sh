@@ -37,6 +37,7 @@ export CPTOOLS2_PERMANENT_ROOT="${CPTOOLS2_PROJECT_ROOT}"
 # Permanent configuration and container references stay on the mirror.
 export CPTOOLS2_CONFIG_ROOT="${CPTOOLS2_PERMANENT_ROOT}/config"
 export CPTOOLS2_CONTAINER_DIR="${CPTOOLS2_CONTAINER_DIR:-${CPTOOLS2_PERMANENT_ROOT}/containers}"
+export CPTOOLS2_MODEL_DIR="${CPTOOLS2_MODEL_DIR:-${CPTOOLS2_PROJECT_ROOT%/}-local/models}"
 export CPTOOLS2_VENV="${CPTOOLS2_PERMANENT_ROOT}/.venv"
 
 # Runtime state stays on scratch, with work kept under scratch/work.
@@ -70,6 +71,7 @@ mkdir -p \
     "${CPTOOLS2_CACHE_ROOT}" \
     "${CPTOOLS2_LOG_ROOT}" \
     "${CPTOOLS2_TRACE_ROOT}" \
+    "${CPTOOLS2_MODEL_DIR}" \
     "${CPTOOLS2_TEMP_ROOT}" \
     "${CPTOOLS2_HOME}" \
     "${NXF_HOME}" \

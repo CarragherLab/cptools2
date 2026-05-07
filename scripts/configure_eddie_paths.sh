@@ -16,6 +16,7 @@ Usage:
     [--group-root /exports/<college>/eddie/<school>/groups/<group>] \
     [--scratch-root /exports/eddie/scratch/${USER}/cptools2-ai-update] \
     [--container-dir /path/to/containers] \
+    [--model-dir /path/to/models] \
     [--output /path/to/eddie_paths.env] \
     [--create-dirs] \
     [--force]
@@ -36,6 +37,7 @@ PROJECT_ROOT=""
 GROUP_ROOT=""
 SCRATCH_ROOT='/exports/eddie/scratch/${USER}/cptools2-ai-update'
 CONTAINER_DIR=""
+MODEL_DIR=""
 OUTPUT=""
 CREATE_DIRS=0
 FORCE=0
@@ -56,6 +58,10 @@ while [ "$#" -gt 0 ]; do
             ;;
         --container-dir)
             CONTAINER_DIR="${2:?--container-dir requires a value}"
+            shift 2
+            ;;
+        --model-dir)
+            MODEL_DIR="${2:?--model-dir requires a value}"
             shift 2
             ;;
         --output)
@@ -96,6 +102,10 @@ if [ -z "$CONTAINER_DIR" ]; then
     CONTAINER_DIR='${CPTOOLS2_PROJECT_ROOT}/containers'
 fi
 
+if [ -z "$MODEL_DIR" ]; then
+    MODEL_DIR='${CPTOOLS2_PROJECT_ROOT}-local/models'
+fi
+
 if [ -z "$OUTPUT" ]; then
     OUTPUT="${PROJECT_ROOT%/}-local/eddie_paths.env"
 fi
@@ -116,6 +126,7 @@ export CPTOOLS2_PROJECT_ROOT="$PROJECT_ROOT"
 export CPTOOLS2_GROUP_ROOT="$GROUP_ROOT"
 export CPTOOLS2_SCRATCH_ROOT="$SCRATCH_ROOT"
 export CPTOOLS2_CONTAINER_DIR="$CONTAINER_DIR"
+export CPTOOLS2_MODEL_DIR="$MODEL_DIR"
 EOF
 
 if [ "$CREATE_DIRS" -eq 1 ]; then
@@ -125,7 +136,8 @@ if [ "$CREATE_DIRS" -eq 1 ]; then
         "${PROJECT_ROOT}/containers" \
         "${PROJECT_ROOT}/config" \
         "${PROJECT_ROOT}/nextflow" \
-        "${PROJECT_ROOT}/cptools2/templates"
+        "${PROJECT_ROOT}/cptools2/templates" \
+        "${MODEL_DIR}/deepprofiler"
 
     expanded_scratch_root="${SCRATCH_ROOT//\$\{USER\}/${USER}}"
     expanded_scratch_root="${expanded_scratch_root//\$USER/${USER}}"

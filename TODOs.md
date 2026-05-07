@@ -106,3 +106,12 @@ Scratch root: `${CPTOOLS2_SCRATCH_ROOT}`
 - [ ] Wire `nextflow/modules/feature_extract.nf` to call the package builder and validate package artifacts before launching DeepProfiler.
 - [ ] Keep bulky `dp_project` internals in Nextflow work while publishing only small audit artifacts and final features.
 - [ ] Rerun Loop 440 on Eddie with `--resume` and capture whether the run passes or reaches a new model/checkpoint blocker.
+
+### Loop 460: DeepProfiler Checkpoint Resolution and Final Smoke
+
+- [ ] Locate or obtain the Cell Painting DeepProfiler checkpoint `combinedset_cellsout_e30.hdf5`.
+- [ ] Store the checkpoint in permanent project space outside Git-tracked source, with any runtime/cache artifacts remaining in scratch.
+- [ ] Configure `feature_extraction.weights` through a local/site config path, not a committed site-specific path.
+- [ ] Add tests/docs that explain the checkpoint contract without exposing local Eddie paths.
+- [ ] Resume the Loop 440 Eddie smoke with `--resume --clean-work` and capture trace/report/timeline evidence.
+- [ ] If the checkpoint cannot be located, document the blocker, candidate sources, and the exact user decision needed.

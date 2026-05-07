@@ -44,6 +44,7 @@ def test_eddie_bootstrap_separates_permanent_and_scratch_paths():
     assert 'export CPTOOLS2_PERMANENT_ROOT="${CPTOOLS2_PROJECT_ROOT}"' in text
     assert 'export CPTOOLS2_CONFIG_ROOT="${CPTOOLS2_PERMANENT_ROOT}/config"' in text
     assert 'export CPTOOLS2_CONTAINER_DIR="${CPTOOLS2_CONTAINER_DIR:-${CPTOOLS2_PERMANENT_ROOT}/containers}"' in text
+    assert 'export CPTOOLS2_MODEL_DIR="${CPTOOLS2_MODEL_DIR:-${CPTOOLS2_PROJECT_ROOT%/}-local/models}"' in text
     assert 'export CPTOOLS2_VENV="${CPTOOLS2_PERMANENT_ROOT}/.venv"' in text
     assert 'export CPTOOLS2_WORK_ROOT="${CPTOOLS2_SCRATCH_ROOT}/work"' in text
     assert 'export CPTOOLS2_PARAMS_ROOT="${CPTOOLS2_SCRATCH_ROOT}/params"' in text
@@ -138,6 +139,8 @@ def test_eddie_path_configurator_writes_ignored_env_file():
     assert "CPTOOLS2_PROJECT_ROOT" in text
     assert "CPTOOLS2_SCRATCH_ROOT" in text
     assert "CPTOOLS2_CONTAINER_DIR" in text
+    assert "CPTOOLS2_MODEL_DIR" in text
+    assert "--model-dir" in text
     assert "--create-dirs" in text
     assert "/exports/<college>/eddie/<school>/groups/<group>/cptools2" in text
     assert "/exports/cmvm/eddie/" not in text
@@ -231,6 +234,7 @@ def test_loop440_smoke_config_uses_tiny_scratch_input_and_permanent_assets():
     assert f"container_path: {PROJECT_ROOT_VAR}/containers" not in text
     assert "container_path: ${CPTOOLS2_CONTAINER_DIR}" in text
     assert f"{PROJECT_ROOT_VAR}/cptools2/templates/deepprofiler_config.json" in text
+    assert "${CPTOOLS2_MODEL_DIR}/deepprofiler/Cell_Painting_CNN_v1.hdf5" in text
     assert "/exports/eddie/scratch/" not in text
     assert '"file_format": "tif"' in deepprofiler_config
 
@@ -249,7 +253,7 @@ def test_deepprofiler_config_uses_documented_profile_and_train_sections():
     ]
     assert "profile" in config
     assert config["profile"]["feature_layer"] == "block6a_activation"
-    assert config["profile"]["checkpoint"] == "combinedset_cellsout_e30.hdf5"
+    assert config["profile"]["checkpoint"] == "Cell_Painting_CNN_v1.hdf5"
     assert config["train"]["partition"]["targets"] == ["Metadata_Compound"]
     assert config["train"]["partition"]["split_field"] == "Metadata_Plate"
     assert config["train"]["model"]["name"] == "efficientnet"
