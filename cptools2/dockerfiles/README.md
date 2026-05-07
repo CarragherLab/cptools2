@@ -56,23 +56,44 @@ docker run --gpus all --rm cptools2/cellpose_sam:1.0 \
 
 ## Step 3: Save Docker Archives
 
+Keep these archives out of Git. They are temporary transfer/build inputs for
+the Eddie container directory, not repository assets.
+
 ```bash
-docker save cellprofiler/cellprofiler:4.2.8 | gzip > cellprofiler_4.2.8.tar.gz
-docker save cptools2/deepprofiler:1.0 | gzip > deepprofiler_1.0.tar.gz
-docker save cptools2/cellpose_sam:1.0 | gzip > cellpose_sam_1.0.tar.gz
+docker save -o cellprofiler_4.2.8.tar cellprofiler/cellprofiler:4.2.8
+docker save -o deepprofiler_1.0.tar cptools2/deepprofiler:1.0
+docker save -o cellpose_sam_1.0.tar cptools2/cellpose_sam:1.0
 ```
 
-## Step 4: Transfer to Eddie
+## Step 4: Transfer to Eddie or Use Existing Lab Containers
+
+Lab Eddie users should normally reuse the prebuilt `.sif` files in the
+configured permanent container directory. The installer checks for:
+
+- `cellprofiler_4.2.8.sif`
+- `deepprofiler_1.0.sif`
+- `cellpose_sam_1.0.sif`
+- `cptools2_containers.json`
+
+External users can build their own containers from the Dockerfiles and Docker
+image references recorded in `cptools2/container_manifest_template.json`.
 
 ```bash
 EDDIE_CONTAINERS=<UUN>@eddie.ecdf.ed.ac.uk:/exports/<college>/eddie/<school>/groups/<group>/cptools2/containers/
 
-rsync -avzP cellprofiler_4.2.8.tar.gz "$EDDIE_CONTAINERS"
-rsync -avzP deepprofiler_1.0.tar.gz "$EDDIE_CONTAINERS"
-rsync -avzP cellpose_sam_1.0.tar.gz "$EDDIE_CONTAINERS"
+rsync -avzP cellprofiler_4.2.8.tar "$EDDIE_CONTAINERS"
+rsync -avzP deepprofiler_1.0.tar "$EDDIE_CONTAINERS"
+rsync -avzP cellpose_sam_1.0.tar "$EDDIE_CONTAINERS"
+rsync -avzP ../container_manifest_template.json "$EDDIE_CONTAINERS/cptools2_containers.json"
 ```
 
 Use `rsync -avzP` (not `scp`) so transfers are resumable if interrupted.
+After conversion, record checksums in the manifest:
+
+```bash
+cd /exports/<college>/eddie/<school>/groups/<group>/cptools2/containers
+sha256sum *.sif
+```
 
 ## Step 5: Singularity Conversion on Eddie
 
@@ -86,6 +107,7 @@ This script:
 - Sets `SINGULARITY_TMPDIR` to scratch (Eddie's `/tmp` is too small)
 - Loads the `singularity` module
 - Converts all three Docker archives to `.sif` format
+- Leaves `.sif` files in the permanent container directory for lab reuse
 - Requests 16G memory; increase to 32G if builds fail with memory errors
 
 ## Step 6: Validation on Eddie

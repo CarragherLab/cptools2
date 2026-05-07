@@ -142,6 +142,8 @@ fi
 
 ENV_DIR="${PROJECT_ROOT}/env"
 NEXTFLOW_DIR="${PROJECT_ROOT}/nextflow"
+CONTAINER_MANIFEST="${CONTAINER_DIR}/cptools2_containers.json"
+CONTAINER_MANIFEST_TEMPLATE="${REPO_ROOT}/cptools2/container_manifest_template.json"
 
 expanded_scratch_root="${SCRATCH_ROOT//\$\{USER\}/${USER}}"
 expanded_scratch_root="${expanded_scratch_root//\$USER/${USER}}"
@@ -190,6 +192,17 @@ mkdir -p \
     "${expanded_scratch_root}/staging" \
     "${expanded_scratch_root}/results" \
     "${expanded_scratch_root}/commands"
+
+if [ ! -f "$CONTAINER_MANIFEST" ]; then
+    if [ -f "$CONTAINER_MANIFEST_TEMPLATE" ]; then
+        cp "$CONTAINER_MANIFEST_TEMPLATE" "$CONTAINER_MANIFEST"
+        log "Seeded container manifest: ${CONTAINER_MANIFEST}"
+    else
+        log "Container manifest template not found: ${CONTAINER_MANIFEST_TEMPLATE}"
+    fi
+else
+    log "Container manifest already present: ${CONTAINER_MANIFEST}"
+fi
 
 if [ "$SKIP_ENV" -eq 0 ]; then
     require_command conda
@@ -279,7 +292,7 @@ elif [ "$CONTAINER_ACTION" = "check" ]; then
 else
     log "Missing containers: ${missing_containers[*]}"
     archives_present=1
-    for archive in cellprofiler_4.2.8.tar cellpose_sam_1.0.tar deepprofiler_1.0.tar; do
+    for archive in cellprofiler_4.2.8.tar deepprofiler_1.0.tar cellpose_sam_1.0.tar; do
         if [ ! -s "${CONTAINER_DIR}/${archive}" ]; then
             archives_present=0
         fi

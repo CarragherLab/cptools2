@@ -14,6 +14,8 @@ CELLPOSE_SMOKE = ROOT / "scripts" / "eddie_smoke_cellpose.sh"
 DEEPPROFILER_SMOKE = ROOT / "scripts" / "eddie_smoke_deepprofiler.sh"
 EDDIE_INSTALL = ROOT / "scripts" / "install_eddie.sh"
 EDDIE_PATH_CONFIGURATOR = ROOT / "scripts" / "configure_eddie_paths.sh"
+CONTAINER_MANIFEST_TEMPLATE = ROOT / "cptools2" / "container_manifest_template.json"
+CONTAINER_README = ROOT / "cptools2" / "dockerfiles" / "README.md"
 LOOP440_CONFIG = ROOT / "config" / "loop440-eddie-smoke.yaml"
 PROJECT_ROOT_VAR = "${CPTOOLS2_PROJECT_ROOT}"
 SCRATCH_ROOT_VAR = "${CPTOOLS2_SCRATCH_ROOT}"
@@ -95,11 +97,37 @@ def test_eddie_installer_configures_paths_install_and_containers():
     assert "cellprofiler_4.2.8.sif" in text
     assert "cellpose_sam_1.0.sif" in text
     assert "deepprofiler_1.0.sif" in text
+    assert "CONTAINER_MANIFEST" in text
+    assert "container_manifest_template.json" in text
+    assert "Seeded container manifest" in text
     assert "qsub -v" in text
     assert "CPTOOLS2_SCRATCH_ROOT=${expanded_scratch_root}" in text
     assert '${REPO_ROOT}/cptools2/dockerfiles/build_containers.sh' in text
     assert "/exports/<college>/eddie/<school>/groups/<group>" in text
     assert "/exports/cmvm/eddie/" not in text
+
+
+def test_container_manifest_template_tracks_metadata_not_binaries():
+    text = CONTAINER_MANIFEST_TEMPLATE.read_text()
+
+    assert "keep .sif and Docker archive files out of Git" in text
+    assert '"cellprofiler_4.2.8.sif"' in text
+    assert '"deepprofiler_1.0.sif"' in text
+    assert '"cellpose_sam_1.0.sif"' in text
+    assert '"archive": "cellprofiler_4.2.8.tar"' in text
+    assert '"docker_image": "cellprofiler/cellprofiler:4.2.8"' in text
+    assert '"recipe": "Dockerfile.deepprofiler"' in text
+    assert '"sha256": null' in text
+
+
+def test_container_readme_keeps_images_out_of_git_and_documents_external_builds():
+    text = CONTAINER_README.read_text()
+
+    assert "Keep these archives out of Git" in text
+    assert "reuse the prebuilt `.sif` files" in text
+    assert "container_manifest_template.json" in text
+    assert "docker save -o cellprofiler_4.2.8.tar" in text
+    assert "sha256sum *.sif" in text
 
 
 def test_eddie_path_configurator_writes_ignored_env_file():
