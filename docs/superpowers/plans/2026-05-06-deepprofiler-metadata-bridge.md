@@ -701,6 +701,32 @@ git push origin ai-update
 
 ---
 
+## Eddie Validation Outcome
+
+Loop 440 now completes as a tiny end-to-end Eddie smoke for illumination
+correction, Cellpose, and DeepProfiler orchestration. The final resume used the
+configured Cell Painting checkpoint via `${CPTOOLS2_MODEL_DIR}` and kept runtime
+work, logs, traces, reports, timelines, params, and results under
+`${CPTOOLS2_SCRATCH_ROOT}`.
+
+Evidence captured under scratch:
+
+- `results/loop440/traces/trace.batch_001.txt`
+- `results/loop440/traces/report.batch_001.html`
+- `results/loop440/traces/timeline.batch_001.html`
+- `results/loop440/tiny-plate-001/features/tiny-plate-001_chunk_0001/features/no_cells.tsv`
+
+The tiny synthetic plate has no segmented cells. That is now treated as a valid
+continuation path: `FEATURE_EXTRACT` publishes `no_cells.tsv` instead of failing
+the batch. A future production gate should use a real-cell fixture or small
+real-cell Eddie smoke to validate actual DeepProfiler feature `.npz` output.
+
+The only non-blocking cleanup issue observed is that Eddie's Nextflow 25.10.2
+reports `Unknown option: -work-dir` for the attempted `nextflow clean -f
+-work-dir <batch_work_dir>`. The guarded direct-deletion fallback removed the
+exact batch work directory successfully, so this is a log clarity follow-up, not
+a runtime blocker.
+
 ## Self-Review
 
 **Spec coverage:** The plan addresses the observed missing `index.csv`, moves conversion into reusable Python, wires Nextflow to call it, validates locally, syncs Eddie, reruns Loop 440, and records evidence.

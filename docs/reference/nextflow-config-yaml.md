@@ -171,7 +171,8 @@ Feature-extraction engine settings.
 ```yaml
 feature_extraction:
   tool: deepprofiler
-  config: /exports/eddie/scratch/${USER}/cptools2-loop230/config/deepprofiler_config.json
+  config: ${CPTOOLS2_PROJECT_ROOT}/cptools2/templates/deepprofiler_config.json
+  weights: ${CPTOOLS2_MODEL_DIR}/deepprofiler/Cell_Painting_CNN_v1.hdf5
   batch_size: 128
 ```
 
@@ -179,6 +180,12 @@ feature_extraction:
 `config` maps to `params.feature_extraction_config`.
 `weights` maps to `params.feature_extraction_weights`.
 `batch_size` maps to `params.feature_extraction_batch_size`.
+
+For Eddie, model weights are a local site asset, not a Git-tracked artifact.
+`config/eddie_env.sh` exports `CPTOOLS2_MODEL_DIR`; `nextflow/conf/eddie.config`
+passes that directory into the Singularity runtime. The default Cell Painting
+checkpoint contract is `deepprofiler/Cell_Painting_CNN_v1.hdf5` under that model
+root.
 
 ### `container_path` and `containers`
 

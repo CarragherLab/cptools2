@@ -42,7 +42,7 @@ Goal: make `cptools2 pipeline` run scratch-safe Eddie batches as reproducible un
 - [ ] Add conservative `maxForks` tuning only after trace/report artifacts exist.
 - [x] Document the flat-output, batch-work-dir layout in the plan or Eddie docs.
 - [x] Attempt dry-run against the Loop 230 example-screen config locally, blocked by `PermissionError: [WinError 5] Access is denied: 'C:\\exports'` before Nextflow.
-- [ ] Run a small Eddie batch and record trace/report/timeline plus peak scratch usage.
+- [x] Run a small Eddie batch and record trace/report/timeline plus peak scratch usage. Loop 440 tiny smoke completed on Eddie with trace, report, and timeline under `${CPTOOLS2_SCRATCH_ROOT}/results/loop440/traces/`.
 - [ ] Tune scratch factor and concurrency from observed Eddie data.
 
 ## Phase 2.8: Eddie Container Validation and Runtime Certification
@@ -96,22 +96,27 @@ Scratch root: `${CPTOOLS2_SCRATCH_ROOT}`
 ### Loop 440: End-to-End Eddie Smoke and Evidence
 
 - [x] Run the smallest practical multi-engine dry-run on Eddie. Candidate config exists at `config/loop440-eddie-smoke.yaml`; tiny staged plate was created and indexed/chunked on Eddie, and the cptools2 dry-run passes from the synced permanent mirror.
-- [ ] Capture trace/report/timeline, scheduler evidence, scratch usage, and cleanup behavior. Captured dry-run failure evidence and no-job-left-running status; real trace/report/timeline still pending.
+- [x] Capture trace/report/timeline, scheduler evidence, scratch usage, and cleanup behavior. Final tiny smoke produced trace/report/timeline, published a `no_cells.tsv` marker for the zero-cell DeepProfiler chunk, and removed the batch work directory after the guarded direct-deletion fallback.
 - [x] Update docs with final evidence, blockers, and recommended next production gate.
 
 ### Loop 450: DeepProfiler Input Package Handoff
 
-- [ ] Add failing tests for a robust DeepProfiler input package built from a Nextflow chunk manifest, DeepProfiler config, and Cellpose centroids.
-- [ ] Implement `build_deepprofiler_input_package(...)` in `cptools2.nextflow_chunking`, including valid zero-location output.
-- [ ] Wire `nextflow/modules/feature_extract.nf` to call the package builder and validate package artifacts before launching DeepProfiler.
-- [ ] Keep bulky `dp_project` internals in Nextflow work while publishing only small audit artifacts and final features.
-- [ ] Rerun Loop 440 on Eddie with `--resume` and capture whether the run passes or reaches a new model/checkpoint blocker.
+- [x] Add failing tests for a robust DeepProfiler input package built from a Nextflow chunk manifest, DeepProfiler config, and Cellpose centroids.
+- [x] Implement `build_deepprofiler_input_package(...)` in `cptools2.nextflow_chunking`, including valid zero-location output.
+- [x] Wire `nextflow/modules/feature_extract.nf` to call the package builder and validate package artifacts before launching DeepProfiler.
+- [x] Keep bulky `dp_project` internals in Nextflow work while publishing only small audit artifacts and final features.
+- [x] Rerun Loop 440 on Eddie with `--resume` and capture whether the run passes or reaches a new model/checkpoint blocker.
 
 ### Loop 460: DeepProfiler Checkpoint Resolution and Final Smoke
 
-- [ ] Locate or obtain the Cell Painting DeepProfiler checkpoint `combinedset_cellsout_e30.hdf5`.
-- [ ] Store the checkpoint in permanent project space outside Git-tracked source, with any runtime/cache artifacts remaining in scratch.
-- [ ] Configure `feature_extraction.weights` through a local/site config path, not a committed site-specific path.
-- [ ] Add tests/docs that explain the checkpoint contract without exposing local Eddie paths.
-- [ ] Resume the Loop 440 Eddie smoke with `--resume --clean-work` and capture trace/report/timeline evidence.
-- [ ] If the checkpoint cannot be located, document the blocker, candidate sources, and the exact user decision needed.
+- [x] Locate or obtain the official Cell Painting DeepProfiler checkpoint `Cell_Painting_CNN_v1.hdf5`.
+- [x] Store the checkpoint in permanent project space outside Git-tracked source, with any runtime/cache artifacts remaining in scratch.
+- [x] Configure `feature_extraction.weights` through `${CPTOOLS2_MODEL_DIR}`, not a committed site-specific path.
+- [x] Add tests/docs that explain the checkpoint contract without exposing local Eddie paths.
+- [x] Resume the Loop 440 Eddie smoke with `--resume --clean-work` and capture trace/report/timeline evidence.
+- [x] Resolve the checkpoint blocker; no user decision is currently needed for the tiny smoke.
+
+### Follow-up: Cleanup Command Tidying
+
+- [ ] Replace or version-gate the current `nextflow clean -f -work-dir <batch_work_dir>` attempt, because Eddie Nextflow 25.10.2 reports `Unknown option: -work-dir`. The guarded direct-deletion fallback removed the exact batch work directory successfully, so this is a log clarity issue rather than a smoke-test blocker.
+- [ ] Add a real-cell tiny fixture or small real-cell Eddie smoke to validate actual DeepProfiler feature `.npz` output, not only the zero-cell `no_cells.tsv` continuation path.
