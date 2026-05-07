@@ -153,6 +153,7 @@ def test_nextflow_eddie_config_uses_permanent_containers_and_scratch_cache():
     assert "def cptools2ProjectRoot = requireEnv('CPTOOLS2_PROJECT_ROOT')" in text
     assert "Source config/eddie_env.sh after creating local/eddie_paths.env" in text
     assert "def cptools2ContainerDir = System.getenv('CPTOOLS2_CONTAINER_DIR')" in text
+    assert "def cptools2ModelDir = System.getenv('CPTOOLS2_MODEL_DIR')" in text
     assert 'cellprofiler_4.2.8.sif' in text
     assert 'deepprofiler_1.0.sif' in text
     assert 'cellpose_sam_1.0.sif' in text
@@ -161,12 +162,15 @@ def test_nextflow_eddie_config_uses_permanent_containers_and_scratch_cache():
     assert 'module load singularity/4.3.4' in text
     assert 'module load miniforge/25.3.1-0' in text
     assert 'CPTOOLS2_SCRATCH_ROOT' in text
+    assert 'CPTOOLS2_MODEL_DIR' in text
     assert 'CPTOOLS2_VENV' in text
     assert '. "\\$CPTOOLS2_VENV/bin/activate"' in text
     assert 'CPTOOLS2_HOME' in text
     assert 'export HOME="\\$CPTOOLS2_HOME"' in text
     assert "CPTOOLS2_HOME,HOME" not in text
+    assert "CPTOOLS2_MODEL_DIR,CPTOOLS2_HOME" in text
     assert "--bind \\$CPTOOLS2_HOME:/home/\\$USER" in text
+    assert "--bind \\$CPTOOLS2_MODEL_DIR:\\$CPTOOLS2_MODEL_DIR" in text
     assert "requireEnv('CPTOOLS2_SCRATCH_ROOT')" in text
     assert 'SINGULARITY_CACHEDIR' in text
 
