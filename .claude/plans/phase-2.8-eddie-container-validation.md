@@ -77,6 +77,8 @@ ${CPTOOLS2_SCRATCH_ROOT}/
 | 430 | Cellpose and DeepProfiler GPU Smoke | pending | Validate GPU container startup, CUDA visibility, and minimal engine commands |
 | 440 | End-to-End Eddie Smoke and Evidence | pending | Run the smallest practical multi-engine dry-run/smoke and document evidence, blockers, and tuning |
 | 450 | DeepProfiler Input Package Handoff | pending | Build the robust Cellpose-to-DeepProfiler handoff package required to complete the integrated smoke |
+| 485 | GPU Capacity and Throughput Strategy | pending | Compare full GPU and MIG turnaround, output equivalence, memory headroom, and batching tradeoffs before changing defaults |
+| 486 | Gated MIG Functional Validation | pending | Prove cache-safe MIG/full-GPU functional behavior and DeepProfiler handoff before broader validation |
 
 ## Current Evidence
 
@@ -116,6 +118,16 @@ Current comparison:
 - Local development HEAD: `d11d205`.
 - Permanent mirror HEAD: `062a0da`.
 - Permanent mirror has modified tracked source/test files plus many untracked Nextflow, config, container, `.nextflow`, and test artifacts.
+
+## Phase 2.9 Handoff
+
+The 2026-05-19 DeepProfiler scalability run completed the staged representative
+input, not a complete 384-well plate. The input geometry was 64 wells x 6 sites,
+giving 384 well-site image sets.
+
+Phase 2.8 runtime certification is accepted for representative real-cell
+execution. Phase 2.9 owns feature table export, NaN quality reporting, and
+measurement-table usability before any true 384-well staging/destaging run.
 - Permanent mirror `containers/` has the required `.sif` files but no `cptools2_containers.json` manifest.
 
 Conservative strategy:
@@ -254,6 +266,200 @@ Success criteria:
 - Loop 440 rerun reaches beyond the current missing `index.csv` blocker.
 - If DeepProfiler then fails on checkpoint/model assumptions, that is captured as
   the next blocker rather than conflated with the handoff package.
+
+## Loop 485 GPU Capacity and Throughput Strategy
+
+Loop 485 belongs with the FUSE/root-cause work because GPU class selection affects
+whether reproduction tests are short, frequent, and easy to schedule, or longer
+and closer to production behavior.
+
+Objective:
+
+- Decide whether validation and production-like cptools2 runs should use full
+  GPUs, MIG partitions, or both based on observed total turnaround time and
+  output equivalence.
+
+Evaluation model:
+
+```text
+effective turnaround =
+  queue wait
+  + container startup
+  + image processing runtime
+  + staging/destaging
+  + retry or failure cost
+```
+
+Current evidence:
+
+- Eddie docs say MIG is a smaller A100 partition, not equivalent to a full GPU.
+- `gpu-mig=1` has been accepted and run quickly for a tiny docs-guidance probe.
+- `gpu=1` requests have been accepted but can queue longer than MIG when
+  full-GPU capacity is constrained.
+- First matched container-only probes showed Cellpose and DeepProfiler can both
+  import their GPU frameworks on `gpu-mig=1` and `gpu=1` with
+  scheduler-managed CUDA visibility. In this run, MIG started much faster; full
+  GPU started later but completed faster once scheduled.
+- Both MIG and full-GPU probes still hit the Singularity FUSE mount failure and
+  fell back to temporary sandbox extraction before succeeding, so GPU class does
+  not remove the container startup/FUSE behavior by itself.
+- A small real Cellpose diagnostic also completed successfully on a full GPU,
+  but with substantially higher memory use than the import-only probes. That
+  makes functional MIG testing necessary before recommending MIG beyond
+  validation-sized chunks.
+- A Nextflow-managed MIG Cellpose functional smoke completed successfully on a
+  tiny TIFF input, used CUDA, wrote mask and locations outputs, and handled the
+  zero-cell case without failing. A matched same-input full-GPU functional smoke
+  is still needed before claiming output equivalence.
+- Memory evidence must be interpreted carefully. Eddie enforces CPU resident
+  memory through `h_rss`; Nextflow `peak_rss` is the trace-level signal closest
+  to that. SGE `maxvmem` and Nextflow `peak_vmem` can be much larger because
+  they report virtual address space, not MIG GPU framebuffer. MIG GPU memory is
+  separate device memory and remains the key unknown for larger Cellpose and
+  DeepProfiler chunks.
+- Existing Nextflow config requests full GPUs for all `label 'gpu'` processes,
+  via `queue = 'gpu'` and `clusterOptions = '-l gpu=1'`.
+- A follow-up GPU/MIG chunk strategy design was approved:
+  `docs/superpowers/specs/2026-05-14-gpu-mig-chunk-strategy-design.md`.
+  The next comparison should keep `max_chunks: 5` fixed while varying chunk
+  sizes 48, 24, and 96 across MIG-only and full-GPU policies. If both pass, run
+  a mixed policy candidate with Cellpose on MIG and serialized DeepProfiler on
+  full GPU.
+- This matrix is validation evidence, but it also informs the future operating
+  policy for multi-plate, multi-chunk runs. Results must report normalized
+  throughput, failure blast radius, retry cost, and stage-specific resource fit,
+  not only whether the smoke tests pass.
+- Production interpretation should model the whole plate lifecycle: stage-in,
+  indexing/chunking, illumination, parallel Cellpose chunks, serialized
+  DeepProfiler chunks, stage-out, retry cost, scratch footprint, and guarded
+  cleanup.
+
+Plan:
+
+1. Capture live capacity snapshots with
+   `qstat -F gpu,gpu-mig,gputype,h_rss -q gpu` at submission and completion.
+2. Record queue wait separately from execution runtime for every GPU diagnostic.
+3. Run matched container-only probes on `gpu-mig=1` and `gpu=1`. Completed for
+   Cellpose and DeepProfiler startup/import behavior.
+4. Run matched tiny Cellpose and DeepProfiler probes on both GPU classes.
+5. Compare output presence, counts/dimensions, first error line, runtime,
+   CPU RSS, virtual memory context, GPU memory indicators where available, and
+   FUSE symptoms.
+6. Test larger chunks only after tiny probes pass, stopping when memory,
+   runtime, queue delay, or FUSE failures make the class unattractive.
+7. Compare many small GPU jobs against fewer longer GPU jobs, including queue
+   wait and failure blast radius.
+8. Recommend a resource policy before changing Nextflow defaults.
+9. Run the approved `max_chunks: 5` matrix before staging/destaging expansion:
+   MIG-only, full-GPU, then mixed Cellpose-MIG/DeepProfiler-full-GPU if both
+   pass.
+10. Before the mixed candidate, add process-specific GPU resource controls so
+    Cellpose and DeepProfiler can request different GPU classes in the same
+    Nextflow run.
+11. Add GPU task diagnostics and benchmark classification before submission:
+    host, CUDA visibility, `nvidia-smi -L`, GPU memory where available, retry
+    attempt class, image sets per minute, and image sets lost per failed task.
+12. Convert matrix results into an operating policy covering validation default,
+    production Cellpose resource and concurrency, production DeepProfiler
+    resource, default chunk size, retry policy, scratch footprint, and evidence
+    required before scaling to multiple plates.
+13. Test FUSE mitigations through explicit runtime modes rather than manual
+    script edits: `baseline`, `node-local`, `unsquash`, and `scratch-sif`.
+
+Decision rules:
+
+- Do not prefer a GPU type unless queue wait, runtime, memory, output
+  equivalence, or failure data makes the choice obvious.
+- Treat MIG as a validation candidate until Cellpose and DeepProfiler prove
+  functional equivalence and memory headroom.
+- Do not infer MIG GPU-memory headroom from `maxvmem` or `peak_vmem`; capture
+  device-memory evidence directly where possible.
+- Prefer full GPUs for production-like chunks unless evidence shows MIG gives
+  better effective turnaround without changing outputs or increasing failures.
+- Keep exact job IDs, run roots, dataset names, and host details in scratch
+  evidence rather than tracked docs.
+- DeepProfiler remains serialized for this matrix. Parallel DeepProfiler is a
+  separate future test because concurrent MIG DeepProfiler already failed with
+  cuDNN initialization errors.
+
+## Loop 486 Gated MIG Functional Validation
+
+Loop 486 is the gate between promising MIG evidence and using MIG for broader
+pipeline validation. It exists because two risks are now clear:
+
+1. A successful SGE job does not prove the intended pipeline stage actually ran;
+   Nextflow can reuse cached work if the diagnostic input paths and hashes are
+   not made run-specific.
+2. A small MIG smoke does not prove larger Cellpose or DeepProfiler chunks fit
+   in MIG GPU framebuffer memory.
+
+Gates:
+
+1. **Cache-safe setup**: deploy the per-run staged-root diagnostic generator and
+   verify new diagnostic configs cannot reuse the prior Cellpose work hash.
+2. **Matched Cellpose comparison**: run fresh same-input `gpu-mig=1` and
+   `gpu=1` segment-only smokes; compare output presence, locations row count,
+   zero-cell behavior, exit status, FUSE messages, queue wait, execution time,
+   CPU RSS, virtual memory context, and GPU-memory evidence where available.
+3. **MIG DeepProfiler handoff**: run `stages: [segment, extract]` on MIG and
+   verify the DeepProfiler package, zero-cell continuation path, or feature
+   artifacts.
+4. **Policy checkpoint**: document whether MIG is approved for quick validation,
+   approved only for specific stages, or blocked. Full GPU remains the
+   production-like default unless MIG output equivalence and memory headroom are
+   demonstrated for the intended chunk size.
+5. **Downstream unlock**: only after the policy checkpoint proceed to real-cell
+   DeepProfiler feature validation, staging/destaging, and larger chunk
+   threshold tests.
+
+Evaluation metrics:
+
+- Scheduler: queue wait, resource request, GPU class, accepted/running/failure
+  state.
+- Runtime: exit status, wallclock, trace status, first error line.
+- Outputs: masks, locations, DeepProfiler metadata/index, features or zero-cell
+  marker.
+- Memory: `peak_rss`/`h_rss` for CPU resident memory, `peak_vmem`/`maxvmem` as
+  virtual-memory context only, and direct GPU-memory evidence where available.
+- Container behavior: FUSE/squashfuse messages, sandbox extraction fallback,
+  `Transport endpoint is not connected`, and cleanup/teardown symptoms.
+
+Current Gate 1 evidence:
+
+- The first concurrent Gate 1 launch exposed a shared permanent-mirror
+  `.nextflow/cache` lock. The diagnostic launcher was updated to run Nextflow
+  from the scratch run directory with a per-run `NXF_HOME`, avoiding that
+  shared lock.
+- Fresh same-input Cellpose smokes then completed on both `gpu-mig=1` and
+  `gpu=1` without cache reuse.
+- Both runs used CUDA, produced a mask TIFF and locations CSV, handled the
+  zero-cell image as expected, and exited 0.
+- Both runs still emitted FUSE mount messages but did not show
+  `Transport endpoint is not connected` or bus-error failure.
+- Both runs showed low CPU RSS and high virtual memory. This supports the
+  memory-model interpretation, but it still does not prove larger chunks fit in
+  MIG GPU framebuffer.
+
+Current Gate 2 evidence:
+
+- A MIG `segment,extract` smoke completed the Nextflow graph with index, chunk,
+  Cellpose, and `FEATURE_EXTRACT` all exiting 0.
+- Cellpose again used CUDA, wrote the expected mask and locations outputs, and
+  showed FUSE mount messages without transport-endpoint or bus-error failure.
+- `FEATURE_EXTRACT` built the DeepProfiler input package and published the
+  documented zero-cell continuation marker.
+- This proves the zero-cell Cellpose-to-DeepProfiler handoff path on MIG. It
+  does not prove actual DeepProfiler feature generation or MIG GPU-memory
+  headroom, because DeepProfiler proper is skipped when there are no cells.
+
+Current policy checkpoint:
+
+- MIG is approved for quick tiny Cellpose validation and zero-cell handoff
+  validation.
+- MIG is not yet approved for real-cell DeepProfiler feature generation, larger
+  chunks, or production-like runs.
+- Full GPU remains the production-like default until a real-cell MIG feature
+  run and larger-chunk memory evidence support changing that.
 
 ## Out of Scope
 

@@ -1,8 +1,9 @@
-import csv
 import builtins
+import csv
 import importlib
 import json
 import os
+import struct
 import sys
 from pathlib import Path
 
@@ -11,9 +12,24 @@ import pytest
 
 from cptools2 import nextflow_chunking
 
-
 CURRENT_PATH = os.path.dirname(__file__)
 PLATE_DIR = os.path.join(CURRENT_PATH, "example_dir", "test-plate-1")
+
+
+def _write_tiff_header(path, width=2160, height=2160):
+    entries = [
+        (256, 4, 1, width),
+        (257, 4, 1, height),
+    ]
+    data = bytearray()
+    data.extend(b"II")
+    data.extend(struct.pack("<H", 42))
+    data.extend(struct.pack("<I", 8))
+    data.extend(struct.pack("<H", len(entries)))
+    for entry in entries:
+        data.extend(struct.pack("<HHII", *entry))
+    data.extend(struct.pack("<I", 0))
+    path.write_bytes(bytes(data))
 
 
 def _write_deepprofiler_manifest(path, image_root):
@@ -22,7 +38,7 @@ def _write_deepprofiler_manifest(path, image_root):
     rows = []
     for channel, suffix in [("1", "w1"), ("2", "w2")]:
         image_path = image_root / f"B02_s1_{suffix}.tif"
-        image_path.write_bytes(b"fake-tiff")
+        _write_tiff_header(image_path)
         rows.append(
             {
                 "plate": "tiny-plate-001",
@@ -61,7 +77,7 @@ def _append_deepprofiler_manifest_site(path, image_root, well="B03", site="2"):
         )
         for channel, suffix in [("1", "w1"), ("2", "w2")]:
             image_path = image_root / f"{well}_s{site}_{suffix}.tif"
-            image_path.write_bytes(b"fake-tiff")
+            _write_tiff_header(image_path)
             writer.writerow(
                 {
                     "plate": "tiny-plate-001",
@@ -270,7 +286,7 @@ def test_build_deepprofiler_input_package_writes_complete_inputs_package(tmp_pat
 
     image_path = output_root / "images" / "tiny-plate-001" / "B02_s1_w1.tif"
     assert image_path.exists()
-    assert image_path.read_bytes() == b"fake-tiff"
+    assert nextflow_chunking._read_tiff_dimensions(image_path) == (2160, 2160)
 
     index_df = pl.read_csv(output_root / "metadata" / "index.csv")
     assert index_df.columns == [
@@ -305,9 +321,16 @@ def test_build_deepprofiler_input_package_writes_complete_inputs_package(tmp_pat
             "Nuclei_Location_Center_Y": 31.25,
         }
     ]
+    padded_location = output_root / "locations" / "tiny-plate-001" / (
+        "B02-f01-Nuclei.csv"
+    )
+    assert padded_location.exists()
+    assert (output_root / "locations" / "tiny-plate-001" / "B02-1-Nuclei.csv").exists()
+    assert (output_root / "locations" / "tiny-plate-001" / "B02-01-Nuclei.csv").exists()
 
     copied_config = json.loads((output_root / "config" / "config.json").read_text())
-    assert copied_config == json.loads(config_path.read_text())
+    assert copied_config["dataset"]["images"]["width"] == 2160
+    assert copied_config["dataset"]["images"]["height"] == 2160
 
 
 def test_build_deepprofiler_input_package_fails_when_config_channel_is_missing(

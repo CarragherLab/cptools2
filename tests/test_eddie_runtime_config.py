@@ -6,7 +6,6 @@ import polars as pl
 from cptools2 import nextflow_chunking
 from scripts import create_loop440_tiny_plate
 
-
 ROOT = Path(__file__).resolve().parents[1]
 BOOTSTRAP = ROOT / "config" / "eddie_env.sh"
 EDDIE_CONFIG = ROOT / "nextflow" / "conf" / "eddie.config"
@@ -43,8 +42,16 @@ def test_eddie_bootstrap_separates_permanent_and_scratch_paths():
     assert ": \"${CPTOOLS2_SCRATCH_ROOT:?" in text
     assert 'export CPTOOLS2_PERMANENT_ROOT="${CPTOOLS2_PROJECT_ROOT}"' in text
     assert 'export CPTOOLS2_CONFIG_ROOT="${CPTOOLS2_PERMANENT_ROOT}/config"' in text
-    assert 'export CPTOOLS2_CONTAINER_DIR="${CPTOOLS2_CONTAINER_DIR:-${CPTOOLS2_PERMANENT_ROOT}/containers}"' in text
-    assert 'export CPTOOLS2_MODEL_DIR="${CPTOOLS2_MODEL_DIR:-${CPTOOLS2_PROJECT_ROOT%/}-local/models}"' in text
+    assert (
+        'export CPTOOLS2_CONTAINER_DIR="${CPTOOLS2_CONTAINER_DIR:-'
+        '${CPTOOLS2_PERMANENT_ROOT}/containers}"'
+        in text
+    )
+    assert (
+        'export CPTOOLS2_MODEL_DIR="${CPTOOLS2_MODEL_DIR:-'
+        '${CPTOOLS2_PROJECT_ROOT%/}-local/models}"'
+        in text
+    )
     assert 'export CPTOOLS2_VENV="${CPTOOLS2_PERMANENT_ROOT}/.venv"' in text
     assert 'export CPTOOLS2_WORK_ROOT="${CPTOOLS2_SCRATCH_ROOT}/work"' in text
     assert 'export CPTOOLS2_PARAMS_ROOT="${CPTOOLS2_SCRATCH_ROOT}/params"' in text
@@ -62,6 +69,11 @@ def test_eddie_bootstrap_separates_permanent_and_scratch_paths():
     assert 'export SINGULARITY_TMPDIR="${CPTOOLS2_TEMP_ROOT}/singularity"' in text
     assert 'export APPTAINER_CACHEDIR="${CPTOOLS2_CACHE_ROOT}/apptainer"' in text
     assert 'export APPTAINER_TMPDIR="${CPTOOLS2_TEMP_ROOT}/apptainer"' in text
+    assert (
+        'export CPTOOLS2_CONTAINER_RUNTIME_MODE="'
+        '${CPTOOLS2_CONTAINER_RUNTIME_MODE:-baseline}"'
+        in text
+    )
     assert 'export TMPDIR="${CPTOOLS2_TEMP_ROOT}"' in text
     assert 'export TEMP="${CPTOOLS2_TEMP_ROOT}"' in text
     assert 'export TMP="${CPTOOLS2_TEMP_ROOT}"' in text
@@ -154,6 +166,43 @@ def test_nextflow_eddie_config_uses_permanent_containers_and_scratch_cache():
     assert "Source config/eddie_env.sh after creating local/eddie_paths.env" in text
     assert "def cptools2ContainerDir = System.getenv('CPTOOLS2_CONTAINER_DIR')" in text
     assert "def cptools2ModelDir = System.getenv('CPTOOLS2_MODEL_DIR')" in text
+    assert (
+        "def cptools2GpuResource = System.getenv('CPTOOLS2_GPU_RESOURCE') "
+        "?: '-l gpu=1'"
+        in text
+    )
+    assert (
+        "def cptools2SegmentGpuResource = "
+        "System.getenv('CPTOOLS2_SEGMENT_GPU_RESOURCE')"
+        in text
+    )
+    assert (
+        "def cptools2FeatureGpuResource = "
+        "System.getenv('CPTOOLS2_FEATURE_GPU_RESOURCE')"
+        in text
+    )
+    assert "def cptools2GpuQueue = System.getenv('CPTOOLS2_GPU_QUEUE')" in text
+    assert (
+        "def cptools2SegmentGpuQueue = "
+        "System.getenv('CPTOOLS2_SEGMENT_GPU_QUEUE')"
+        in text
+    )
+    assert (
+        "def cptools2FeatureGpuQueue = "
+        "System.getenv('CPTOOLS2_FEATURE_GPU_QUEUE')"
+        in text
+    )
+    assert "def cptools2GpuMaxForks" in text
+    assert "System.getenv('CPTOOLS2_GPU_MAX_FORKS')" in text
+    assert "def cptools2SegmentMaxForks" in text
+    assert "System.getenv('CPTOOLS2_SEGMENT_MAX_FORKS')" in text
+    assert "def cptools2FeatureMaxForks" in text
+    assert "System.getenv('CPTOOLS2_FEATURE_MAX_FORKS')" in text
+    assert "def cptools2ContainerRuntimeMode" in text
+    assert "case 'node-local':" in text
+    assert "return '--scratch /dev/shm'" in text
+    assert "case 'unsquash':" in text
+    assert "return '--unsquash'" in text
     assert 'cellprofiler_4.2.8.sif' in text
     assert 'deepprofiler_1.0.sif' in text
     assert 'cellpose_sam_1.0.sif' in text
@@ -173,6 +222,67 @@ def test_nextflow_eddie_config_uses_permanent_containers_and_scratch_cache():
     assert "--bind \\$CPTOOLS2_MODEL_DIR:\\$CPTOOLS2_MODEL_DIR" in text
     assert "requireEnv('CPTOOLS2_SCRATCH_ROOT')" in text
     assert 'SINGULARITY_CACHEDIR' in text
+    assert 'APPTAINER_CACHEDIR' in text
+    assert 'CPTOOLS2_CONTAINER_RUNTIME_MODE' in text
+    assert 'CUDA_VISIBLE_DEVICES' in text
+
+
+def test_nextflow_eddie_config_allows_mig_gpu_override_without_changing_default():
+    text = EDDIE_CONFIG.read_text()
+
+    assert "CPTOOLS2_GPU_RESOURCE can be set to '-l gpu-mig=1'" in text
+    assert "CPTOOLS2_FEATURE_GPU_QUEUE" in text
+    assert "gpu@@uoe_GPU_A100_batch" in text
+    assert "queue = cptools2GpuQueue" in text
+    assert "maxForks = cptools2GpuMaxForks" in text
+    assert "clusterOptions = cptools2GpuResource" in text
+    assert "withName: 'CELLPOSE_SEGMENT'" in text
+    assert "queue = cptools2SegmentGpuQueue" in text
+    assert "maxForks = cptools2SegmentMaxForks" in text
+    assert "clusterOptions = cptools2SegmentGpuResource" in text
+    assert "withName: 'FEATURE_EXTRACT'" in text
+    assert "queue = cptools2FeatureGpuQueue" in text
+    assert "clusterOptions = cptools2FeatureGpuResource" in text
+    assert "clusterOptions = '-l gpu=1'" not in text
+
+
+def test_nextflow_eddie_config_preserves_scheduler_gpu_visibility():
+    text = EDDIE_CONFIG.read_text()
+
+    env_line = next(line for line in text.splitlines() if "envWhitelist" in line)
+    assert "CUDA_VISIBLE_DEVICES" in env_line
+
+
+def test_nextflow_eddie_config_exposes_deepprofiler_scalability_controls():
+    text = EDDIE_CONFIG.read_text()
+
+    assert "CPTOOLS2_DEEPPROFILER_TF_ALLOW_GROWTH" in text
+    assert "CPTOOLS2_DEEPPROFILER_HOST_LOCK" in text
+    assert "CPTOOLS2_DEEPPROFILER_LOCK_DIR" in text
+
+
+def test_nextflow_eddie_config_whitelists_deepprofiler_scalability_controls():
+    text = EDDIE_CONFIG.read_text()
+    env_line = next(line for line in text.splitlines() if line.strip().startswith("envWhitelist"))
+
+    assert "CUDA_VISIBLE_DEVICES" in env_line
+    assert "CPTOOLS2_DEEPPROFILER_TF_ALLOW_GROWTH" in env_line
+    assert "CPTOOLS2_DEEPPROFILER_HOST_LOCK" in env_line
+    assert "CPTOOLS2_DEEPPROFILER_LOCK_DIR" in env_line
+
+
+def test_nextflow_eddie_config_serializes_deepprofiler_feature_tasks():
+    text = EDDIE_CONFIG.read_text()
+
+    assert "withLabel: 'feature_extract'" in text
+    assert "System.getenv('CPTOOLS2_FEATURE_MAX_FORKS') ?: '1'" in text
+    assert "maxForks = cptools2FeatureMaxForks" in text
+
+
+def test_nextflow_eddie_config_retries_sigbus_failures():
+    text = EDDIE_CONFIG.read_text()
+
+    assert "135" in next(line for line in text.splitlines() if "errorStrategy" in line)
 
 
 def test_cellprofiler_smoke_script_is_cpu_sge_and_scratch_only():
@@ -200,7 +310,11 @@ def test_cellprofiler_smoke_script_is_cpu_sge_and_scratch_only():
 def test_gpu_smoke_scripts_request_gpu_and_use_nv():
     scripts = [
         (CELLPOSE_SMOKE, "cellpose_sam_1.0.sif", "torch.cuda.is_available()"),
-        (DEEPPROFILER_SMOKE, "deepprofiler_1.0.sif", "tf.config.list_physical_devices('GPU')"),
+        (
+            DEEPPROFILER_SMOKE,
+            "deepprofiler_1.0.sif",
+            "tf.config.list_physical_devices('GPU')",
+        ),
     ]
 
     for script, container_name, gpu_probe in scripts:

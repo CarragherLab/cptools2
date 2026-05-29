@@ -28,6 +28,7 @@ process FEATURE_EXTRACT {
 
     output:
     tuple val(plate_id), path("features"), emit: features
+    tuple val(plate_id), val(chunk_manifest.simpleName), path("features"), emit: export_inputs
 
     script:
     if (params.feature_extraction_tool == 'deepprofiler') {
@@ -36,6 +37,13 @@ process FEATURE_EXTRACT {
             : ''
         """
         mkdir -p features
+
+        echo '=== cptools2 GPU diagnostics: FEATURE_EXTRACT start ==='
+        hostname || true
+        echo "CUDA_VISIBLE_DEVICES=\${CUDA_VISIBLE_DEVICES:-unset}"
+        nvidia-smi -L || true
+        nvidia-smi --query-gpu=index,name,memory.total,memory.used --format=csv || true
+        echo '=== cptools2 GPU diagnostics: FEATURE_EXTRACT end ==='
 
         # Set up DeepProfiler project structure
         mkdir -p dp_project/outputs/cell_painting/checkpoint
@@ -65,7 +73,7 @@ for path in Path("dp_project/inputs/locations").rglob("*.csv"):
         count += sum(1 for _ in csv.DictReader(handle))
 print(count)
 PY
-)
+        )
         if [ "\$location_count" -eq 0 ]; then
             printf 'plate_id\\tchunk_id\\treason\\n%s\\t%s\\tno_cells\\n' "${plate_id}" "${chunk_manifest.simpleName}" > features/no_cells.tsv
             exit 0
@@ -77,17 +85,60 @@ PY
                 echo "Configured DeepProfiler weights do not exist: ${weights_path}" >&2
                 exit 1
             fi
-            ln -s "${weights_path}" dp_project/outputs/cell_painting/checkpoint/
+            ln -sf "${weights_path}" dp_project/outputs/cell_painting/checkpoint/
         fi
 
-        # Run DeepProfiler
-        python -m deepprofiler \\
-            --root dp_project/ \\
-            --config config.json \\
-            --metadata index.csv \\
-            --exp cell_painting \\
-            --gpu 0 \\
-            profile
+        cat > run_deepprofiler.py <<'PY'
+import os
+import subprocess
+import sys
+
+allow_growth = os.environ.get("CPTOOLS2_DEEPPROFILER_TF_ALLOW_GROWTH", "false").lower()
+
+if allow_growth in {"1", "true", "yes"}:
+    os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
+
+print("CPTOOLS2_DEEPPROFILER_TF_ALLOW_GROWTH=" + allow_growth, flush=True)
+print("TF_FORCE_GPU_ALLOW_GROWTH=" + os.environ.get("TF_FORCE_GPU_ALLOW_GROWTH", "unset"), flush=True)
+
+cmd = [
+    sys.executable,
+    "-m",
+    "deepprofiler",
+    "--root",
+    "dp_project/",
+    "--config",
+    "config.json",
+    # --metadata index.csv
+    "--metadata",
+    "index.csv",
+    "--exp",
+    "cell_painting",
+    "--gpu",
+    "0",
+    "profile",
+]
+result = subprocess.run(cmd, check=False)
+if result.returncode < 0:
+    os.kill(os.getpid(), -result.returncode)
+raise SystemExit(result.returncode)
+PY
+
+        run_deepprofiler_command() {
+            python run_deepprofiler.py
+        }
+
+        if [ "\${CPTOOLS2_DEEPPROFILER_HOST_LOCK:-false}" = "true" ]; then
+            lock_dir="\${CPTOOLS2_DEEPPROFILER_LOCK_DIR:-\${PWD}/deepprofiler-host-lock}"
+            mkdir -p "\$lock_dir"
+            host_name="\$(hostname -f 2>/dev/null || hostname)"
+            safe_host_name="\$(printf '%s' "\$host_name" | tr -c 'A-Za-z0-9_.-' '_')"
+            lock_file="\$lock_dir/\${safe_host_name}.lock"
+            echo "DeepProfiler host lock enabled: \$lock_file"
+            flock "\$lock_file" python run_deepprofiler.py
+        else
+            run_deepprofiler_command
+        fi
 
         # Move output features to standard location
         test -d dp_project/outputs/cell_painting/features
@@ -97,6 +148,10 @@ PY
             exit 1
         fi
         cp -r dp_project/outputs/cell_painting/features/* features/
+
+        echo '=== cptools2 GPU diagnostics: FEATURE_EXTRACT post ==='
+        nvidia-smi --query-gpu=index,name,memory.total,memory.used --format=csv || true
+        echo '=== cptools2 GPU diagnostics: FEATURE_EXTRACT post end ==='
         """
     } else if (params.feature_extraction_tool == 'dinov2')
         """

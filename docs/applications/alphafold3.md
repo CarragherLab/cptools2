@@ -3,8 +3,6 @@
 > **Source:** <https://www.wiki.ed.ac.uk/display/ResearchServices/AlphaFold3>
 > **GitHub:** <https://github.com/google-deepmind/alphafold3>
 
-> **Note:** The examples below use `-l h_vmem` which is **deprecated since September 2025**. Replace with `-l h_rss` in all new scripts. See `docs/reference/memory-specification.md`.
-
 AlphaFold3 predicts the structure of interacting proteins, DNA, RNA, ligands, and more.
 
 ## Licence Restrictions
@@ -55,8 +53,9 @@ qsub alphafold3-gpu.sh bbc 2pv7
 #! /bin/sh
 #$ -S /bin/bash
 #$ -cwd
-#$ -l h_vmem=12G
 #$ -pe sharedmem 8
+#$ -l h_rss=12G
+#$ -l h_rt=12:00:00
 # Usage: qsub alphafold3-cpu.sh <Name-Of-Input>
 # <Name-Of-Input>: lowercase, no .json extension, matches "name" field in JSON
 
@@ -90,7 +89,9 @@ singularity exec \
 #$ -cwd
 #$ -q gpu
 #$ -l gpu=1
-#$ -l h_vmem=64G
+#$ -pe sharedmem 2
+#$ -l h_rss=32G
+#$ -l h_rt=24:00:00
 #$ -hold_jid alphafold3-cpu.sh
 # Usage: qsub alphafold3-gpu.sh <Name-Of-Input> [<Name-Of-Input> ...]
 

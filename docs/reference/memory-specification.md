@@ -126,10 +126,10 @@ Rscript analysis.R
 #!/bin/sh
 #$ -N gpu_job
 #$ -cwd
-#$ -pe gpu-a100 1
+#$ -q gpu
+#$ -l gpu=1
 #$ -l h_rt=02:00:00
 #$ -l h_rss=16G
-#$ -l gpus=1
 
 . /etc/profile.d/modules.sh
 module load cuda

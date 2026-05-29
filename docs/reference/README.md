@@ -16,9 +16,10 @@ the agent skills in this repository.
 | [getting-started.md](getting-started.md) | Eddie overview, key concepts, Chandran Lab paths, minimal job template |
 | [submitting-jobs.md](submitting-jobs.md) | Full job script guide — directives, templates, monitoring, array jobs, chaining |
 | [memory-specification.md](memory-specification.md) | RSS memory system (post Sept 2025), node type table, sizing workflow, tuning |
-| [parallel-environments.md](parallel-environments.md) | sharedmem, mpi-32, scatter, gpu-a100 — with real STAR and DESeq2 examples |
+| [parallel-environments.md](parallel-environments.md) | sharedmem, mpi-32, scatter, GPU queue requests — with real STAR and DESeq2 examples |
 | [storage-and-staging.md](storage-and-staging.md) | DataStore/Eddie filesystem, staging node rules, rsync patterns, NFS permissions, resubmission |
 | [gpus.md](gpus.md) | NVIDIA A100 and MIG GPUs — queue, directives, CUDA setup, interactive sessions |
+| [deepprofiler-scalability.md](deepprofiler-scalability.md) | DeepProfiler GPU concurrency policy, full-plate scalability evidence, and NaN feature quality policy |
 | [interactive-sessions.md](interactive-sessions.md) | qlogin usage, set_qlogin_environment.sh, memory/slots, screen reconnection |
 | [eddie-modules.txt](eddie-modules.txt) | Cached full module list (terse, one per line) — refresh via `skills/eddie-modules/SKILL.md` |
 

@@ -45,6 +45,11 @@ params.feature_extraction_tool      = 'deepprofiler'   // 'deepprofiler' or 'din
 params.feature_extraction_config    = "${projectDir}/cptools2/templates/deepprofiler_config.json"
 params.feature_extraction_weights   = null              // path to model checkpoint
 params.feature_extraction_batch_size = 128
+params.feature_export_enabled       = true
+params.feature_export_formats       = 'csv'
+params.feature_export_python        = 'python'
+params.feature_export_nan_object_fail_fraction = 0.05
+params.feature_export_run_label     = null
 
 // ---------------------------------------------------------------------------
 // Resolve active stages
@@ -61,6 +66,7 @@ def run_illum_calc = hasStage('illum') || hasStage('illum_calculate')
 def run_illum_app  = hasStage('illum') || hasStage('illum_apply')
 def run_segment    = hasStage('segment') || hasStage('segmentation')
 def run_extract    = hasStage('extract') || hasStage('feature_extract')
+def run_feature_export = run_extract && params.feature_export_enabled.toString().toBoolean() && params.feature_extraction_tool.toString().toLowerCase() == 'deepprofiler'
 def ai_feature_tools = ['deepprofiler', 'dinov2', 'cell-dino', 'celldino', 'unidino']
 
 // Convenience: if either illum sub-stage requested, run both
@@ -74,6 +80,8 @@ include { ILLUM_CALCULATE } from './modules/illum_calculate'
 include { ILLUM_APPLY     } from './modules/illum_apply'
 include { SEGMENTATION    } from './modules/segmentation'
 include { FEATURE_EXTRACT } from './modules/feature_extract'
+include { EXPORT_FEATURES } from './modules/export_features'
+include { SUMMARISE_FEATURE_EXPORTS } from './modules/summarise_feature_exports'
 include { STAGE_IN        } from './modules/stage_in'
 include { STAGE_OUT       } from './modules/stage_out'
 include { BUILD_IMAGESET_INDEX } from './modules/build_imageset_index'
@@ -110,6 +118,7 @@ workflow {
 
     // Build per-plate input channel
     ch_plates = build_plate_channel()
+    ch_expected_plate_ids = ch_plates.map { plate_id, plate_dir -> plate_id }.collect()
 
     // Optional DataStore staging: stage images to scratch before processing
     if (params.stage_data) {
@@ -122,8 +131,11 @@ workflow {
     // Build a Nextflow-owned chunk graph after whole-plate staging.
     BUILD_IMAGESET_INDEX(ch_input)
     CHUNK_IMAGESETS(BUILD_IMAGESET_INDEX.out.image_sets)
-    ch_chunks_by_plate = CHUNK_IMAGESETS.out.chunks.map { plate_id, staged_plate_dir, chunk_manifest ->
-        tuple(plate_id, staged_plate_dir, chunk_manifest)
+    ch_chunks_by_plate = CHUNK_IMAGESETS.out.chunks.flatMap { plate_id, staged_plate_dir, chunk_manifests ->
+        def manifests = chunk_manifests instanceof List ? chunk_manifests : [chunk_manifests]
+        manifests.collect { chunk_manifest ->
+            tuple(plate_id, staged_plate_dir, chunk_manifest)
+        }
     }
 
     // Stage 1: Illumination correction — calculate
@@ -193,13 +205,38 @@ workflow {
             }
             FEATURE_EXTRACT(ch_extract_input)
         }
+
+        if (run_feature_export) {
+            ch_feature_export_by_plate = FEATURE_EXTRACT.out.export_inputs
+                .groupTuple(by: 0)
+                .map { plate_id, chunk_ids, feature_dirs -> tuple(plate_id, chunk_ids, feature_dirs) }
+
+            EXPORT_FEATURES(ch_feature_export_by_plate)
+
+            ch_feature_export_summary = SUMMARISE_FEATURE_EXPORTS(
+                ch_expected_plate_ids,
+                EXPORT_FEATURES.out.status
+                    .map { plate_id, status_path -> status_path }
+                    .collect()
+                    .ifEmpty([])
+            )
+        }
     }
 
     // Optional DataStore destaging: copy results back from scratch to DataStore
     // STAGE_OUT input: tuple(plate_id, results_dir) — always a 2-tuple
     if (params.stage_data) {
         if (run_extract) {
-            STAGE_OUT(FEATURE_EXTRACT.out.features)
+            ch_extract_stageout = FEATURE_EXTRACT.out.features
+            if (run_feature_export) {
+                ch_extract_stageout = ch_extract_stageout.mix(EXPORT_FEATURES.out.stageout)
+                ch_extract_stageout = ch_extract_stageout.mix(
+                    ch_feature_export_summary.map { summary_dir ->
+                        tuple('feature_export_summary', summary_dir)
+                    }
+                )
+            }
+            STAGE_OUT(ch_extract_stageout)
         } else if (run_segment) {
             def use_cellpose = ai_feature_tools.contains(params.feature_extraction_tool.toString().toLowerCase())
             if (use_cellpose) {

@@ -68,6 +68,90 @@ prompt: |
 ---
 ```
 
+## Loop 486: Gated MIG Functional Validation
+
+```yaml
+---
+name: "ralph-loop-486"
+task_name: "Gated MIG Functional Validation"
+max_iterations: 3
+on_max_iterations: checkpoint
+
+handoff_summary:
+  done: "Loop 485 established the resource model and proved a tiny Nextflow-managed MIG Cellpose smoke can use CUDA and complete. Loop 486 deployed the per-run staged-root generator and isolated Nextflow launch/cache state under each scratch run directory. Fresh matched Cellpose smokes completed on gpu-mig=1 and gpu=1 without cache reuse, both using CUDA and producing mask plus locations outputs. A MIG segment/extract smoke completed the zero-cell DeepProfiler handoff path and published the no-cells marker."
+  failed: "The first full-GPU same-input comparison reused cached MIG work and is invalid as equivalence evidence. The first concurrent segment/extract launch exposed a shared staged-root race in the diagnostic generator. A later concurrent launch exposed the shared permanent .nextflow/cache lock, fixed by running Nextflow from each scratch run directory with per-run NXF_HOME."
+  needed: "Next validation should use a real-cell tiny fixture or small real-cell Eddie smoke to prove actual DeepProfiler feature generation and capture direct GPU-memory evidence where possible before increasing chunk sizes or changing defaults."
+
+todos:
+  - id: "loop-486-1"
+    content: "Deploy and verify the per-run staged-root diagnostic generator in the Eddie permanent mirror"
+    skill: "eddie-validate"
+    agent: "NA"
+    outcome: "A newly generated diagnostic config uses a run-specific staged-root path; the trace does not report reused cached Cellpose work"
+    status: completed
+    complexity: medium
+    priority: high
+  - id: "loop-486-2"
+    content: "Run fresh matched Cellpose functional smokes on gpu-mig=1 and gpu=1"
+    skill: "eddie-orchestrate"
+    agent: "NA"
+    outcome: "Both runs have trace/report/timeline, SGE accounting, output masks/locations evidence, and no unexplained cache reuse"
+    status: completed
+    complexity: high
+    priority: high
+  - id: "loop-486-3"
+    content: "Compare matched Cellpose results across GPU classes"
+    skill: "eddie-resources"
+    agent: "NA"
+    outcome: "Comparison separates queue wait, runtime, CPU RSS, virtual memory, GPU-memory evidence, FUSE messages, exit status, and output presence"
+    status: completed
+    complexity: medium
+    priority: high
+  - id: "loop-486-4"
+    content: "Run MIG segment/extract smoke through the DeepProfiler handoff"
+    skill: "eddie-orchestrate"
+    agent: "NA"
+    outcome: "Workflow either writes DeepProfiler feature artifacts or exits through the documented zero-cell continuation path with status 0"
+    status: completed
+    complexity: high
+    priority: high
+  - id: "loop-486-5"
+    content: "Write the MIG validation policy checkpoint"
+    skill: "plan-eng-review"
+    agent: "NA"
+    outcome: "Tracked plan states whether MIG is approved for quick validation, stage-limited, or blocked; production-like default remains explicit"
+    status: completed
+    complexity: medium
+    priority: high
+  - id: "loop-486-6"
+    content: "Unlock the next validation phase only after the MIG policy checkpoint"
+    skill: "plan-todos"
+    agent: "NA"
+    outcome: "TODOs identify the next permitted validation target: DeepProfiler real-cell feature output, staging/destaging, or larger chunk threshold testing"
+    status: completed
+    complexity: medium
+    priority: medium
+
+prompt: |
+  ## Objective
+  Establish a cache-safe, evidence-based MIG validation gate before using MIG for subsequent cptools2 pipeline validation.
+
+  ## Success Criteria
+  - [x] Diagnostic configs use run-specific staged roots and fresh work directories
+  - [x] Matched Cellpose MIG/full-GPU functional runs are compared without cache reuse
+  - [x] DeepProfiler handoff is exercised on MIG with zero-cell handling or feature output documented
+  - [x] CPU RSS, virtual memory, and GPU framebuffer evidence are interpreted separately
+  - [x] A tracked policy states when MIG is acceptable and what remains full-GPU only
+  - [x] Downstream validation steps are gated on the policy result
+
+  ## Constraints
+  - Keep exact paths, job IDs, run roots, and dataset identifiers in scratch evidence
+  - Do not treat successful scheduling as successful science/runtime validation
+  - Do not infer GPU memory headroom from maxvmem or peak_vmem
+  - Do not change production-like defaults until the policy checkpoint passes
+---
+```
+
 ## Loop 400: Permanent Bootstrap and Runtime Config
 
 ```yaml
@@ -326,5 +410,101 @@ prompt: |
   - Keep runtime package artifacts in scratch/Nextflow work
   - Treat .tif as the default image format for now
   - Capture model/checkpoint failures as separate blockers if they appear after package generation
+---
+```
+
+## Loop 485: GPU Capacity and Throughput Strategy
+
+```yaml
+---
+name: "ralph-loop-485"
+task_name: "GPU Capacity and Throughput Strategy"
+max_iterations: 3
+on_max_iterations: checkpoint
+
+handoff_summary:
+  done: "Current-docs GPU probes showed that gpu-mig=1 can be accepted and run quickly on the gpu queue with scheduler-managed CUDA_VISIBLE_DEVICES. Matched container-only probes now completed on both gpu-mig=1 and gpu=1 for Cellpose and DeepProfiler. MIG started much faster in this run; full GPU started later but completed faster once scheduled. Both GPU classes still showed the Singularity FUSE mount failure followed by sandbox extraction, so GPU class alone is not the FUSE mitigation. A Nextflow-managed MIG Cellpose functional smoke also completed successfully on a tiny TIFF input, used CUDA, wrote mask and locations outputs, and tolerated the zero-cell case. Eddie docs identify MIG as a smaller A100 partition with tighter GPU-memory limits, suitable for validation only after functional equivalence and memory headroom are proven. Memory interpretation is explicit: h_rss/peak_rss are CPU resident memory signals; maxvmem/peak_vmem are virtual address space; MIG GPU framebuffer must be measured separately where possible."
+  failed: ""
+  needed: "Design and run matched probes that measure total turnaround time, output equivalence, memory headroom, and failure modes across gpu-mig=1 and gpu=1 before changing pipeline defaults."
+
+todos:
+  - id: "loop-485-1"
+    content: "Capture live GPU queue capacity snapshots at submission and completion using qstat -F gpu,gpu-mig,gputype,h_rss -q gpu"
+    status: completed
+    complexity: medium
+    priority: high
+  - id: "loop-485-2"
+    content: "Record queue wait, start host, GPU type, runtime, resource request, and scheduler wait reason for every GPU diagnostic job"
+    status: completed
+    complexity: medium
+    priority: high
+  - id: "loop-485-3"
+    content: "Run matched container-only probes on gpu-mig=1 and gpu=1 using identical SIFs, bind options, and temp/cache policy"
+    status: completed
+    complexity: medium
+    priority: high
+  - id: "loop-485-4"
+    content: "Run matched tiny Cellpose and DeepProfiler functional probes across GPU classes and compare outputs, runtime, CPU RSS, virtual memory context, and GPU-memory indicators"
+    status: pending
+    complexity: high
+    priority: high
+  - id: "loop-485-5"
+    content: "Evaluate whether fewer longer full-GPU jobs or more smaller MIG/full-GPU jobs give better effective turnaround and lower failure blast radius"
+    status: pending
+    complexity: high
+    priority: high
+  - id: "loop-485-6"
+    content: "Recommend a resource policy for validation and production-like runs, including when MIG is acceptable and when full GPU is required"
+    status: pending
+    complexity: medium
+    priority: high
+  - id: "loop-485-7"
+    content: "Run the approved max_chunks 5 matrix across MIG-only and full-GPU policies for chunk sizes 48, 24, and 96"
+    status: pending
+    complexity: high
+    priority: high
+  - id: "loop-485-8"
+    content: "Run the mixed policy candidate with Cellpose on MIG and serialized DeepProfiler on full GPU if both base policies pass"
+    status: pending
+    complexity: high
+    priority: high
+  - id: "loop-485-9"
+    content: "Compare total turnaround, output completeness, GPU evidence, and FUSE/runtime symptoms before recommending production policy"
+    status: pending
+    complexity: medium
+    priority: high
+  - id: "loop-485-10"
+    content: "Add process-specific GPU resource controls so segmentation and feature extraction can request different GPU classes in one run"
+    status: pending
+    complexity: medium
+    priority: high
+  - id: "loop-485-11"
+    content: "Add GPU diagnostics and normalized benchmark metrics before submitting the max_chunks 5 matrix"
+    status: pending
+    complexity: medium
+    priority: high
+
+prompt: |
+  ## Objective
+  Choose Eddie GPU resource classes from evidence, optimizing total turnaround time and reproducibility rather than preferring a node type.
+
+  ## Success criteria
+  - [x] Capacity snapshots exist for the first matched GPU diagnostic pass
+  - [x] Queue wait and execution runtime are separated in the evidence
+  - [x] gpu-mig=1 and gpu=1 container-only probes use matched inputs, containers, binds, and runtime settings
+  - [ ] Cellpose and DeepProfiler outputs are compared for presence, dimensions/counts, failure modes, CPU RSS, and GPU-memory indicators where available
+  - [ ] The plan explicitly weighs many small jobs against fewer longer jobs
+  - [ ] A resource policy recommendation is documented before changing Nextflow defaults
+  - [ ] The approved max_chunks 5 matrix is complete or failures are clearly classified
+  - [ ] The mixed Cellpose-MIG/DeepProfiler-full-GPU candidate is tested if both base policies pass
+  - [ ] Process-specific GPU resource controls exist before the mixed candidate runs
+  - [ ] Results are interpreted as future multi-plate operating-policy evidence, not only validation pass/fail
+
+  ## Constraints
+  - Do not assume MIG is equivalent to a full GPU; prove fit and output equivalence first
+  - Do not infer MIG GPU-memory headroom from maxvmem or peak_vmem; those are virtual memory signals, not GPU framebuffer use
+  - Do not prefer a GPU type unless queue wait, runtime, memory, or output evidence makes it obvious
+  - Keep exact job IDs, run roots, host names, and dataset identifiers in scratch evidence rather than tracked docs
+  - Avoid broad production runs until the FUSE and resource-class evidence is clear
 ---
 ```

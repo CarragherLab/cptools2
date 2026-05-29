@@ -225,5 +225,5 @@ qlogin -q staging
 ## Related Documentation
 
 - [memory-specification.md](memory-specification.md) — how to size `h_rss`
-- [parallel-environments.md](parallel-environments.md) — sharedmem, mpi-32, gpu-a100, scatter
+- [parallel-environments.md](parallel-environments.md) — sharedmem, mpi-32, GPU queue requests, scatter
 - [storage-and-staging.md](storage-and-staging.md) — staging queue, DataStore paths

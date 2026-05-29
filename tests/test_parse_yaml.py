@@ -1,5 +1,9 @@
 import json
 import os
+import shutil
+from pathlib import Path
+from contextlib import contextmanager
+from uuid import uuid4
 
 import pytest
 
@@ -10,6 +14,17 @@ TEST_PATH = os.path.join(CURRENT_PATH, "test_config.yaml")
 TEST_PATH2 = os.path.join(CURRENT_PATH, "test_config2.yaml")
 TEST_BROKEN = os.path.join(CURRENT_PATH, "test_config_broken.yaml")
 PIPELINE_CONFIG_PATH = os.path.join(CURRENT_PATH, "pipeline_config.yaml")
+TEST_ARTIFACT_ROOT = Path(CURRENT_PATH).parent / ".tmp-tests"
+
+
+@contextmanager
+def _repo_tmp_dir(prefix):
+    path = TEST_ARTIFACT_ROOT / f"{prefix}-{uuid4().hex}"
+    path.mkdir(parents=True, exist_ok=False)
+    try:
+        yield path
+    finally:
+        shutil.rmtree(path, ignore_errors=True)
 
 
 def test_open_yaml():
@@ -213,6 +228,24 @@ def test_generate_params_json(tmp_path):
     assert params["channels"] == ["DAPI", "GFP", "CY5", "CY3", "BF"]
     assert params["input_dir"] == "/path/to/experiment"
     assert params["output_dir"] == "/example/location"
+    assert params["enable_trace"] is True
+    assert params["enable_report"] is True
+    assert params["enable_timeline"] is True
+
+
+def test_generate_params_json_default_diagnostics():
+    """Default diagnostics should seed full observer booleans in base params."""
+    with _repo_tmp_dir("parse-yaml-default") as tmp_path:
+        config = parse_yaml.parse_config_file(PIPELINE_CONFIG_PATH)
+        output_path = str(tmp_path / "params.json")
+        parse_yaml.generate_params_json(config, output_path)
+
+        with open(output_path) as f:
+            params = json.load(f)
+
+        assert params["enable_trace"] is True
+        assert params["enable_report"] is True
+        assert params["enable_timeline"] is True
 
 
 def test_generate_params_json_minimal(tmp_path):
@@ -228,6 +261,55 @@ def test_generate_params_json_minimal(tmp_path):
     assert "channels" not in params
     assert params["input_dir"] == "/path/to/experiment"
     assert params["output_dir"] == "/example/location"
+    assert params["enable_trace"] is True
+    assert params["enable_report"] is True
+    assert params["enable_timeline"] is True
+
+
+def test_generate_params_json_minimal_diagnostics():
+    """generate_params_json emits minimal diagnostics booleans from config."""
+    with _repo_tmp_dir("parse-yaml-minimal") as tmp_path:
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            "experiment: /path/to/experiment\n"
+            "pipeline: tests/example_pipeline.cppipe\n"
+            "location: /example/location\n"
+            "nextflow_diagnostics: minimal\n"
+        )
+
+        config = parse_yaml.parse_config_file(str(config_file))
+        output_path = str(tmp_path / "params.json")
+        parse_yaml.generate_params_json(config, output_path)
+
+        with open(output_path) as f:
+            params = json.load(f)
+
+        assert params["enable_trace"] is True
+        assert params["enable_report"] is False
+        assert params["enable_timeline"] is False
+
+
+def test_generate_params_json_off_diagnostics():
+    """generate_params_json emits disabled diagnostics booleans from config."""
+    with _repo_tmp_dir("parse-yaml-off") as tmp_path:
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            "experiment: /path/to/experiment\n"
+            "pipeline: tests/example_pipeline.cppipe\n"
+            "location: /example/location\n"
+            "nextflow_diagnostics: off\n"
+        )
+
+        config = parse_yaml.parse_config_file(str(config_file))
+        output_path = str(tmp_path / "params.json")
+        parse_yaml.generate_params_json(config, output_path)
+
+        with open(output_path) as f:
+            params = json.load(f)
+
+        assert params["enable_trace"] is False
+        assert params["enable_report"] is False
+        assert params["enable_timeline"] is False
 
 
 def test_resolve_stages_none():
@@ -372,7 +454,9 @@ def test_generate_params_json_nextflow_pipeline_paths(tmp_path):
     with open(output_path) as f:
         params = json.load(f)
 
-    assert params["illum_pipeline_calculate"].endswith("/pipelines/illum_calculate.cppipe")
+    assert params["illum_pipeline_calculate"].endswith(
+        "/pipelines/illum_calculate.cppipe"
+    )
     assert params["illum_pipeline_apply"].endswith("/pipelines/illum_apply.cppipe")
     assert params["seg_pipeline"].endswith("/pipelines/nuclear_segmentation.cppipe")
 
@@ -409,3 +493,94 @@ def test_generate_params_json_feature_extraction_tool_alias(tmp_path):
     assert params["feature_extraction_weights"] == "/models/deepprofiler/model.ckpt"
     assert params["feature_extraction_batch_size"] == 32
 
+
+def test_parse_config_file_includes_feature_export_block(tmp_path):
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        "input_dir: /exports/<college>/datastore/<project>/imagexpress/<screen>\n"
+        "output_dir: /exports/eddie/scratch/test-user/cptools2-loop230\n"
+        "pipeline: tests/example_pipeline.cppipe\n"
+        "feature_extraction:\n"
+        "  tool: deepprofiler\n"
+        "feature_export:\n"
+        "  enabled: true\n"
+        "  formats:\n"
+        "    - csv\n"
+        "    - parquet\n"
+        "  nan_object_fail_fraction: 0.2\n"
+        "stage_data: true\n"
+    )
+
+    config = parse_yaml.parse_config_file(str(config_file))
+
+    assert config["feature_export"] == {
+        "enabled": True,
+        "formats": ["csv", "parquet"],
+        "nan_object_fail_fraction": 0.2,
+    }
+
+
+def test_generate_params_json_feature_export_defaults_to_csv(tmp_path):
+    config = parse_yaml.parse_config_file(PIPELINE_CONFIG_PATH)
+    config["feature_extraction"] = {"tool": "deepprofiler"}
+    output_path = str(tmp_path / "params.json")
+
+    parse_yaml.generate_params_json(config, output_path)
+
+    with open(output_path) as handle:
+        params = json.load(handle)
+
+    assert params["feature_export_enabled"] is True
+    assert params["feature_export_formats"] == "csv"
+    assert params["feature_export_nan_object_fail_fraction"] == 0.05
+
+
+def test_generate_params_json_feature_export_accepts_optional_formats(tmp_path):
+    config = parse_yaml.parse_config_file(PIPELINE_CONFIG_PATH)
+    config["feature_extraction"] = {"tool": "deepprofiler"}
+    config["feature_export"] = {
+        "enabled": True,
+        "formats": ["csv", "parquet"],
+        "nan_object_fail_fraction": 0.2,
+    }
+    output_path = str(tmp_path / "params.json")
+
+    parse_yaml.generate_params_json(config, output_path)
+
+    with open(output_path) as handle:
+        params = json.load(handle)
+
+    assert params["feature_export_enabled"] is True
+    assert params["feature_export_formats"] == "csv,parquet"
+    assert params["feature_export_nan_object_fail_fraction"] == 0.2
+
+
+def test_generate_params_json_can_disable_feature_export(tmp_path):
+    config = parse_yaml.parse_config_file(PIPELINE_CONFIG_PATH)
+    config["feature_extraction"] = {"tool": "deepprofiler"}
+    config["feature_export"] = {"enabled": False}
+    output_path = str(tmp_path / "params.json")
+
+    parse_yaml.generate_params_json(config, output_path)
+
+    with open(output_path) as handle:
+        params = json.load(handle)
+
+    assert params["feature_export_enabled"] is False
+
+
+def test_generate_params_json_feature_export_run_label(tmp_path):
+    config = parse_yaml.parse_config_file(PIPELINE_CONFIG_PATH)
+    config["feature_extraction"] = {"tool": "deepprofiler"}
+    config["feature_export"] = {
+        "enabled": True,
+        "run_label": "loop510",
+    }
+    output_path = str(tmp_path / "params.json")
+
+    parse_yaml.generate_params_json(config, output_path)
+
+    with open(output_path) as handle:
+        params = json.load(handle)
+
+    assert params["feature_export_run_label"] == "loop510"

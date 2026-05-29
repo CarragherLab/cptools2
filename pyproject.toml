@@ -22,6 +22,7 @@ authors = [{ name = "CarragherLab" }]
 license = "MIT"
 license-files = ["LICENSE"]
 dependencies = [
+    "numpy>=1.20",
     "polars>=1.0",
     "pyyaml>=5.4",
     "parserix @ git+https://github.com/CarragherLab/parserix@master",
@@ -46,7 +47,7 @@ Issues = "https://github.com/CarragherLab/cptools2/issues"
 Documentation = "https://github.com/CarragherLab/cptools2#readme"
 
 [tool.setuptools.packages.find]
-include = ["cptools2"]
+include = ["cptools2*"]
 exclude = ["tests", "data", "examples"]
 
 [project.scripts]

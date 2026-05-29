@@ -22,6 +22,13 @@ process CELLPOSE_SEGMENT {
     mkdir -p cellpose_masks
     mkdir -p cellpose_input
 
+    echo '=== cptools2 GPU diagnostics: CELLPOSE_SEGMENT start ==='
+    hostname || true
+    echo "CUDA_VISIBLE_DEVICES=\${CUDA_VISIBLE_DEVICES:-unset}"
+    nvidia-smi -L || true
+    nvidia-smi --query-gpu=index,name,memory.total,memory.used --format=csv || true
+    echo '=== cptools2 GPU diagnostics: CELLPOSE_SEGMENT end ==='
+
     python - <<'PY'
 import csv
 import os
@@ -110,5 +117,9 @@ with open("cellpose_masks/locations/${chunk_manifest.simpleName}_locations.csv",
     writer.writeheader()
     writer.writerows(rows)
 PY
+
+    echo '=== cptools2 GPU diagnostics: CELLPOSE_SEGMENT post ==='
+    nvidia-smi --query-gpu=index,name,memory.total,memory.used --format=csv || true
+    echo '=== cptools2 GPU diagnostics: CELLPOSE_SEGMENT post end ==='
     """
 }

@@ -13,6 +13,8 @@ import os
 
 import yaml
 
+from cptools2.nextflow_diagnostics import diagnostics_flags_for_mode
+
 
 def _path_arg(value):
     """Normalize a scalar-or-list path argument without requiring local existence."""
@@ -67,7 +69,7 @@ def experiment(yaml_dict):
     """
     if "experiment" in yaml_dict or "input_dir" in yaml_dict:
         experiment_arg = yaml_dict.get("experiment", yaml_dict.get("input_dir"))
-        return {"exp_dir" : _path_arg(experiment_arg)}
+        return {"exp_dir": _path_arg(experiment_arg)}
     else:
         return None
 
@@ -91,7 +93,7 @@ def chunk(yaml_dict):
         chunk_arg = yaml_dict["chunk"]
         if isinstance(chunk_arg, list):
             chunk_arg = chunk_arg[0]
-        return {"job_size" : int(chunk_arg)}
+        return {"job_size": int(chunk_arg)}
     else:
         return None
 
@@ -126,7 +128,7 @@ def add_plate(yaml_dict):
                         plates = [d["plates"]]
                     if isinstance(plate_args, list):
                         plates = d["plates"]
-            return {"exp_dir" : experiment, "plates" : plates}
+            return {"exp_dir": experiment, "plates": plates}
     else:
         return None
 
@@ -149,7 +151,7 @@ def remove_plate(yaml_dict):
     if "remove plate" in yaml_dict:
         remove_arg = yaml_dict["remove plate"]
         # can either be a string or a list in Job.remove plate
-        return {"plates" : remove_arg}
+        return {"plates": remove_arg}
     else:
         return None
 
@@ -199,10 +201,12 @@ def create_commands(yaml_dict):
             chunk_arg = int(chunk_arg[0])
     else:
         chunk_arg = None
-    return {"pipeline"          : pipeline_arg,
-            "location"          : location_arg,
-            "commands_location" : commands_loc_arg,
-            "job_size"          : chunk_arg}
+    return {
+        "pipeline": pipeline_arg,
+        "location": location_arg,
+        "commands_location": commands_loc_arg,
+        "job_size": chunk_arg,
+    }
 
 
 def check_yaml_args(yaml_dict):
@@ -221,36 +225,40 @@ def check_yaml_args(yaml_dict):
     --------
     nothing if successful, otherwise raises a ValueError
     """
-    valid_args = ["experiment",
-                  "chunk",
-                  "pipeline",
-                  "location",
-                  "commands location",
-                  "remove plate",
-                  "add plate",
-                  "new_ix",
-                  "channels",
-                  "stages",
-                  "segmentation",
-                  "feature_extraction",
-                  "containers",
-                  "join_files",
-                  "data_destination",
-                  "container_path",
-                  "output_dir",
-                  "input_dir",
-                  "plate_list",
-                  "plates",
-                  "stage_data",
-                  "expected_channels",
-                  "max_chunks",
-                  "scratch_quota_gb",
-                  "plate_sizes_gb",
-                  "scratch_utilisation_fraction",
-                  "scratch_work_factor",
-                  "illum_pipeline_calculate",
-                  "illum_pipeline_apply",
-                  "seg_pipeline"]
+    valid_args = [
+        "experiment",
+        "chunk",
+        "pipeline",
+        "location",
+        "commands location",
+        "remove plate",
+        "add plate",
+        "new_ix",
+        "channels",
+        "stages",
+        "segmentation",
+        "feature_extraction",
+        "feature_export",
+        "containers",
+        "join_files",
+        "data_destination",
+        "container_path",
+        "output_dir",
+        "input_dir",
+        "plate_list",
+        "plates",
+        "stage_data",
+        "expected_channels",
+        "max_chunks",
+        "scratch_quota_gb",
+        "plate_sizes_gb",
+        "scratch_utilisation_fraction",
+        "scratch_work_factor",
+        "nextflow_diagnostics",
+        "illum_pipeline_calculate",
+        "illum_pipeline_apply",
+        "seg_pipeline",
+    ]
     bad_arguments = []
     for argument in yaml_dict.keys():
         if argument not in valid_args:
@@ -407,6 +415,7 @@ def parse_config_file(config_file):
         "stages": yaml_dict.get("stages"),
         "segmentation": yaml_dict.get("segmentation"),
         "feature_extraction": yaml_dict.get("feature_extraction"),
+        "feature_export": yaml_dict.get("feature_export"),
         "containers": yaml_dict.get("containers"),
         "join_files_patterns": join_files(yaml_dict),
         "data_destination_path": data_destination(yaml_dict),
@@ -416,14 +425,14 @@ def parse_config_file(config_file):
         "max_chunks": yaml_dict.get("max_chunks"),
         "scratch_quota_gb": yaml_dict.get("scratch_quota_gb"),
         "plate_sizes_gb": yaml_dict.get("plate_sizes_gb"),
-        "scratch_utilisation_fraction": yaml_dict.get(
-            "scratch_utilisation_fraction"
-        ),
+        "scratch_utilisation_fraction": yaml_dict.get("scratch_utilisation_fraction"),
         "scratch_work_factor": yaml_dict.get("scratch_work_factor"),
+        "nextflow_diagnostics": yaml_dict.get("nextflow_diagnostics"),
         "nextflow_pipeline_paths": nextflow_pipeline_paths(yaml_dict),
     }
     # Resolve container .sif paths from manifest if available
     from cptools2 import containers as _containers
+
     container_dir = _containers.resolve_container_dir(yaml_dict)
     if container_dir is not None:
         resolved_containers = {}
@@ -590,6 +599,10 @@ def generate_params_json(config_dict, output_path):
     if config_dict.get("channels") is not None:
         params["channels"] = config_dict["channels"]
 
+    params.update(
+        diagnostics_flags_for_mode(config_dict.get("nextflow_diagnostics"))
+    )
+
     # segmentation
     if config_dict.get("segmentation") is not None:
         params["segmentation"] = config_dict["segmentation"]
@@ -624,7 +637,31 @@ def generate_params_json(config_dict, output_path):
                     feature_extraction["weights"]
                 )
             if "batch_size" in feature_extraction:
-                params["feature_extraction_batch_size"] = feature_extraction["batch_size"]
+                params["feature_extraction_batch_size"] = feature_extraction[
+                    "batch_size"
+                ]
+
+    feature_export = config_dict.get("feature_export") or {}
+    export_enabled = bool(config_dict.get("feature_extraction")) and feature_export.get(
+        "enabled", True
+    )
+    params["feature_export_enabled"] = export_enabled
+    feature_export_formats = feature_export.get("formats", ["csv"])
+    if isinstance(feature_export_formats, str):
+        feature_export_formats = [feature_export_formats]
+    params["feature_export_formats"] = (
+        ",".join(
+            str(value).strip().lower()
+            for value in feature_export_formats
+            if str(value).strip()
+        )
+        or "csv"
+    )
+    params["feature_export_nan_object_fail_fraction"] = float(
+        feature_export.get("nan_object_fail_fraction", 0.05)
+    )
+    if "run_label" in feature_export:
+        params["feature_export_run_label"] = str(feature_export["run_label"])
 
     # containers
     if config_dict.get("containers") is not None:

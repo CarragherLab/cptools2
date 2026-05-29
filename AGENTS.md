@@ -57,6 +57,12 @@ Use `/browse` from gstack for all web browsing. Never use `mcp__claude-in-chrome
 
 Available gstack skills: `/office-hours`, `/plan-ceo-review`, `/plan-eng-review`, `/plan-design-review`, `/design-consultation`, `/design-shotgun`, `/design-html`, `/review`, `/ship`, `/land-and-deploy`, `/canary`, `/benchmark`, `/browse`, `/connect-chrome`, `/qa`, `/qa-only`, `/design-review`, `/setup-browser-cookies`, `/setup-deploy`, `/retro`, `/investigate`, `/document-release`, `/codex`, `/cso`, `/autoplan`, `/plan-devex-review`, `/devex-review`, `/careful`, `/freeze`, `/guard`, `/unfreeze`, `/gstack-upgrade`, `/learn`.
 
+## Subagents
+
+When spawning or delegating work to subagents, explicitly set the subagent model to
+`gpt-5.4-mini` unless the user gives a different model requirement in the current
+request.
+
 ## Eddie for Agents
 
 Eddie plugin assets are mirrored locally for this project:
@@ -98,17 +104,17 @@ Key routing rules:
 
 ## Planning State
 
-- phase: 2.8
-- phase_name: Eddie Container Validation and Runtime Certification
-- phase_plan: .claude/plans/phase-2.8-eddie-container-validation.md
-- loop_file: .claude/plans/phase-2.8-ralph-loops.md
-- status: in_progress
-- loops_total: 6
-- loops_done: 4
-- current_loop: 440 (End-to-End Eddie Smoke and Evidence)
-- next_loop: 440
+- phase: 2.9
+- phase_name: Feature Export Tables and Measurement Quality Gate
+- phase_plan: .claude/plans/phase-2.9-feature-export-quality-gate.md
+- loop_file: .claude/plans/phase-2.9-ralph-loops.md
+- status: passed
+- loops_total: 5
+- loops_done: 5
+- current_loop: feature-export-quality-gate
+- next_loop: phase 2.9 gate passed; resolve runtime-policy/FUSE follow-ups before broader scale-up
 - todos_total: 27
-- todos_done: 24
+- todos_done: 27
 
 ## Test conventions
 

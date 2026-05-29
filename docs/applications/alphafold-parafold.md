@@ -3,8 +3,6 @@
 > **Source:** <https://www.wiki.ed.ac.uk/display/ResearchServices/AlphaFold+ParafFold>
 > **GitHub:** <https://github.com/Zuricho/ParallelFold>
 
-> **Note:** The examples below use `-l h_vmem` which is **deprecated since September 2025**. Replace with `-l h_rss` in all new scripts. See `docs/reference/memory-specification.md`.
-
 The **ParaFold** implementation of AlphaFold splits computation into two parts:
 1. **CPU step:** Multiple sequence alignments (8 CPUs)
 2. **GPU step:** Structure prediction (single GPU)
@@ -31,8 +29,9 @@ qsub AlphaFold2-GPU.sh T1050.fasta
 #! /bin/sh
 #$ -S /bin/bash
 #$ -cwd
-#$ -l h_vmem=12G
 #$ -pe sharedmem 8
+#$ -l h_rss=12G
+#$ -l h_rt=12:00:00
 
 source /etc/profile.d/modules.sh
 module load igmm/apps/ParaFold igmm/apps/miniconda3/23.5.2
@@ -56,11 +55,12 @@ run_alphafold.sh \
 #! /bin/sh
 #$ -S /bin/bash
 #$ -cwd
-#$ -l h_vmem=384G
 #$ -q gpu
-#$ -pe gpu-a100 1
+#$ -l gpu=1
+#$ -pe sharedmem 12
+#$ -l h_rss=32G
 #$ -hold_jid AlphaFold2-CPU.sh
-#$ -l h_rt=2:0:0:0
+#$ -l h_rt=48:00:00
 
 source /etc/profile.d/modules.sh
 module load igmm/apps/ParaFold igmm/apps/miniconda3/23.5.2

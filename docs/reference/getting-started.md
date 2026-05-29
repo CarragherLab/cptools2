@@ -119,5 +119,5 @@ python my_analysis.py -i "$DATA_DIR" -o "$RESULTS_DIR"
 
 - [submitting-jobs.md](submitting-jobs.md) — detailed job script guide
 - [memory-specification.md](memory-specification.md) — RSS memory system (post Sept 2025)
-- [parallel-environments.md](parallel-environments.md) — sharedmem, mpi, gpu-a100
+- [parallel-environments.md](parallel-environments.md) — sharedmem, mpi, GPU queue requests
 - [storage-and-staging.md](storage-and-staging.md) — DataStore, Eddie filesystem, staging nodes

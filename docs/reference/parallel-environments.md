@@ -126,17 +126,19 @@ being spread across multiple nodes.
 
 ---
 
-### `gpu-a100` — GPU Acceleration
+### GPU queue — GPU Acceleration
 
 **Use for:** CUDA, TensorFlow, PyTorch, and other GPU-accelerated workloads.
 
 ```bash
-#$ -pe gpu-a100 1
-#$ -l gpus=1           # Number of GPUs (1–4 per node)
+#$ -q gpu              # Required GPU queue
+#$ -l gpu=1            # Number of full GPUs (1-4 per node)
 ```
 
 - 7 GPU nodes: 4× NVIDIA A100 80GB per node
 - 64 CPU cores and 768 GB RAM per node
+- For test-scale jobs, `#$ -l gpu-mig=1` can request one MIG partition instead of a full GPU.
+- The old `gpu-a100` parallel environment is no longer available; do not use `-pe gpu-a100` or `-l gpus=N`.
 - See GPU documentation for full job configuration details
 
 ---
@@ -151,7 +153,7 @@ being spread across multiple nodes.
 | Interactive session | `interactivemem` | With `qlogin` only |
 | Multi-node MPI | `mpi-32` | Add `-R y` |
 | MPI, need cores quickly | `scatter` | Distributed, no `-R y` needed |
-| GPU workload | `gpu-a100` | With `-l gpus=N` |
+| GPU workload | none, use `-q gpu` | Request full GPUs with `-l gpu=N`; request one MIG test partition with `-l gpu-mig=1` |
 
 ---
 
@@ -235,13 +237,13 @@ Rscript deseq2_analysis.R --cores $NSLOTS
 #!/bin/sh
 #$ -N model_train
 #$ -cwd
-#$ -pe gpu-a100 4
+#$ -q gpu
+#$ -l gpu=4
 #$ -l h_rt=12:00:00
-#$ -l h_rss=16G
-#$ -l gpus=4             # Request all 4 GPUs on the node
+#$ -l h_rss=16G          # System RAM per CPU slot
 
 . /etc/profile.d/modules.sh
-module load cuda/11.8
+module load cuda
 module load python/3.11.4
 
 python train.py --gpus 4 --batch-size 512

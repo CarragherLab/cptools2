@@ -10,6 +10,7 @@ import csv
 import json
 import os
 import shutil
+import struct
 from pathlib import Path
 
 # Eddie login/local metadata tasks can hit process/thread limits if Polars/Rayon
@@ -108,7 +109,9 @@ def _resolve_deepprofiler_config_values(config):
         raise ChunkingError("DeepProfiler config missing dataset.metadata.label_field")
     resolved_label_value = metadata.get("control_value")
     if resolved_label_value is None:
-        raise ChunkingError("DeepProfiler config missing dataset.metadata.control_value")
+        raise ChunkingError(
+            "DeepProfiler config missing dataset.metadata.control_value"
+        )
     resolved_image_format = _normalise_image_format(images.get("file_format") or "tif")
     return channels, config_label_field, resolved_label_value, resolved_image_format
 
@@ -166,7 +169,73 @@ def _write_csv_dicts(path, rows, fieldnames):
         writer.writerows(rows)
 
 
-def build_deepprofiler_input_package(
+def _read_tiff_dimensions(path):  # noqa: C901
+    """Read TIFF width/height from the image header without extra dependencies."""
+
+    with Path(path).open("rb") as handle:
+        header = handle.read(8)
+        if len(header) != 8:
+            raise ChunkingError(f"Cannot read TIFF header: {path}")
+        if header[:2] == b"II":
+            endian = "<"
+        elif header[:2] == b"MM":
+            endian = ">"
+        else:
+            raise ChunkingError(f"Unsupported TIFF byte order: {path}")
+        if struct.unpack(endian + "H", header[2:4])[0] != 42:
+            raise ChunkingError(f"Unsupported TIFF header: {path}")
+        ifd_offset = struct.unpack(endian + "I", header[4:8])[0]
+        handle.seek(ifd_offset)
+        entry_count = struct.unpack(endian + "H", handle.read(2))[0]
+        width = None
+        height = None
+        for _ in range(entry_count):
+            entry = handle.read(12)
+            if len(entry) != 12:
+                raise ChunkingError(f"Truncated TIFF IFD entry: {path}")
+            tag, value_type, count, value = struct.unpack(endian + "HHII", entry)
+            if value_type not in {3, 4} or count != 1:
+                continue
+            numeric_value = value
+            if value_type == 3:
+                numeric_value = value & 0xFFFF if endian == "<" else value >> 16
+            if tag == 256:
+                width = numeric_value
+            elif tag == 257:
+                height = numeric_value
+        if width is None or height is None:
+            raise ChunkingError(f"TIFF dimensions not found: {path}")
+        return int(width), int(height)
+
+
+def _write_deepprofiler_config(config, config_output, image_dimensions):
+    copied_config = json.loads(json.dumps(config))
+    if image_dimensions is not None:
+        images = copied_config.setdefault("dataset", {}).setdefault("images", {})
+        images["width"], images["height"] = image_dimensions
+    Path(config_output).write_text(json.dumps(copied_config, indent=2) + "\n")
+
+
+def _deepprofiler_location_names(well, site):
+    raw_site = str(site)
+    names = [
+        f"{well}-f{raw_site}-Nuclei.csv",
+        f"{well}-{raw_site}-Nuclei.csv",
+    ]
+    try:
+        padded_site = f"{int(raw_site):02d}"
+    except ValueError:
+        padded_site = raw_site
+    for padded_name in [
+        f"{well}-f{padded_site}-Nuclei.csv",
+        f"{well}-{padded_site}-Nuclei.csv",
+    ]:
+        if padded_name not in names:
+            names.append(padded_name)
+    return names
+
+
+def build_deepprofiler_input_package(  # noqa: C901
     chunk_manifest,
     locations_dir,
     output_root,
@@ -202,11 +271,11 @@ def build_deepprofiler_input_package(
     metadata_dir.mkdir(parents=True, exist_ok=True)
     locations_output.mkdir(parents=True, exist_ok=True)
     config_output.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(config_path, config_output / "config.json")
 
     metadata_rows = []
     expected_sites = []
     groups = {}
+    image_dimensions = None
     for row in manifest_rows:
         row["channel"] = str(row["channel"])
         groups.setdefault(row["image_set_id"], []).append(row)
@@ -230,7 +299,8 @@ def build_deepprofiler_input_package(
         for manifest_channel, column_name in config_channel_map.items():
             if manifest_channel not in observed:
                 raise ChunkingError(
-                    f"Missing channel {manifest_channel} for DeepProfiler image set {image_set_id}"
+                    "Missing channel "
+                    f"{manifest_channel} for DeepProfiler image set {image_set_id}"
                 )
             channel_row = next(
                 value for value in group if value["channel"] == manifest_channel
@@ -240,6 +310,14 @@ def build_deepprofiler_input_package(
                 raise ChunkingError(
                     "DeepProfiler image format mismatch for "
                     f"{image_set_id}: expected {resolved_image_format}"
+                )
+            dimensions = _read_tiff_dimensions(source_image)
+            if image_dimensions is None:
+                image_dimensions = dimensions
+            elif dimensions != image_dimensions:
+                raise ChunkingError(
+                    "DeepProfiler images have mixed dimensions: "
+                    f"{image_dimensions} and {dimensions}"
                 )
             dest_image = image_plate_dir / source_image.name
             _link_or_copy(source_image, dest_image)
@@ -257,6 +335,7 @@ def build_deepprofiler_input_package(
         *config_channels,
     ]
     _write_csv_dicts(metadata_dir / "index.csv", metadata_rows, metadata_columns)
+    _write_deepprofiler_config(config, config_output / "config.json", image_dimensions)
 
     location_files = _collect_location_files(locations_dir)
     if not location_files:
@@ -287,31 +366,32 @@ def build_deepprofiler_input_package(
 
     for plate, well, site in expected_sites:
         per_site = location_rows.get((plate, well, site), [])
-        output_file = locations_output / plate / f"{well}-f{site}-Nuclei.csv"
-        output_file.parent.mkdir(parents=True, exist_ok=True)
-        if per_site:
-            nuclei_rows = [
-                {
-                    "Nuclei_Location_Center_X": float(row["x"]),
-                    "Nuclei_Location_Center_Y": float(row["y"]),
-                }
-                for row in per_site
-            ]
-            _write_csv_dicts(
-                output_file,
-                nuclei_rows,
-                [
-                    "Nuclei_Location_Center_X",
-                    "Nuclei_Location_Center_Y",
-                ],
-            )
-        elif chunk_locations_file_seen:
-            _write_empty_nuclei_csv(output_file)
-        else:
-            raise ChunkingError(
-                "Missing Cellpose locations for DeepProfiler site: "
-                f"{plate} {well} site {site}"
-            )
+        for location_name in _deepprofiler_location_names(well, site):
+            output_file = locations_output / plate / location_name
+            output_file.parent.mkdir(parents=True, exist_ok=True)
+            if per_site:
+                nuclei_rows = [
+                    {
+                        "Nuclei_Location_Center_X": float(row["x"]),
+                        "Nuclei_Location_Center_Y": float(row["y"]),
+                    }
+                    for row in per_site
+                ]
+                _write_csv_dicts(
+                    output_file,
+                    nuclei_rows,
+                    [
+                        "Nuclei_Location_Center_X",
+                        "Nuclei_Location_Center_Y",
+                    ],
+                )
+            elif chunk_locations_file_seen:
+                _write_empty_nuclei_csv(output_file)
+            else:
+                raise ChunkingError(
+                    "Missing Cellpose locations for DeepProfiler site: "
+                    f"{plate} {well} site {site}"
+                )
 
     return metadata_dir / "index.csv"
 
