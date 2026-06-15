@@ -49,6 +49,7 @@ Phases A-D run in **parallel worktrees**. Phase E runs after all 4 merge.
 | 2.9 | Feature Export Tables and Measurement Quality Gate | Passed | [phase-2.9-feature-export-quality-gate.md](phase-2.9-feature-export-quality-gate.md) | 7 | Hybrid inline + subagent execution |
 | 3.0 | Verified Batch Cleanup and Scratch Relief | Active | [phase-3.0-verified-batch-cleanup.md](phase-3.0-verified-batch-cleanup.md) | 3 | Subagent-driven implementation |
 | 3.1 | Production Execution Hardening and Durable Stage-Out Evidence | Active | [phase-3.1-durable-stageout-evidence.md](phase-3.1-durable-stageout-evidence.md) | 5 | Subagent-driven implementation, then Eddie acceptance |
+| 3.2 | DINO Worktree Consolidation and DeepProfiler Retirement | Planned | [phase-3.2-dino-worktree-consolidation.md](phase-3.2-dino-worktree-consolidation.md) | 5 | Branch-isolated consolidation from `ai-update-DINO` |
 
 ## Branch-Scoped Drafts
 
@@ -76,13 +77,15 @@ that workstream.
 | 2.9 | 510, 520 | 2 |
 | 3.0 | 530, 540, 550 | 3 |
 | 3.1 | 560, 570, 580, 590, 600 | 5 |
-| **Default project loop total** | | **50** |
+| 3.2 | 620, 630, 640, 650, 660 | 5 |
+| **Default project loop total** | | **55** |
 
 ## Active Ralph Loop Files
 
 | Phase | Loop File | Status |
 |---|---|---|
 | 3.1 | [phase-3.1-ralph-loops.md](phase-3.1-ralph-loops.md) | Active; first unfinished loop is 570, implementation begins at 580 after doc close-out |
+| 3.2 | [phase-3.2-dino-worktree-consolidation.md](phase-3.2-dino-worktree-consolidation.md) | Planned; begins after planning checkpoint and branch isolation |
 
 Branch-scoped draft loops are excluded from the default total until promoted:
 

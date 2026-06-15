@@ -5,10 +5,39 @@
 Source plan: `.claude/plans/phase-3.1-durable-stageout-evidence.md`
 Loop plan: `.claude/plans/phase-3.1-ralph-loops.md`
 Implementation plan: `docs/superpowers/plans/2026-05-28-phase-3.1-production-execution-hardening.md`
+Pivot decision: `docs/superpowers/specs/2026-06-09-deepprofiler-pause-dino-pivot.md`
 
 Goal: harden the production cptools2 execution model so Nextflow-led Eddie runs
 launch from isolated scratch roots, preserve stage-out verification evidence,
 clean verified batches, and report multi-plate failures clearly.
+
+Status note: active DeepProfiler production development is paused as of
+2026-06-09. The batching, scratch, stage-out, and reporting lessons from Phase
+3.1 remain active requirements for the DINO successor route. DeepProfiler is now
+legacy/maintenance unless explicitly revived for reproducibility or regression
+support.
+
+Consolidation plan:
+`docs/superpowers/plans/2026-06-09-worktree-remediation-consolidation.md`
+
+Merge map:
+`docs/superpowers/plans/2026-06-15-dino-consolidation-merge-map.md`
+
+### Worktree Remediation and Consolidation
+
+- [x] Record the DeepProfiler pause and DINO pivot decision.
+- [x] Inventory active worktrees: `ai-update` and clean `ai-update-DINO`.
+- [x] Identify that a direct one-shot merge is high risk because DINO combines
+  feature work, shared batching hardening, public-package cleanup, and large
+  `.claude`/`.context` tracking changes.
+- [x] Build a file-level merge map for `ai-update..ai-update-DINO`.
+- [ ] Create an isolated `codex/dino-consolidation` branch from `ai-update-DINO`.
+- [ ] Port only required DeepProfiler pause/Phase 3.1 decision docs into the
+  consolidation branch.
+- [ ] Manually reconcile shared batching files before merging any repository
+  hygiene changes.
+- [ ] Verify DINO-focused local tests and one Eddie dry-run before retiring
+  obsolete worktrees.
 
 ### Loop 560: Durable Evidence Contract
 
@@ -40,11 +69,27 @@ clean verified batches, and report multi-plate failures clearly.
 
 ### Loop 600: Three-Plate Production Acceptance
 
-- [ ] Run the three-plate acceptance workflow from a fresh Eddie scratch directory using the production launcher and `--nextflow-diagnostics minimal`.
-- [ ] Confirm `batch_status.csv` contains three batch rows with verified stage-out for completed batches.
-- [ ] Confirm durable `stage_out_evidence` survives after verified cleanup removes completed `work/batch_###` directories.
-- [ ] Confirm `run_report.md`, launcher logs, qstat snapshots, and process snapshots give enough evidence for users to understand pass or failure state.
-- [ ] If minimal diagnostics passes, test whether `full` diagnostics can be restored without the Eddie driver thread failure recurring.
+- [x] Run the three-plate acceptance workflow from a fresh Eddie scratch directory using the production launcher and `--nextflow-diagnostics minimal`.
+- [x] Confirm `batch_status.csv` records all three batch attempts after the first failure; `--continue-on-batch-failure` worked.
+- [x] Confirm durable `stage_out_evidence` survives outside work for completed stage-out tasks. The fresh run produced durable evidence, but verified cleanup did not run because the DeepProfiler route failed after stage-out.
+- [x] Confirm `run_report.md`, launcher logs, qstat snapshots, and process snapshots give enough evidence for users to understand pass or failure state.
+- [ ] DINO successor follow-up: prove verified cleanup on a successful DINO batch after durable stage-out evidence is written.
+- [ ] DINO successor follow-up: if minimal diagnostics passes, test whether `full` diagnostics can be restored without the Eddie driver thread failure recurring.
+- [x] First acceptance classified as failed: Cellpose hit GPU OOM under concurrent GPU load, and a deterministic `STAGE_OUT` verification heredoc newline bug was observed after rsync.
+
+### Loop 610: Acceptance Recovery and Conservative GPU Baseline
+
+- [x] Fix the `STAGE_OUT` verification heredoc newline bug observed in the first three-plate acceptance run.
+- [x] Add launcher controls for `CPTOOLS2_GPU_MAX_FORKS`, `CPTOOLS2_SEGMENT_MAX_FORKS`, and `CPTOOLS2_FEATURE_MAX_FORKS`, preserving CLI overrides after Eddie bootstrap sourcing.
+- [x] Rerun the three-plate acceptance with `CPTOOLS2_GPU_MAX_FORKS=1`, `CPTOOLS2_SEGMENT_MAX_FORKS=1`, and `CPTOOLS2_FEATURE_MAX_FORKS=1`; it failed usefully because all three Cellpose tasks landed on a saturated H200 GPU 0 with only ~5-8 MiB free.
+- [x] Add shared hardening from the DINO evidence: thumbnail exclusion, namespaced stage-out, feature-export memory increase, and retryable Cellpose GPU preflight.
+- [x] Free Eddie scratch quota by removing approved obsolete Phase 3.1 work, staging, Singularity tmp, FUSE container, and smoke work directories while preserving Phase 2.9 evidence. Removed the later stale post-hardening `outputs/work` again on 2026-06-04 after the mis-rooted retry wrote 102G into the old run.
+- [x] Run focused local Phase 3.1 launcher/runtime/Nextflow verification tests before the fresh post-cleanup acceptance. Passed locally: `25 passed, 2 skipped`; only known Windows pytest cache ACL warning remains.
+- [x] Sync and verify the current Phase 3.1 shared-hardening files on the permanent Eddie mirror. Eddie syntax/signature checks passed for launcher syntax, thumbnail exclusion, Cellpose GPU preflight, feature export memory, and namespaced feature outputs; intermittent Eddie session-channel failures recovered with retries.
+- [x] Launch a fresh three-plate post-cleanup acceptance run in a new timestamped Eddie scratch diagnostics directory: `/exports/eddie/scratch/mharvey2/cptools2-ai-update/diagnostics/phase-3.1-fresh-acceptance-20260604144945`. Dry-run confirmed all `output_dir`, `commands location`, params, traces, and `work/batch_###` paths are under the fresh root before launch.
+- [x] Confirm `driver_status.json`, `batch_status.csv`, `run_report.md`, durable `stage_out_evidence`, and pass/fail classification on the conservative DeepProfiler baseline. The run failed, but it produced enough evidence to support the DeepProfiler pause decision.
+- [x] Document the fresh run path, quota state, pass/fail classification, and intervention decision in the DeepProfiler pause/DINO pivot spec.
+- [ ] DINO successor follow-up: run a separate GPU scale ladder that increases only Cellpose concurrency first after a conservative DINO baseline passes.
 
 ## Phase 3.0: Verified Batch Cleanup and Scratch Relief
 
@@ -85,8 +130,8 @@ stage-out evidence verifies user-facing outputs are present.
 
 ### Roadmap Follow-up: Optional Parquet Export Scaling
 
-- [ ] Stream or batch DeepProfiler cell-level Parquet export so optional Parquet output does not materialize the full wide cell table in Python and Polars memory on full-plate runs.
-- [ ] Add a Parquet scalability check with a realistic cell-table size before treating Parquet as a full-plate export recommendation. CSV remains the certified Phase 2.9 export-ready route.
+- [ ] Deferred legacy DeepProfiler: stream or batch cell-level Parquet export so optional Parquet output does not materialize the full wide cell table in Python and Polars memory on full-plate runs.
+- [ ] Deferred legacy DeepProfiler: add a Parquet scalability check with a realistic cell-table size before treating Parquet as a full-plate export recommendation. CSV remains the certified Phase 2.9 export-ready route.
 
 ## Phase 2.7: Scratch Batch Reproducibility Hardening
 

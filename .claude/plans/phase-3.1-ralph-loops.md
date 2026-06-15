@@ -496,3 +496,94 @@ driver diagnostics and launcher/reporting loops pass locally.
 - ✓ The workflow launches via tmux from scratch.
 - ✓ User-facing evidence states pass or failure clearly.
 - ✓ Verified completed batches are cleaned, failed batches are preserved.
+
+---
+name: "ralph-loop-610"
+task_name: "Acceptance Recovery and Conservative GPU Baseline"
+max_iterations: 3
+on_max_iterations: escalate
+
+handoff_summary:
+  done: "First Loop 600 acceptance launched and produced useful failure evidence: continuation ran all three batches, run_report.md was written, failed work was preserved, Cellpose showed GPU OOM under concurrent GPU load, and STAGE_OUT exposed a deterministic heredoc newline bug after rsync. The conservative Loop 610 rerun also produced useful evidence: all three Cellpose tasks landed on one saturated H200 GPU 0 with only ~5-8 MiB free while the Cellpose process itself used ~1.2-1.3 GiB. The later fresh DeepProfiler run proved the fresh-root batching route, durable stage-out evidence, and continuation/reporting behavior; batch 2 completed DeepProfiler EXPORT_FEATURES and plate-level STAGE_OUT before the summary task failed. On 2026-06-09, DeepProfiler production development was explicitly paused in favor of the DINO successor route; see docs/superpowers/specs/2026-06-09-deepprofiler-pause-dino-pivot.md."
+  failed: "The DeepProfiler conservative baseline never reached verified cleanup. The fresh run exposed DeepProfiler-specific fragility: serialized feature extraction remained necessary, SUMMARISE_FEATURE_EXPORTS failed after successful stage-out because feature_export_status.csv was resolved incorrectly, and retained failed work contributed to scratch quota pressure before batch 3 stage-in. These are no longer active Phase 3.1 blockers for DeepProfiler because the route is paused."
+  needed: "Carry the Phase 3.1 batching lessons into the DINO workstream: fresh scratch roots, tmux driver, per-batch params/traces/work, durable stage-out evidence, verified cleanup, quota snapshots, and clear run reports. Do not continue DeepProfiler acceptance loops unless explicitly revived for reproducibility or regression support."
+
+todos:
+  - id: "loop-610-1"
+    content: "Fix the stage-out verification newline bug and add a static regression test"
+    skill: "test-driven-development"
+    agent: "gpt-5.4-mini"
+    outcome: "Stage-out verification JSON generation is Groovy-safe and static tests pass"
+    status: completed
+    priority: high
+  - id: "loop-610-2"
+    content: "Add launcher GPU max-forks overrides for conservative acceptance"
+    skill: "eddie-orchestrate"
+    agent: "gpt-5.4-mini"
+    outcome: "Launcher can set GPU, Cellpose, and DeepProfiler maxForks per run and records effective values in status.txt"
+    status: completed
+    priority: high
+  - id: "loop-610-3"
+    content: "Run conservative three-plate acceptance from a fresh scratch root"
+    skill: "eddie-validate"
+    agent: "gpt-5.4-mini"
+    outcome: "Acceptance evidence recorded failure clearly: all three batches failed in Cellpose on a saturated assigned H200 GPU 0, while continuation, run_report.md, and failed-work preservation worked"
+    status: completed
+    priority: high
+  - id: "loop-610-4"
+    content: "Apply shared production hardening discovered by comparing the failed DeepProfiler route with the successful adjacent DINO workstream"
+    skill: "nextflow-development"
+    agent: "gpt-5.4-mini"
+    outcome: "STAGE_IN excludes ImageXpress thumbnails, STAGE_OUT namespaces per-chunk outputs and evidence, CELLPOSE_SEGMENT retries saturated assigned GPUs via exit 140, and feature_export requests 16 GB on Eddie"
+    status: completed
+    priority: high
+  - id: "loop-610-5"
+    content: "Rerun three-plate acceptance after shared hardening lands"
+    skill: "eddie-orchestrate"
+    agent: "gpt-5.4-mini"
+    outcome: "Fresh DeepProfiler acceptance recorded useful pass/fail evidence, but active DeepProfiler production development is now paused; the equivalent acceptance should be rerun on the DINO successor route"
+    status: completed
+    priority: high
+
+prompt: |
+  ## Context from prior loop
+  Done: First Loop 600 acceptance launched from tmux and proved continuation/reporting, but all batches failed. The deterministic STAGE_OUT heredoc newline bug and launcher fork controls were fixed. The conservative rerun proved the remaining Cellpose failure was assigned-GPU saturation, not ordinary Cellpose working-set size.
+  Failed: Cellpose repeatedly landed on saturated H200 GPU 0 with only ~5-8 MiB free; no batch reached verified cleanup.
+  Needed: Rerun after shared hardening from DINO evidence is synced to Eddie.
+
+  ## Objective
+  Recover Phase 3.1 acceptance by removing deterministic pipeline issues, adding shared production hardening from the DINO evidence, and rerunning the three-plate workflow with serialized GPU tasks.
+
+  ## Success criteria
+  - [x] Stage-out verification JSON generation is safe inside Nextflow/Groovy heredocs.
+  - [x] Launcher supports per-run GPU max-forks overrides and records effective values.
+  - [x] Conservative tmux run reports failures clearly.
+  - [x] Shared hardening excludes thumbnails, namespaces stage-out, raises feature-export memory, and adds retryable Cellpose GPU preflight.
+  - [ ] Fresh post-hardening dry-run proves the same three-batch split.
+  - [ ] Post-hardening tmux run completes or reports failures clearly.
+  - [ ] Verified completed batches have durable stage-out evidence and cleaned work dirs.
+
+  ## Constraints
+  - Do not submit the Nextflow driver with qsub.
+  - Use `--gpu-max-forks 1 --segment-max-forks 1 --feature-max-forks 1` for the conservative acceptance baseline.
+  - Do not begin GPU scale-up until the conservative baseline passes.
+  - Do not merge DINO-specific Cell-DINO, Python illumination, or corrected-manifest changes as part of this loop.
+---
+
+## Loop 610 Overview
+
+Loop 610 repairs deterministic acceptance failures from Loop 600, incorporates
+shared production hardening discovered by comparing the failed DeepProfiler route
+with the successful adjacent DINO workstream, and separates workflow correctness
+from GPU throughput. It keeps Phase 3.1 focused on a conservative production
+baseline before opening a broader GPU scaling matrix.
+
+## Loop 610 Pause Decision
+
+As of 2026-06-09, do not keep iterating on DeepProfiler production acceptance.
+The fresh three-plate DeepProfiler run generated enough evidence to preserve the
+batching lessons, but DeepProfiler-specific runtime and maintenance risk now
+outweigh further investment. The DINO workstream supersedes DeepProfiler as the
+active production feature-extraction route. Future acceptance work should reuse
+the Phase 3.1 batching architecture on DINO rather than attempting another
+DeepProfiler rerun.
