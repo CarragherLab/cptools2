@@ -30,7 +30,9 @@ Consolidate the DINO worktree into the forward production path while pausing act
 - `docs/superpowers/plans/2026-06-15-dino-consolidation-merge-map.md`
 - `docs/superpowers/plans/2026-06-09-worktree-remediation-consolidation.md`
 - `docs/superpowers/specs/2026-06-09-deepprofiler-pause-dino-pivot.md`
+- `docs/superpowers/specs/2026-06-16-ai-update-dirty-state-cleanup-design.md`
 - Consolidation branch: `codex/dino-consolidation`
+- Safety branch: `codex/phase31-dirty-safety-checkpoint`
 - Updated DINO route with reconciled shared runtime behavior.
 - Local verification log covering DINO, batching, Nextflow, Eddie launcher, and DeepProfiler legacy guards.
 - Eddie dry-run or conservative acceptance evidence from a fresh scratch root.
@@ -52,6 +54,8 @@ Consolidate the DINO worktree into the forward production path while pausing act
 - DeepProfiler legacy tests are not broken silently.
 - `.claude/.context` cleanup is deferred to a separate hygiene phase.
 - Local focused tests pass.
+- Dirty `ai-update` runtime state is archived on `codex/phase31-dirty-safety-checkpoint` before merge-back.
+- `codex/dino-consolidation` is merged only into a clean `ai-update` planning checkpoint.
 - Eddie dry-run or conservative acceptance evidence supports the consolidated route.
 
 ## Dependencies
@@ -78,6 +82,7 @@ Consolidate the DINO worktree into the forward production path while pausing act
 | Risk | Impact | Mitigation |
 | --- | --- | --- |
 | Dirty `ai-update` files are accidentally staged or merged | Runtime regressions and unclear provenance | Stage only explicit planning files; create consolidation branch from clean DINO worktree |
+| Dirty `ai-update` cleanup discards useful Phase 3.1 hardening | Loss of recoverable Eddie runtime fixes | Archive dirty state on `codex/phase31-dirty-safety-checkpoint` before cleaning target |
 | One-shot merge brings `.claude/.context` deletions or unrelated hygiene | Loss of planning context and noisy review | Manual file-by-file composition; defer hygiene |
 | Shared runtime files lose Phase 3.1 cleanup guarantees | Scratch pressure and incomplete output recovery | Preserve stage-out evidence, quota snapshots, batch status, and run reports as explicit acceptance criteria |
 | DeepProfiler breaks unnoticed while being paused | Existing users lose legacy route | Run DeepProfiler legacy export guards and document expected limitations |
@@ -137,10 +142,13 @@ Acceptance:
 
 ### Loop 660: Merge and Retirement Decision
 
-Goal: Decide whether the consolidation branch is ready to merge and which worktrees can be retired.
+Goal: Archive dirty `ai-update` state, merge the verified consolidation branch into a clean `ai-update`, and decide which worktrees can be retired.
 
 Acceptance:
 
 - Verification evidence is documented.
+- Dirty Phase 3.1 runtime state is preserved on `codex/phase31-dirty-safety-checkpoint`.
+- `ai-update` is clean before merge-back.
+- `codex/dino-consolidation` merges into `ai-update` without uncommitted target-state interference.
 - DeepProfiler pause status is clear.
 - Obsolete worktrees are retained or retired only after useful work is represented in the consolidation branch.
