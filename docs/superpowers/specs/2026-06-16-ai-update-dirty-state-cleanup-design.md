@@ -39,7 +39,7 @@ Create a temporary archival branch named:
 codex/phase31-dirty-safety-checkpoint
 ```
 
-Commit the current dirty runtime files and untracked planning documents on that branch. Then return to `ai-update`, restore it to the latest clean planning checkpoint, and merge `codex/dino-consolidation` into the clean target.
+Commit the current dirty runtime files and untracked planning documents on that branch. Then return to `ai-update`, restore it to the latest clean planning checkpoint, and avoid a direct merge if Git reports broad add/add history conflicts. In that case, create a clean successor branch from `codex/dino-consolidation`, port the latest planning docs from `ai-update`, verify locally, and use that successor branch as the forward development line.
 
 ## Rationale
 
@@ -70,9 +70,13 @@ Rejected because the dirty files include real hardening work around Cellpose GPU
 4. Commit only the dirty runtime files and untracked planning documents listed in this spec.
 5. Return to `ai-update`.
 6. Restore `ai-update` to the latest clean planning checkpoint after this design and phase-plan update are committed.
-7. Merge `codex/dino-consolidation` into the clean `ai-update`.
-8. Run the full local merge-back gate.
-9. Inspect the safety branch only if the merge-back gate reveals missing Phase 3.1 behavior.
+7. Attempt direct merge of `codex/dino-consolidation` into clean `ai-update`.
+8. If the merge produces broad add/add history conflicts, abort the merge.
+9. Create a clean successor branch from `codex/dino-consolidation`.
+10. Port the latest `ai-update` planning docs and cleanup decision into the successor branch.
+11. Run the full local gate on the successor branch.
+12. Archive `ai-update` remotely as the old development line and continue from the clean successor branch.
+13. Inspect the safety branch only if the successor gate reveals missing Phase 3.1 behavior.
 
 ## Guardrails
 
@@ -86,9 +90,9 @@ Rejected because the dirty files include real hardening work around Cellpose GPU
 
 - The safety branch contains the pre-cleanup dirty state.
 - `ai-update` becomes clean at the latest planning checkpoint before merge-back.
-- `codex/dino-consolidation` merges into `ai-update` without unrelated dirty-state interference.
+- Either `codex/dino-consolidation` merges into `ai-update` without unrelated dirty-state interference, or a clean successor branch is created from the verified DINO consolidation state.
 - The full local gate passes after merge-back.
-- The safety branch remains available until the Eddie dry-run confirms the merged DINO route.
+- The safety branch remains available until the Eddie dry-run confirms the forward DINO route.
 
 ## Self-Review
 
