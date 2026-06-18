@@ -126,12 +126,15 @@ This project uses the ralph-loop phase/plan workflow (`.claude/plans/`, `.claude
 index at `.claude/plans/PLANS-INDEX.md`). The block below is a snapshot maintained by that tooling;
 re-read the active plan file and the loop file rather than trusting it blindly.
 
-- phase: 3.1
-- phase_name: Production Execution Hardening and Durable Stage-Out Evidence
-- phase_plan: .claude/plans/phase-3.1-durable-stageout-evidence.md
-- loop_file: .claude/plans/phase-3.1-ralph-loops.md
-- status: active
-- loops_total: 5 (560, 570, 580, 590, 600)
-- loops_done: 3 (560 durable evidence, 570 multi-batch smoke prep, 580 driver diagnostics — completed)
-- next_loop: 590 (Production Launcher and Reporting), then 600 (Three-Plate Eddie Acceptance)
-- prior phases: 2.9 (feature export quality gate) gate-passed; 3.0 (verified batch cleanup) landed — cleanup policy, batch ledger, and stage-out verification are live in `cptools2/__main__.py`
+- forward_line: `codex/ai-feature-extraction` @ 7faabef — the clean DINO successor and the single forward development line (siblings `codex/dino-clean-successor`, `codex/dino-consolidation`), in worktree `cptools2-dino-consolidation`. This `ai-update` line is abandoned, leaky, and never pushed — do not develop on it.
+- phase: 3.2
+- phase_name: DINO Worktree Consolidation and DeepProfiler Retirement
+- phase_plan: .claude/plans/phase-3.2-dino-worktree-consolidation.md
+- loop_file: .claude/plans/phase-3.2-dino-worktree-consolidation.md
+- status: active — consolidation built and DINO is the live feature-extraction route; the closing gate is a real-cluster acceptance run
+- loops_total: 5 (620, 630, 640, 650, 660)
+- done: clean successor is the single forward line; DINO route active (channel_adaptive_dino / cell_dino / dinov2); DeepProfiler deprecated (config validation rejects it — the DINO variant is selected per-run in the project YAML); install reconciled to a POSIX `.venv`; `eddie_bootstrap.sh` one-shot mirror bootstrap; committed placeholder acceptance template `config/dino-acceptance.example.yaml`
+- next: real 2–3 plate Eddie interactive-session acceptance from a fresh scratch root (loops 650/660). No end-to-end cluster run has happened yet on the successor line.
+- prior phases: 3.0 (verified batch cleanup + `batch_status.csv` ledger) and 3.1 (durable stage-out evidence, driver diagnostics, interactive launcher) landed; 2.9 (feature-export quality gate) gate-passed. Cleanup policy, batch ledger, and stage-out verification are live in `cptools2/__main__.py`. Baseline DINOv2, Cell-DINO, and channel-adaptive DINO came in via the consolidation.
+- staging: forward line pushed to private ECDF GitLab (remote `gitlab`); public GitHub `origin` is untouched and never pushed without explicit say-so.
+- before acceptance: verify the illumination-correction fix (LoadData CSV + manifest rewrite) actually applies to ImageXpress GUID filenames — `illum` has silently no-op'd on that layout, and the acceptance config runs `stages: [illum, segment, extract]`.
