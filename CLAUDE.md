@@ -120,21 +120,22 @@ Key routing rules:
 - Code quality, health check → invoke health
 - Eddie HPC pipeline/shell-script work → use the `eddie-*` skills/agents
 
-## Planning State
+## Planning State — THIS BRANCH IS DEAD
 
-This project uses the ralph-loop phase/plan workflow (`.claude/plans/`, `.claude/state/history.jsonl`,
-index at `.claude/plans/PLANS-INDEX.md`). The block below is a snapshot maintained by that tooling;
-re-read the active plan file and the loop file rather than trusting it blindly.
+**`ai-update` is abandoned. Do not develop on it, and do not trust any project state
+you read in this checkout.** It is frozen well behind the real work and has already
+misled at least one session into "re-fixing" bugs that were fixed months earlier.
 
-- forward_line: `codex/ai-feature-extraction` @ 7faabef — the clean DINO successor and the single forward development line (siblings `codex/dino-clean-successor`, `codex/dino-consolidation`), in worktree `cptools2-dino-consolidation`. This `ai-update` line is abandoned, leaky, and never pushed — do not develop on it.
-- phase: 3.2
-- phase_name: DINO Worktree Consolidation and DeepProfiler Retirement
-- phase_plan: .claude/plans/phase-3.2-dino-worktree-consolidation.md
-- loop_file: .claude/plans/phase-3.2-dino-worktree-consolidation.md
-- status: active — consolidation built and DINO is the live feature-extraction route; the closing gate is a real-cluster acceptance run
-- loops_total: 5 (620, 630, 640, 650, 660)
-- done: clean successor is the single forward line; DINO route active (channel_adaptive_dino / cell_dino / dinov2); DeepProfiler deprecated (config validation rejects it — the DINO variant is selected per-run in the project YAML); install reconciled to a POSIX `.venv`; `eddie_bootstrap.sh` one-shot mirror bootstrap; committed placeholder acceptance template `config/dino-acceptance.example.yaml`
-- next: real 2–3 plate Eddie interactive-session acceptance from a fresh scratch root (loops 650/660). No end-to-end cluster run has happened yet on the successor line.
-- prior phases: 3.0 (verified batch cleanup + `batch_status.csv` ledger) and 3.1 (durable stage-out evidence, driver diagnostics, interactive launcher) landed; 2.9 (feature-export quality gate) gate-passed. Cleanup policy, batch ledger, and stage-out verification are live in `cptools2/__main__.py`. Baseline DINOv2, Cell-DINO, and channel-adaptive DINO came in via the consolidation.
-- staging: forward line pushed to private ECDF GitLab (remote `gitlab`); public GitHub `origin` is untouched and never pushed without explicit say-so.
-- illum status: the old silent no-op IS fixed on the forward line — `cptools2/illum.py` (numpy, manifest-driven, filename-robust) replaces the broken cppipe and rewrites the chunk manifest to the corrected images; `main.nf` flows ILLUM_APPLY → CELLPOSE_SEGMENT → FEATURE_EXTRACT so corrected images are consumed downstream; `tests/test_illum.py` is green (7/7). Not yet proven on real ImageXpress data on the cluster — the acceptance run is its first real-data confirmation. The old `illum_pipeline_*` cppipe params/templates are now vestigial (ignored by the Python illum).
+The single forward development line is **`codex/ai-feature-extraction`**, in the worktree
+`../cptools2-dino-consolidation` (siblings: `codex/dino-clean-successor`,
+`codex/dino-consolidation`). Its `CLAUDE.md` carries the authoritative Planning State
+snapshot, and its `.claude/plans/` carries the live phase plans and loop files.
+
+No snapshot is duplicated here on purpose: a copy on a dead branch rots silently and
+then gets loaded into context by default, because this checkout is the usual cwd. If you
+need to know what phase the project is on, what has shipped, or whether a bug is still
+open, **read the forward-line worktree** — do not answer from this file, and do not
+answer from a conversation summary that cites it.
+
+Anything below this line describes the codebase in general and still applies; anything
+that looks like current project *status* does not.
