@@ -66,3 +66,18 @@ cptools2-loop230.tgz
 # Local agent runtime assets copied into the project for Codex/Claude access.
 # The tracked project-facing copies live under .claude/.
 .agents/
+
+# Skills junctioned in from .agents/skills so Claude Code can see them.
+# The real files live in .agents/skills; these are links, not content.
+.claude/skills/eddie-construct-pipeline/
+.claude/skills/eddie-docs-search/
+.claude/skills/eddie-job-chaining/
+.claude/skills/eddie-login/
+.claude/skills/eddie-modules/
+.claude/skills/eddie-orchestrate/
+.claude/skills/eddie-resources/
+.claude/skills/eddie-script-standards/
+.claude/skills/eddie-staging-login/
+.claude/skills/eddie-validate/
+.claude/skills/project-onboarding/
+.claude/skills/update-eddie-for-agents/
